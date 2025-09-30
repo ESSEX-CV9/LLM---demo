@@ -44,8 +44,8 @@ class GameView {
         if (loadingScreen) {
             loadingScreen.classList.add('hidden');
         }
-        // 显示开始覆盖层（根据存档情况显示“继续/开始”）
-        this.showStartOverlay();
+        // 显示新的开始页面
+        this.showStartPage();
     }
 
     initializeUI() {
@@ -1043,88 +1043,87 @@ class GameView {
         this.enableInput();
     }
 
-    // 开始页面覆盖层
-    showStartOverlay() {
+    // 显示新的开始页面
+    showStartPage() {
         try {
-            const existing = document.getElementById('start-overlay');
-            if (existing) return;
-            const saveService = window.gameCore?.getService('saveService');
-            const latest = saveService?.getLatestSlot?.() || null;
-            const hasSaves = !!latest;
-            const overlay = document.createElement('div');
-            overlay.id = 'start-overlay';
-            overlay.style.cssText = `
-                position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-                display: flex; align-items: center; justify-content: center;
-                z-index: 9999;
-            `;
-            const panel = document.createElement('div');
-            panel.style.cssText = `
-                background: #1f2430; color: #fff; width: 520px; max-width: 90%;
-                border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.4);
-                padding: 24px;
-            `;
-            panel.innerHTML = `
-                <h2 style="margin:0 0 8px 0;">🏰 地牢探险</h2>
-                <p style="margin:0 0 16px 0; opacity:.85">LLM 驱动 RPG Demo</p>
-                ${hasSaves ? `
-                    <div style="margin-bottom:12px; font-size:14px; opacity:.9;">
-                        最近存档：${new Date(latest.meta.updatedAt).toLocaleString()}
-                    </div>` : ''
-                }
-                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:6px;">
-                    <button id="startPrimaryBtn" class="primary-button" style="flex:1; min-width:180px;">
-                        ${hasSaves ? '▶️ 继续游戏' : '🌱 开始游戏'}
-                    </button>
-                    <button id="loadSavesBtn" class="quick-action-button" style="min-width:140px;">📂 加载存档</button>
-                </div>
-                <div style="margin-top:10px; font-size:12px; opacity:.8;">
-                    <a id="importSaveLink" href="javascript:void(0)" style="color:#7fb3ff; text-decoration:underline;">📥 从文件导入存档</a>
-                </div>
-            `;
-            overlay.appendChild(panel);
-            document.body.appendChild(overlay);
-
-            // 事件
-            const primary = panel.querySelector('#startPrimaryBtn');
-            primary.addEventListener('click', () => {
-                const ss = window.gameCore?.getService('saveService');
-                if (!ss) { this.hideStartOverlay(); return; }
-                if (hasSaves) {
-                    const idx = latest.index;
-                    ss.loadFromSlot(idx);
-                    this.hideStartOverlay();
-                } else {
-                    ss.startNewGame();
-                    this.hideStartOverlay();
-                }
-            });
-
-            const loadBtn = panel.querySelector('#loadSavesBtn');
-            loadBtn.addEventListener('click', () => {
-                this.openSaveManager('load');
-            });
-
-            const importLink = panel.querySelector('#importSaveLink');
-            importLink.addEventListener('click', async () => {
-                this._promptImport(true /*autoLoad*/);
+            // 导入并显示 StartView
+            import('../views/StartView.js').then(module => {
+                const StartView = module.default;
+                this.startView = new StartView(this.eventBus);
+                this.startView.show();
+            }).catch(error => {
+                console.error('[UI] Failed to load StartView:', error);
+                // 降级处理：显示简单的开始界面
+                this.showFallbackStartInterface();
             });
         } catch (e) {
-            console.warn('[UI] showStartOverlay error:', e);
+            console.warn('[UI] showStartPage error:', e);
+            this.showFallbackStartInterface();
         }
     }
 
-    hideStartOverlay() {
-        const overlay = document.getElementById('start-overlay');
-        if (overlay && overlay.parentNode) {
-            overlay.parentNode.removeChild(overlay);
+    // 降级开始界面
+    showFallbackStartInterface() {
+        const saveService = window.gameCore?.getService('saveService');
+        const latest = saveService?.getLatestSlot?.() || null;
+        const hasSaves = !!latest;
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'fallback-start';
+        overlay.style.cssText = `
+            position: fixed; inset: 0; background: #1e3c72;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999; color: white; font-family: sans-serif;
+        `;
+        overlay.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <h1>🏰 地牢探险</h1>
+                <p>LLM 驱动 RPG Demo</p>
+                <div style="margin: 30px 0;">
+                    <button id="newGameBtn" style="margin: 10px; padding: 15px 30px; font-size: 16px;">开始新游戏</button>
+                    <button id="continueBtn" style="margin: 10px; padding: 15px 30px; font-size: 16px;" ${!hasSaves ? 'disabled' : ''}>继续游戏</button>
+                    <button id="loadBtn" style="margin: 10px; padding: 15px 30px; font-size: 16px;">加载存档</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        // 事件处理
+        overlay.querySelector('#newGameBtn').onclick = () => {
+            saveService?.startNewGame();
+            overlay.remove();
+        };
+        overlay.querySelector('#continueBtn').onclick = () => {
+            if (hasSaves) {
+                saveService?.loadFromSlot(latest.index);
+                overlay.remove();
+            }
+        };
+        overlay.querySelector('#loadBtn').onclick = () => {
+            overlay.remove();
+            this.openSaveManager('load');
+        };
+    }
+
+    // 隐藏开始页面
+    hideStartPage() {
+        if (this.startView) {
+            this.startView.hide();
+            this.startView = null;
+        }
+        const fallback = document.getElementById('fallback-start');
+        if (fallback) {
+            fallback.remove();
         }
     }
 
     // 存档管理器（加载/保存/导入/导出/删除）
     openSaveManager(mode = 'load') {
-        // 如果来自开始覆盖层，优先隐藏它
-        this.hideStartOverlay();
+        // 如果来自开始页面，记录需要返回
+        const fromStartPage = !!this.startView || !!document.getElementById('fallback-start');
+        
+        // 隐藏开始页面
+        this.hideStartPage();
 
         const existing = document.querySelector('.save-manager-modal');
         if (existing) existing.remove();
@@ -1147,6 +1146,7 @@ class GameView {
                 <h3 style="margin:0;">${title}</h3>
                 <div>
                     <button class="quick-action-button" id="importBtn">📥 导入</button>
+                    ${fromStartPage ? '<button class="quick-action-button" id="backToStartBtn" style="margin-left:8px;">🔙 返回</button>' : ''}
                     <button class="close-button" id="closeSaveMgr" style="margin-left:8px;">×</button>
                 </div>
             </div>
@@ -1165,7 +1165,21 @@ class GameView {
 
         this._setupSaveManagerEvents(modal, mode);
 
-        box.querySelector('#closeSaveMgr')?.addEventListener('click', () => modal.remove());
+        // 关闭按钮
+        box.querySelector('#closeSaveMgr')?.addEventListener('click', () => {
+            modal.remove();
+            if (fromStartPage) {
+                this.showStartPage();
+            }
+        });
+
+        // 返回开始页面按钮
+        box.querySelector('#backToStartBtn')?.addEventListener('click', () => {
+            modal.remove();
+            this.showStartPage();
+        });
+
+        // 导入按钮
         box.querySelector('#importBtn')?.addEventListener('click', () => {
             this._promptImport(false /*autoLoad*/, () => {
                 // 刷新列表
@@ -1284,7 +1298,7 @@ class GameView {
         input.click();
     }
 // 从存档恢复叙述区历史
-restoreNarrativeFromHistory() {
+restoreNarrativeFromHistory(data) {
     try {
         const gs = window.gameCore?.getService('gameStateService');
         const history = gs?.getState()?.conversation?.history || [];
@@ -1294,48 +1308,119 @@ restoreNarrativeFromHistory() {
         // 清空当前叙述区（移除欢迎提示），用存档历史重建
         narrativeArea.innerHTML = '';
 
-        // 如果没有历史记录，显示欢迎消息
-        if (history.length === 0) {
-            const welcomeDiv = document.createElement('div');
-            welcomeDiv.className = 'narrative-message intro';
-            welcomeDiv.innerHTML = `
-                🌟 欢迎来到地牢探险！
-                <br><br>
-                你站在古老地牢的入口前，黑暗的通道向前延伸，空气中弥漫着神秘的气息...
-                <br><br>
-                <em>提示：试试输入"向前探索"、"搜索房间"或"查看状态"来开始你的冒险！</em>
-            `;
-            narrativeArea.appendChild(welcomeDiv);
-            return;
+        // 始终显示欢迎消息（无论是否有历史记录）
+        const welcomeDiv = document.createElement('div');
+        welcomeDiv.className = 'narrative-message intro';
+        welcomeDiv.innerHTML = `
+            🌟 欢迎回到地牢探险！
+            <br><br>
+            你重新回到了这个充满神秘与危险的地牢世界...
+            <br><br>
+            <em>存档已加载，继续你的冒险吧！</em>
+        `;
+        narrativeArea.appendChild(welcomeDiv);
+
+        // 如果有历史记录，恢复它们
+        if (history.length > 0) {
+            history.forEach(entry => {
+                let content = entry.content || '';
+                let type = entry.type || (entry.role === 'user' ? 'player_action' : 'gm_narrative');
+                
+                // 修复玩家行动格式：确保有 > 前缀
+                if (type === 'player_action' && !content.startsWith('>')) {
+                    content = `> ${content}`;
+                }
+                
+                // 修复函数结果显示：从 result 字段恢复原始显示内容
+                if (type === 'function_result' && entry.result) {
+                    if (entry.result.description) {
+                        // 从存档的 result.description 恢复原始显示格式
+                        const functionName = content.match(/函数执行结果:\s*(\w+)/)?.[1] || 'unknown';
+                        content = `⚔️ 【${functionName}】${entry.result.description}`;
+                        
+                        // 如果是战斗准备状态，需要重新添加"进入战斗"按钮
+                        if (functionName === 'start_battle' && entry.result.outcome === 'battle_ready') {
+                            // 延迟处理，确保消息已添加到DOM
+                            setTimeout(() => {
+                                this.restoreBattleReadyButton(entry.result);
+                            }, 100);
+                        }
+                    }
+                }
+
+                this.addMessage({
+                    content,
+                    type,
+                    timestamp: entry.timestamp || Date.now(),
+                    skipHistory: true // 避免重复写入历史
+                });
+            });
         }
 
-        history.forEach(entry => {
-            let content = entry.content || '';
-            let type = entry.type || (entry.role === 'user' ? 'player_action' : 'gm_narrative');
-            
-            // 修复玩家行动格式：确保有 > 前缀
-            if (type === 'player_action' && !content.startsWith('>')) {
-                content = `> ${content}`;
-            }
-            
-            // 修复函数结果显示：从 result 字段恢复原始显示内容
-            if (type === 'function_result' && entry.result) {
-                if (entry.result.description) {
-                    // 从存档的 result.description 恢复原始显示格式
-                    const functionName = content.match(/函数执行结果:\s*(\w+)/)?.[1] || 'unknown';
-                    content = `⚔️ 【${functionName}】${entry.result.description}`;
-                }
-            }
+        // 检查是否需要恢复战斗状态
+        if (data && data.hasPreparedBattle) {
+            console.log('[UI] 检测到战斗准备状态，禁用输入');
+            this.disableInput();
+            this.setStatus('processing', '战斗待开始...');
+        } else if (data && data.isInBattle) {
+            console.log('[UI] 检测到活跃战斗状态');
+            // 战斗界面会由 BattleService 自动恢复
+        } else {
+            // 正常状态，启用输入
+            this.enableInput();
+        }
 
-            this.addMessage({
-                content,
-                type,
-                timestamp: entry.timestamp || Date.now(),
-                skipHistory: true // 避免重复写入历史
-            });
-        });
     } catch (e) {
         console.warn('[UI] restoreNarrativeFromHistory error:', e);
+    }
+}
+
+// 恢复战斗准备状态的"进入战斗"按钮
+restoreBattleReadyButton(battleResult) {
+    try {
+        const narrativeArea = document.getElementById('narrativeArea');
+        const messages = narrativeArea.querySelectorAll('.narrative-message.function_result');
+        
+        // 找到最后一个战斗函数结果消息
+        let targetMessage = null;
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const msg = messages[i];
+            if (msg.textContent.includes('start_battle') && msg.textContent.includes(battleResult.description)) {
+                targetMessage = msg;
+                break;
+            }
+        }
+        
+        if (targetMessage) {
+            // 检查是否已经有按钮
+            if (targetMessage.querySelector('.battle-start-button')) {
+                return; // 已经有按钮了
+            }
+            
+            // 添加进入战斗按钮
+            const buttonWrapper = document.createElement('div');
+            buttonWrapper.style.marginTop = '10px';
+            const startBtn = document.createElement('button');
+            startBtn.className = 'primary-button battle-start-button';
+            startBtn.textContent = '进入战斗';
+            startBtn.disabled = false;
+            startBtn.style.opacity = '1';
+            startBtn.style.cursor = 'pointer';
+            startBtn.onclick = () => {
+                // 点击进入战斗
+                const battleService = window.gameCore?.getService('battleService');
+                if (battleService && typeof battleService.launchPreparedBattle === 'function') {
+                    battleService.launchPreparedBattle();
+                }
+            };
+            
+            buttonWrapper.appendChild(startBtn);
+            targetMessage.appendChild(buttonWrapper);
+            
+            console.log('[UI] 恢复了战斗准备按钮');
+        }
+    } catch (e) {
+        console.warn('[UI] restoreBattleReadyButton error:', e);
     }
 }
 }

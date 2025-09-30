@@ -101,6 +101,7 @@ class SaveService {
   makeSnapshot(label = '自动存档') {
     const gsService = this.locator.get('gameStateService');
     const invService = this.locator.get('inventoryService');
+    const battleService = this.locator.get('battleService');
 
     if (!gsService) throw new Error('GameStateService not available');
 
@@ -119,6 +120,26 @@ class SaveService {
       maxSlots: invService.maxSlots
     } : { items: [], maxSlots: 20 };
 
+    // 保存战斗状态，包括准备状态
+    let battleData = {
+      isInBattle: false,
+      currentBattle: null,
+      battleHistory: Array.isArray(state.battle?.battleHistory) ? JSON.parse(JSON.stringify(state.battle.battleHistory)) : [],
+      battleState: null,
+      hasPreparedBattle: false
+    };
+
+    if (battleService) {
+      const currentBattleState = battleService.getBattleState();
+      const isInBattle = battleService.isInBattle();
+      
+      if (currentBattleState) {
+        battleData.battleState = JSON.parse(JSON.stringify(currentBattleState));
+        battleData.hasPreparedBattle = !currentBattleState.isActive; // 如果不活跃则是准备状态
+        battleData.isInBattle = isInBattle;
+      }
+    }
+
     const snapshot = {
       version: this.VERSION,
       updatedAt: Date.now(),
@@ -128,12 +149,7 @@ class SaveService {
           player: JSON.parse(JSON.stringify(state.player)),
           world: JSON.parse(JSON.stringify(state.world)),
           conversation: JSON.parse(JSON.stringify(state.conversation)),
-          battle: {
-            // Phase 1: do not persist active battle; only keep history if needed
-            isInBattle: false,
-            currentBattle: null,
-            battleHistory: Array.isArray(state.battle?.battleHistory) ? JSON.parse(JSON.stringify(state.battle.battleHistory)) : []
-          },
+          battle: battleData,
           flags: flagsArr
         },
         inventory
@@ -150,6 +166,7 @@ class SaveService {
     }
     const gsService = this.locator.get('gameStateService');
     const invService = this.locator.get('inventoryService');
+    const battleService = this.locator.get('battleService');
 
     if (!gsService) throw new Error('GameStateService not available');
 
@@ -160,11 +177,32 @@ class SaveService {
     gs.player = JSON.parse(JSON.stringify(s.player || gs.player));
     gs.world = JSON.parse(JSON.stringify(s.world || gs.world));
     gs.conversation = JSON.parse(JSON.stringify(s.conversation || gs.conversation));
+    
+    // 恢复战斗状态
     gs.battle = {
-      isInBattle: false,
-      currentBattle: null,
+      isInBattle: s.battle?.isInBattle || false,
+      currentBattle: s.battle?.currentBattle || null,
       battleHistory: Array.isArray(s.battle?.battleHistory) ? JSON.parse(JSON.stringify(s.battle.battleHistory)) : []
     };
+
+    // 恢复战斗服务状态
+    if (battleService && s.battle?.battleState) {
+      try {
+        const battleState = JSON.parse(JSON.stringify(s.battle.battleState));
+        battleService.battleState = battleState;
+        
+        // 如果是准备状态，不设置 currentBattle
+        if (s.battle.hasPreparedBattle && !battleState.isActive) {
+          battleService.currentBattle = null;
+          console.log('[SaveService] 恢复战斗准备状态');
+        } else if (s.battle.isInBattle && battleState.isActive) {
+          battleService.currentBattle = battleState;
+          console.log('[SaveService] 恢复活跃战斗状态');
+        }
+      } catch (e) {
+        console.warn('[SaveService] Failed to restore battle state:', e);
+      }
+    }
 
     // Restore flags
     try {
@@ -204,6 +242,13 @@ class SaveService {
     // Emit updates to refresh UI
     this.eventBus.emit('state:player:updated', gs.player, 'game');
     this.eventBus.emit('state:world:updated', gs.world, 'game');
+
+    // 发送存档加载完成事件，触发UI恢复
+    this.eventBus.emit('save:loaded', {
+      slot: this.currentSlot,
+      hasPreparedBattle: s.battle?.hasPreparedBattle || false,
+      isInBattle: s.battle?.isInBattle || false
+    }, 'game');
 
     // Notify
     this.eventBus.emit('ui:notification', {
