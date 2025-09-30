@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM驱动RPG Demo - CDN版本</title>
+    
+    <!-- 从服务器加载CSS -->
+    <link rel="stylesheet" href="http://127.0.0.1:5500/assets/styles/game.css">
+    <link rel="stylesheet" href="http://127.0.0.1:5500/assets/styles/ui-components.css">
+    
+    <!-- 添加一些基础样式以防CSS加载失败 -->
+    <style>
+        .css-loading-fallback {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1e3c72;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 99999;
+        }
+        
+        .css-loading-fallback h2 {
+            margin-bottom: 20px;
+        }
+        
+        .css-loading-fallback p {
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+        
+        /* 检测CSS是否加载成功 */
+        .css-loaded-indicator {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- CSS加载失败时的后备界面 -->
+    <div id="cssLoadingFallback" class="css-loading-fallback">
+        <h2>🎨 样式文件加载中...</h2>
+        <p>正在从本地服务器加载CSS文件</p>
+        <p>如果长时间停留在此页面，请检查本地服务器是否正常运行</p>
+        <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #4CAF50; border: none; color: white; border-radius: 5px; cursor: pointer;">
+            重新加载
+        </button>
+    </div>
+
+    <!-- 用于检测CSS是否加载成功的隐藏元素 -->
+    <div class="css-loaded-indicator"></div>
+
+    <!-- 主加载屏幕 -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>地牢探险 Demo</h2>
+            <p>正在从本地CDN加载游戏模块...</p>
+            <div class="loading-progress">
+                <div class="loading-bar" id="loadingBar"></div>
+            </div>
+            <div class="loading-status" id="loadingStatus">准备加载模块...</div>
+        </div>
+    </div>
+
+    <!-- 游戏主界面容器 -->
+    <div id="game-root"></div>
+
+    <!-- 错误显示容器 -->
+    <div id="error-container" class="error-container hidden">
+        <div class="error-content">
+            <h2>🚫 游戏启动失败</h2>
+            <p id="error-message"></p>
+            <div class="error-details">
+                <p><strong>可能的原因：</strong></p>
+                <ul>
+                    <li>服务器响应异常</li>
+                    <li>模块文件路径不正确</li>
+                    <li>浏览器CORS策略限制</li>
+                    <li>小白X插件未正确加载</li>
+                    <li>callGenerate函数不可用</li>
+                </ul>
+                <p><strong>解决方案：</strong></p>
+                <ul>
+                    <li>替代使用VS Code Live Server或类似工具启动本地服务器</li>
+                    <li>检查所有文件是否在正确位置</li>
+                    <li>确保在小白X插件的iframe环境中运行</li>
+                </ul>
+            </div>
+            <div class="error-actions">
+                <button onclick="location.reload()" class="retry-button">🔄 重试</button>
+                <button onclick="checkServerStatus()" class="retry-button" style="margin-left: 10px;">🔍 检查服务器</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调试面板 -->
+    <div id="debug-panel" class="debug-panel hidden">
+        <div class="debug-header">
+            <h3>🐛 调试信息</h3>
+            <button onclick="toggleDebugPanel()" class="debug-close">×</button>
+        </div>
+        <div class="debug-content">
+            <div class="debug-section">
+                <h4>📡 服务器状态</h4>
+                <div id="debug-server-status">检查中...</div>
+            </div>
+            <div class="debug-section">
+                <h4>🎮 游戏状态</h4>
+                <pre id="debug-game-state">未初始化</pre>
+            </div>
+            <div class="debug-section">
+                <h4>📋 模块加载状态</h4>
+                <div id="debug-modules-status"></div>
+            </div>
+            <div class="debug-section">
+                <h4>📝 事件日志</h4>
+                <div id="debug-event-log" class="debug-log"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 服务器状态检查器 -->
+    <script>
+        // 检查CSS是否加载成功
+        function checkCSSLoaded() {
+            const indicator = document.querySelector('.css-loaded-indicator');
+            const computedStyle = window.getComputedStyle(indicator);
+            
+            if (computedStyle.display === 'none') {
+                // CSS加载成功，隐藏后备界面
+                document.getElementById('cssLoadingFallback').style.display = 'none';
+                return true;
+            } else {
+                // CSS加载失败，显示后备界面
+                document.getElementById('cssLoadingFallback').style.display = 'flex';
+                return false;
+            }
+        }
+
+        // 检查服务器状态
+        async function checkServerStatus() {
+            const statusElement = document.getElementById('debug-server-status');
+            const serverUrl = 'http://127.0.0.1:5500/'; // 服务器地址修改这里
+            
+            try {
+                statusElement.innerHTML = '🔄 正在检查服务器...';
+                
+                // 尝试获取根目录
+                const response = await fetch(serverUrl);
+                
+                if (response.ok) {
+                    statusElement.innerHTML = `
+                        <div style="color: #4CAF50;">✅ 服务器正常</div>
+                        <div>状态码: ${response.status}</div>
+                        <div>服务器: ${serverUrl}</div>
+                    `;
+                } else {
+                    statusElement.innerHTML = `
+                        <div style="color: #FF9800;">⚠️ 服务器响应异常</div>
+                        <div>状态码: ${response.status}</div>
+                        <div>服务器: ${serverUrl}</div>
+                    `;
+                }
+            } catch (error) {
+                statusElement.innerHTML = `
+                    <div style="color: #f44336;">❌ 服务器连接失败</div>
+                    <div>错误: ${error.message}</div>
+                    <div>请确保本地服务器正在运行</div>
+                `;
+            }
+        }
+
+        // 页面加载完成后检查CSS
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(checkCSSLoaded, 100);
+            
+            // 定期检查CSS加载状态
+            const cssCheckInterval = setInterval(() => {
+                if (checkCSSLoaded()) {
+                    clearInterval(cssCheckInterval);
+                }
+            }, 500);
+            
+            // 5秒后停止检查
+            setTimeout(() => {
+                clearInterval(cssCheckInterval);
+            }, 5000);
+        });
+    </script>
+
+    <!-- 模块化JavaScript加载器 -->
+    <script type="module">
+        // 配置本地CDN基础URL
+        const CDN_BASE_URL = 'http://127.0.0.1:5500/';
+        
+        // 模块列表，按依赖顺序排列
+        const modules = [
+            'core/EventBus.js',
+            'core/ServiceLocator.js', 
+            'models/GameState.js',
+            'services/LLMService.js',
+            'services/FunctionCallService.js',
+            'services/GameStateService.js',
+            'controllers/GameController.js',
+            'views/GameView.js',
+            'core/GameCore.js'
+        ];
+
+        let loadedCount = 0;
+        const totalModules = modules.length;
+        const progressBar = document.getElementById('loadingBar');
+        const loadingStatus = document.getElementById('loadingStatus');
+        const moduleStatusContainer = document.getElementById('debug-modules-status');
+
+        // 初始化模块状态显示
+        function initModuleStatus() {
+            if (moduleStatusContainer) {
+                moduleStatusContainer.innerHTML = modules.map(module => 
+                    `<div id="module-${module.replace(/[/.]/g, '-')}" class="debug-log-entry">⏳ ${module}</div>`
+                ).join('');
+            }
+        }
+
+        // 更新模块加载状态
+        function updateModuleStatus(module, status, error = null) {
+            const moduleId = `module-${module.replace(/[/.]/g, '-')}`;
+            const element = document.getElementById(moduleId);
+            
+            if (element) {
+                if (status === 'loading') {
+                    element.className = 'debug-log-entry info';
+                    element.textContent = `🔄 ${module} - 加载中...`;
+                } else if (status === 'loaded') {
+                    element.className = 'debug-log-entry event';
+                    element.textContent = `✅ ${module} - 加载成功`;
+                } else if (status === 'error') {
+                    element.className = 'debug-log-entry error';
+                    element.textContent = `❌ ${module} - 加载失败: ${error?.message || '未知错误'}`;
+                }
+            }
+        }
+
+        // 更新加载进度
+        function updateProgress(module = null, error = null) {
+            loadedCount++;
+            const progress = (loadedCount / totalModules) * 100;
+            progressBar.style.width = progress + '%';
+            
+            if (error) {
+                loadingStatus.textContent = `❌ 模块加载失败: ${module}`;
+                loadingStatus.style.color = '#f44336';
+            } else if (loadedCount === totalModules) {
+                loadingStatus.textContent = '✅ 所有模块加载完成，启动游戏...';
+                loadingStatus.style.color = '#4CAF50';
+                
+                // 所有模块加载完成，启动游戏
+                setTimeout(() => {
+                    startGame();
+                }, 500);
+            } else {
+                loadingStatus.textContent = `⏳ 已加载 ${loadedCount}/${totalModules} 个模块`;
+            }
+        }
+
+        // 启动游戏
+        async function startGame() {
+            try {
+                loadingStatus.textContent = '🎮 正在启动游戏核心...';
+                
+                // 导入并启动游戏
+                await import(`${CDN_BASE_URL}index.js`);
+                
+            } catch (error) {
+                console.error('Failed to start game:', error);
+                showError(`游戏启动失败: ${error.message}`);
+            }
+        }
+
+        // 错误处理函数
+        function showError(message) {
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('error-container').classList.remove('hidden');
+        }
+
+        // 预加载所有模块
+        async function loadModules() {
+            // 初始化状态显示
+            initModuleStatus();
+            
+            loadingStatus.textContent = '🔄 开始加载模块...';
+            
+            for (const module of modules) {
+                try {
+                    updateModuleStatus(module, 'loading');
+                    loadingStatus.textContent = `⏳ 正在加载: ${module}`;
+                    
+                    await import(`${CDN_BASE_URL}${module}`);
+                    
+                    updateModuleStatus(module, 'loaded');
+                    updateProgress();
+                    
+                    // 添加小延迟，让用户看到加载过程
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                } catch (error) {
+                    console.error('Failed to load module:', module, error);
+                    updateModuleStatus(module, 'error', error);
+                    updateProgress(module, error);
+                    showError(`模块加载失败: ${module}\n错误: ${error.message}`);
+                    return;
+                }
+            }
+        }
+
+        // 调试面板控制函数
+        window.toggleDebugPanel = function() {
+            const panel = document.getElementById('debug-panel');
+            panel.classList.toggle('hidden');
+            
+            // 更新服务器状态
+            if (!panel.classList.contains('hidden')) {
+                checkServerStatus();
+            }
+        };
+
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+D 开启调试面板
+            if (e.ctrlKey && e.key === 'd') {
+                e.preventDefault();
+                toggleDebugPanel();
+            }
+            // ESC 关闭调试面板
+            if (e.key === 'Escape') {
+                document.getElementById('debug-panel').classList.add('hidden');
+            }
+        });
+
+        // 开始加载流程
+        console.log('🚀 LLM Game Demo - 本地CDN版本启动');
+        console.log('📡 CDN Base URL:', CDN_BASE_URL);
+        
+        // 检查是否在iframe环境中
+        if (window.self !== window.top) {
+            console.log('✅ 运行在iframe环境中');
+        } else {
+            console.warn('⚠️ 未在iframe环境中运行，可能无法使用小白X插件功能');
+        }
+        
+        // 检查callGenerate函数
+        if (typeof window.callGenerate === 'function') {
+            console.log('✅ callGenerate函数可用');
+        } else {
+            console.warn('⚠️ callGenerate函数不可用，请确保在正确环境中运行');
+        }
+        
+        // 开始模块加载
+        loadModules();
+
+    </script>
+
+    <!-- 额外的调试和监控脚本 -->
+    <script>
+        // 全局错误监听
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            
+            // 如果是模块加载错误，显示更详细的信息
+            if (event.filename && event.filename.includes('127.0.0.1:5500')) {
+                const errorMessage = `
+                    文件加载错误: ${event.filename}
+                    行号: ${event.lineno}
+                    错误: ${event.message}
+                `;
+                
+                // 更新调试面板
+                const debugLog = document.getElementById('debug-event-log');
+                if (debugLog) {
+                    const entry = document.createElement('div');
+                    entry.className = 'debug-log-entry error';
+                    entry.textContent = `${new Date().toLocaleTimeString()}: ${errorMessage}`;
+                    debugLog.appendChild(entry);
+                    debugLog.scrollTop = debugLog.scrollHeight;
+                }
+            }
+        });
+
+        // 监听未处理的Promise拒绝
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled promise rejection:', event.reason);
+            
+            const debugLog = document.getElementById('debug-event-log');
+            if (debugLog) {
+                const entry = document.createElement('div');
+                entry.className = 'debug-log-entry error';
+                entry.textContent = `${new Date().toLocaleTimeString()}: Promise拒绝: ${event.reason}`;
+                debugLog.appendChild(entry);
+                debugLog.scrollTop = debugLog.scrollHeight;
+            }
+        });
+
+        // 性能监控
+        window.addEventListener('load', () => {
+            if (window.performance && window.performance.timing) {
+                const timing = window.performance.timing;
+                const loadTime = timing.loadEventEnd - timing.navigationStart;
+                console.log(`📊 页面加载时间: ${loadTime}ms`);
+                
+                const debugLog = document.getElementById('debug-event-log');
+                if (debugLog) {
+                    const entry = document.createElement('div');
+                    entry.className = 'debug-log-entry info';
+                    entry.textContent = `${new Date().toLocaleTimeString()}: 页面加载完成 (${loadTime}ms)`;
+                    debugLog.appendChild(entry);
+                }
+            }
+        });
+
+        // 定期检查服务器连接状态
+        setInterval(async () => {
+            try {
+                const response = await fetch('http://127.0.0.1:5500/', { 
+                    method: 'HEAD',
+                    cache: 'no-cache'
+                });
+                
+                if (!response.ok) {
+                    console.warn('⚠️ 服务器连接异常');
+                }
+            } catch (error) {
+                console.error('❌ 服务器连接失败:', error.message);
+            }
+        }, 30000); // 每30秒检查一次
+
+    </script>
+
+    <!-- 样式增强，在CSS文件加载失败时提供基础样式 -->
+    <style>
+        /* 后备样式，防止CSS文件加载失败 */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        .loading-content {
+            text-align: center;
+            max-width: 400px;
+            padding: 40px;
+        }
+        
+        .server-info {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 10px;
+        }
+        
+        .loading-status {
+            margin-top: 15px;
+            font-size: 14px;
+            opacity: 0.9;
+            min-height: 20px;
+        }
+        
+        .error-actions {
+            margin-top: 20px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</body>
+</html>

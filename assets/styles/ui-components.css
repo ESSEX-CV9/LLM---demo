@@ -1,0 +1,355 @@
+/* 调试面板样式 */
+.debug-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 400px;
+    max-height: 80vh;
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    z-index: 10000;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.debug-panel.hidden {
+    display: none;
+}
+
+.debug-header {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.debug-header h3 {
+    margin: 0;
+    font-size: 14px;
+    color: #00ff00;
+}
+
+.debug-close {
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.debug-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+}
+
+.debug-content {
+    max-height: calc(80vh - 60px);
+    overflow-y: auto;
+    padding: 15px;
+}
+
+.debug-section {
+    margin-bottom: 20px;
+}
+
+.debug-section h4 {
+    color: #ffff00;
+    margin-bottom: 10px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 5px;
+}
+
+.debug-section pre {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 4px;
+    color: #ffffff;
+    overflow-x: auto;
+    font-size: 11px;
+    line-height: 1.4;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.debug-log {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.debug-log-entry {
+    margin-bottom: 5px;
+    padding: 2px 5px;
+    border-radius: 2px;
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+.debug-log-entry.info {
+    color: #00ffff;
+}
+
+.debug-log-entry.warn {
+    color: #ffff00;
+    background: rgba(255, 255, 0, 0.1);
+}
+
+.debug-log-entry.error {
+    color: #ff4444;
+    background: rgba(255, 68, 68, 0.1);
+}
+
+.debug-log-entry.event {
+    color: #00ff00;
+}
+
+/* 悬浮提示框 */
+.tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.tooltip::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 10001;
+}
+
+.tooltip:hover::before {
+    opacity: 1;
+}
+
+/* 进度条组件 */
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: progressShine 2s infinite;
+}
+
+@keyframes progressShine {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* 徽章组件 */
+.badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge.success {
+    background: #4CAF50;
+    color: white;
+}
+
+.badge.warning {
+    background: #FF9800;
+    color: white;
+}
+
+.badge.error {
+    background: #f44336;
+    color: white;
+}
+
+.badge.info {
+    background: #2196F3;
+    color: white;
+}
+
+/* 通知组件 */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    max-width: 300px;
+    z-index: 10002;
+    animation: slideInRight 0.3s ease-out;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.notification.success {
+    background: linear-gradient(45deg, #4CAF50, #66BB6A);
+}
+
+.notification.error {
+    background: linear-gradient(45deg, #f44336, #ef5350);
+}
+
+.notification.warning {
+    background: linear-gradient(45deg, #FF9800, #FFB74D);
+}
+
+.notification.info {
+    background: linear-gradient(45deg, #2196F3, #42A5F5);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 按钮变体 */
+.button-secondary {
+    padding: 10px 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    background: transparent;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.button-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+.button-danger {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 20px;
+    background: linear-gradient(45deg, #f44336, #ef5350);
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.button-danger:hover {
+    background: linear-gradient(45deg, #d32f2f, #f44336);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+}
+
+/* 卡片组件 */
+.card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+}
+
+.card:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
+}
+
+.card-content {
+    line-height: 1.6;
+}
+
+/* 输入组件增强 */
+.input-enhanced {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.input-enhanced input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.input-enhanced input:focus {
+    outline: none;
+    border-color: #2196F3;
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.2);
+}
+
+.input-enhanced label {
+    position: absolute;
+    top: -8px;
+    left: 12px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    padding: 0 8px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    border-radius: 4px;
+}
