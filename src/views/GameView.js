@@ -134,8 +134,10 @@ class GameView {
                         <span id="locationText">地牢入口</span>
                     </div>
                     <div class="status-right">
-                        <button class="quick-action-button" style="margin-right:8px" onclick="window.gameView.returnToStartPage()">🏠 开始界面</button>
-                        <button class="quick-action-button" style="margin-right:8px" onclick="window.gameView.openSaveManager('manage')">💾 存档</button>
+                        <div style="display: inline-flex; gap: 4px; margin-right: 8px;">
+                            <button class="quick-action-button" style="min-width: 80px; white-space: nowrap;" onclick="window.gameView.returnToStartPage()">🏠 开始界面</button>
+                            <button class="quick-action-button" style="min-width: 60px; white-space: nowrap;" onclick="window.gameView.openSaveManager('manage')">💾 存档</button>
+                        </div>
                         <span id="debugToggle" onclick="toggleDebugPanel()" style="cursor: pointer;">
                             🐛 调试 (Ctrl+D)
                         </span>
