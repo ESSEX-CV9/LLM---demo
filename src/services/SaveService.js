@@ -159,7 +159,11 @@ class SaveService {
       try {
         uiState.completedBattles = Array.from(window.gameView.completedBattles || []);
         uiState.battleIdCounter = window.gameView.battleIdCounter || 0;
-        console.log('[SaveService] 保存UI战斗状态:', uiState);
+        console.log('[SaveService] 保存UI战斗状态:', {
+          completedBattles: uiState.completedBattles,
+          battleIdCounter: uiState.battleIdCounter,
+          completedBattlesSize: window.gameView.completedBattles?.size || 0
+        });
       } catch (e) {
         console.warn('[SaveService] 获取UI战斗状态失败:', e);
       }
@@ -271,15 +275,29 @@ class SaveService {
     if (snapshot.data.uiState && window.gameView) {
       try {
         const uiState = snapshot.data.uiState;
+        console.log('[SaveService] 准备恢复UI战斗状态:', {
+          savedCompletedBattles: uiState.completedBattles,
+          savedBattleIdCounter: uiState.battleIdCounter,
+          currentCompletedBattles: Array.from(window.gameView.completedBattles || []),
+          currentBattleIdCounter: window.gameView.battleIdCounter
+        });
+        
         window.gameView.completedBattles = new Set(uiState.completedBattles || []);
         window.gameView.battleIdCounter = uiState.battleIdCounter || 0;
-        console.log('[SaveService] 恢复UI战斗状态:', {
-          completedBattles: Array.from(window.gameView.completedBattles),
-          battleIdCounter: window.gameView.battleIdCounter
+        
+        console.log('[SaveService] 恢复UI战斗状态完成:', {
+          restoredCompletedBattles: Array.from(window.gameView.completedBattles),
+          restoredBattleIdCounter: window.gameView.battleIdCounter,
+          completedBattlesSize: window.gameView.completedBattles.size
         });
       } catch (e) {
         console.warn('[SaveService] Failed to restore UI state:', e);
       }
+    } else {
+      console.warn('[SaveService] 无法恢复UI状态:', {
+        hasUiState: !!snapshot.data.uiState,
+        hasGameView: !!window.gameView
+      });
     }
 
     // Emit updates to refresh UI
@@ -294,6 +312,7 @@ class SaveService {
       uiState: snapshot.data.uiState || null
     };
     
+    console.log('[SaveService] 发送存档加载完成事件:', saveLoadedData);
     this.eventBus.emit('save:loaded', saveLoadedData, 'game');
 
     // Notify

@@ -444,6 +444,7 @@ class GameView {
                     type: 'function_result',
                     battleId: battleId // 保存战斗ID
                 });
+                console.log('[GameView] 已保存战斗ID到历史记录:', battleId);
             }
         } catch (e) {
             console.warn('[UI] 保存战斗ID到历史记录失败:', e);
@@ -591,6 +592,11 @@ class GameView {
         const narrativeArea = document.getElementById('narrativeArea');
         const messageDiv = document.createElement('div');
         messageDiv.className = `narrative-message ${messageData.type} slide-up`;
+        // 绑定精确时间戳到DOM，便于恢复时定位
+        try {
+            const tsVal = messageData.timestamp ? Number(messageData.timestamp) : Date.now();
+            messageDiv.setAttribute('data-ts', String(tsVal));
+        } catch (e) {}
         
         // 添加时间戳（支持外部传入）
         const ts = messageData.timestamp ? new Date(messageData.timestamp) : new Date();
@@ -1818,10 +1824,19 @@ class GameView {
             });
         });
         modal.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const slot = parseInt(btn.getAttribute('data-slot'), 10);
                 if (Number.isInteger(slot)) {
-                    if (confirm(`确认删除槽位 ${slot + 1} 的存档？`)) {
+                    const confirmed = await window.gameDialog.confirm({
+                        title: '删除存档',
+                        message: `确认删除槽位 ${slot + 1} 的存档？\n\n⚠️ 此操作无法撤销！`,
+                        icon: '🗑️',
+                        confirmText: '删除',
+                        cancelText: '取消',
+                        confirmType: 'danger'
+                    });
+                    
+                    if (confirmed) {
                         saveService.deleteSlot(slot);
                         // 刷新列表
                         const container = modal.querySelector('#slotsContainer');
@@ -1861,9 +1876,18 @@ class GameView {
     }
 
     // 返回开始界面
-    returnToStartPage() {
+    async returnToStartPage() {
         // 确认对话框
-        if (confirm('确定要返回开始界面吗？当前进度将会自动保存。')) {
+        const confirmed = await window.gameDialog.confirm({
+            title: '返回开始界面',
+            message: '确定要返回开始界面吗？\n\n💾 当前进度将会自动保存。',
+            icon: '🏠',
+            confirmText: '确认',
+            cancelText: '取消',
+            confirmType: 'primary'
+        });
+        
+        if (confirmed) {
             // 自动保存当前进度
             const saveService = window.gameCore?.getService('saveService');
             if (saveService) {
@@ -1994,7 +2018,7 @@ class GameView {
     // 设置新游戏槽位选择事件
     _setupNewGameSlotEvents(modal) {
         modal.querySelectorAll('.new-game-slot-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const slot = parseInt(btn.getAttribute('data-slot'), 10);
                 if (Number.isInteger(slot)) {
                     // 确认对话框
@@ -2006,7 +2030,16 @@ class GameView {
                         `确定要在槽位 ${slot + 1} 开始新游戏吗？\n\n⚠️ 这将覆盖现有存档！` :
                         `确定要在槽位 ${slot + 1} 开始新游戏吗？`;
                     
-                    if (confirm(confirmMsg)) {
+                    const confirmed = await window.gameDialog.confirm({
+                        title: '开始新游戏',
+                        message: confirmMsg,
+                        icon: hasExisting ? '⚠️' : '🌱',
+                        confirmText: '开始',
+                        cancelText: '取消',
+                        confirmType: hasExisting ? 'warning' : 'success'
+                    });
+                    
+                    if (confirmed) {
                         modal.remove();
                         this.startNewGameInSlot(slot);
                     }
@@ -2057,10 +2090,18 @@ class GameView {
 // 从存档恢复叙述区历史
 restoreNarrativeFromHistory(data) {
     try {
+        console.log('[GameView] 开始恢复叙述历史，当前已完成战斗:', {
+            completedBattles: Array.from(this.completedBattles || []),
+            battleIdCounter: this.battleIdCounter,
+            dataReceived: data
+        });
+        
         const gs = window.gameCore?.getService('gameStateService');
         const history = gs?.getState()?.conversation?.history || [];
         const narrativeArea = document.getElementById('narrativeArea');
         if (!narrativeArea) return;
+        // 按历史顺序为每个战斗准备消息分配稳定ID
+        let restoreAssignedId = 0;
 
         // 清空当前叙述区（移除欢迎提示），用存档历史重建
         narrativeArea.innerHTML = '';
@@ -2099,7 +2140,7 @@ restoreNarrativeFromHistory(data) {
                         if (functionName === 'start_battle' && entry.result.outcome === 'battle_ready') {
                             // 延迟处理，确保消息已添加到DOM
                             setTimeout(() => {
-                                this.restoreBattleReadyButton(entry.result, entry);
+                                this.restoreBattleReadyButton(entry.result, entry, ++restoreAssignedId);
                             }, 100);
                         }
                     }
@@ -2115,8 +2156,70 @@ restoreNarrativeFromHistory(data) {
         }
 
         // 在历史恢复完成后，更新所有已完成战斗的按钮状态
+        // 确保计数器不小于已分配的ID数
+        this.battleIdCounter = Math.max(this.battleIdCounter, restoreAssignedId);
         setTimeout(() => {
+            console.log('[GameView] 准备更新所有已完成战斗按钮，当前状态:', {
+                completedBattles: Array.from(this.completedBattles || []),
+                battleIdCounter: this.battleIdCounter
+            });
             this.updateAllCompletedBattleButtons();
+            
+            // 历史加载默认禁用所有“进入战斗”按钮，只有在存在准备中的战斗时保留最后一个可用
+            try {
+                const buttons = Array.from(document.querySelectorAll('.battle-start-button'));
+                const hasPrepared = !!(data && data.hasPreparedBattle);
+                console.log('[GameView] 历史加载按钮强制状态:', {
+                    totalButtons: buttons.length,
+                    hasPreparedBattle: hasPrepared
+                });
+                
+                buttons.forEach((btn, idx) => {
+                    const id = parseInt(btn.getAttribute('data-battle-id'));
+                    const isCompleted = !isNaN(id) && this.completedBattles.has(id);
+                    const isLast = idx === buttons.length - 1;
+                    
+                    // 规则：
+                    // 1) 如果此ID在已完成集合中 -> 禁用
+                    // 2) 如果没有准备中的战斗 -> 全部禁用
+                    // 3) 如果存在准备中的战斗 -> 仅保留最后一个按钮可用，其余禁用
+                    const shouldEnable = hasPrepared && isLast && !isCompleted;
+                    
+                    if (!shouldEnable) {
+                        btn.disabled = true;
+                        btn.textContent = '战斗已结束';
+                        btn.style.opacity = '0.5';
+                        btn.style.cursor = 'not-allowed';
+                        btn.style.background = '#666';
+                        const msg = btn.closest('.narrative-message');
+                        if (msg) msg.classList.add('battle-completed');
+                    } else {
+                        btn.disabled = false;
+                        btn.textContent = '进入战斗';
+                        btn.style.opacity = '1';
+                        btn.style.cursor = 'pointer';
+                        btn.style.background = '';
+                    }
+                    
+                    console.log('[GameView] 历史按钮状态修正:', {
+                        idx,
+                        id,
+                        isCompleted,
+                        isLast,
+                        enabled: !btn.disabled
+                    });
+                });
+            } catch (e) {
+                console.warn('[GameView] 历史按钮状态修正失败:', e);
+            }
+            
+            // 额外的验证：确保UI状态确实已经恢复
+            console.log('[GameView] 历史恢复完成后的最终状态验证:', {
+                completedBattlesSize: this.completedBattles?.size || 0,
+                completedBattlesList: Array.from(this.completedBattles || []),
+                battleIdCounter: this.battleIdCounter,
+                allBattleButtons: document.querySelectorAll('.battle-start-button').length
+            });
         }, 200);
 
         // 检查是否需要恢复战斗状态
@@ -2138,37 +2241,58 @@ restoreNarrativeFromHistory(data) {
 }
 
 // 恢复战斗准备状态的"进入战斗"按钮
-restoreBattleReadyButton(battleResult, historyEntry) {
+restoreBattleReadyButton(battleResult, historyEntry, forcedBattleId = null) {
     try {
-        const narrativeArea = document.getElementById('narrativeArea');
-        const messages = narrativeArea.querySelectorAll('.narrative-message.function_result');
+        console.log('[GameView] 恢复战斗准备按钮:', {
+            battleResult,
+            historyEntry,
+            currentCompletedBattles: Array.from(this.completedBattles || [])
+        });
         
-        // 找到最后一个战斗函数结果消息
+        // 优先通过时间戳精确定位消息
         let targetMessage = null;
-        for (let i = messages.length - 1; i >= 0; i--) {
-            const msg = messages[i];
-            if (msg.textContent.includes('start_battle') && msg.textContent.includes(battleResult.description)) {
-                targetMessage = msg;
-                break;
+        if (historyEntry && historyEntry.timestamp !== undefined) {
+            targetMessage = document.querySelector(`.narrative-message.function_result[data-ts="${historyEntry.timestamp}"]`);
+        }
+        
+        // 回退：按内容匹配最后一个
+        if (!targetMessage) {
+            const narrativeArea = document.getElementById('narrativeArea');
+            const messages = narrativeArea.querySelectorAll('.narrative-message.function_result');
+            for (let i = messages.length - 1; i >= 0; i--) {
+                const msg = messages[i];
+                if (msg.textContent.includes('start_battle') && msg.textContent.includes(battleResult.description)) {
+                    targetMessage = msg;
+                    break;
+                }
             }
         }
         
         if (targetMessage) {
-            // 检查是否已经有按钮
-            if (targetMessage.querySelector('.battle-start-button')) {
+            // 检查是否已经有按钮（包含绑定标记避免重复）
+            if (targetMessage.querySelector('.battle-start-button') || targetMessage.getAttribute('data-battle-btn-bound') === '1') {
+                console.log('[GameView] 战斗按钮已存在，跳过恢复');
                 return; // 已经有按钮了
             }
             
-            // 尝试从历史条目中获取原始战斗ID，如果没有则生成新的
+            // 尝试从历史条目或强制参数中获取战斗ID
             let battleId;
-            if (historyEntry && historyEntry.battleId !== undefined) {
+            if (typeof forcedBattleId === 'number') {
+                battleId = forcedBattleId;
+                console.log('[GameView] 使用强制指定的战斗ID:', battleId);
+            } else if (historyEntry && historyEntry.battleId !== undefined) {
                 battleId = historyEntry.battleId;
+                console.log('[GameView] 使用历史记录中的战斗ID:', battleId);
             } else {
-                // 生成战斗ID（恢复时使用负数以避免与新战斗冲突）
-                battleId = --this.battleIdCounter;
+                console.log('[GameView] 缺少 battleId，跳过按钮恢复');
+                return;
             }
             
             targetMessage.setAttribute('data-battle-id', battleId);
+            // 绑定标记，避免重复恢复同一消息的按钮
+            targetMessage.setAttribute('data-battle-btn-bound', '1');
+            // 绑定标记，避免重复恢复
+            targetMessage.setAttribute('data-battle-btn-bound', '1');
             
             // 添加进入战斗按钮
             const buttonWrapper = document.createElement('div');
@@ -2179,6 +2303,12 @@ restoreBattleReadyButton(battleResult, historyEntry) {
             
             // 检查战斗是否已完成
             const isCompleted = this.completedBattles.has(battleId);
+            console.log('[GameView] 检查战斗完成状态:', {
+                battleId,
+                isCompleted,
+                completedBattles: Array.from(this.completedBattles || [])
+            });
+            
             if (isCompleted) {
                 startBtn.textContent = '战斗已结束';
                 startBtn.disabled = true;
@@ -2186,6 +2316,7 @@ restoreBattleReadyButton(battleResult, historyEntry) {
                 startBtn.style.cursor = 'not-allowed';
                 startBtn.style.background = '#666';
                 targetMessage.classList.add('battle-completed');
+                console.log('[GameView] 设置按钮为已完成状态');
             } else {
                 startBtn.textContent = '进入战斗';
                 startBtn.disabled = false;
@@ -2205,6 +2336,7 @@ restoreBattleReadyButton(battleResult, historyEntry) {
                         battleService.launchPreparedBattle();
                     }
                 };
+                console.log('[GameView] 设置按钮为可进入状态');
             }
             
             buttonWrapper.appendChild(startBtn);
@@ -2221,9 +2353,18 @@ restoreBattleReadyButton(battleResult, historyEntry) {
 updateAllCompletedBattleButtons() {
     try {
         const allBattleButtons = document.querySelectorAll('.battle-start-button');
-        allBattleButtons.forEach(button => {
+        console.log('[GameView] 更新战斗按钮状态:', {
+            totalButtons: allBattleButtons.length,
+            completedBattles: Array.from(this.completedBattles || []),
+            completedBattlesSize: this.completedBattles?.size || 0
+        });
+        
+        allBattleButtons.forEach((button, index) => {
             const battleId = parseInt(button.getAttribute('data-battle-id'));
-            if (!isNaN(battleId) && this.completedBattles.has(battleId)) {
+            const isCompleted = !isNaN(battleId) && this.completedBattles.has(battleId);
+            console.log(`[GameView] 按钮 ${index}: ID=${battleId}, 已完成=${isCompleted}`);
+            
+            if (isCompleted) {
                 this.updateBattleButtonState(battleId);
             }
         });
@@ -2235,15 +2376,24 @@ updateAllCompletedBattleButtons() {
 
     // 处理战斗完成事件
     handleBattleCompleted(battleResult) {
-        console.log('[GameView] 战斗完成，更新按钮状态');
+        console.log('[GameView] 战斗完成，更新按钮状态', {
+            battleResult,
+            currentCompletedBattles: Array.from(this.completedBattles || [])
+        });
         
         // 获取当前战斗ID
         const battleService = window.gameCore?.getService('battleService');
         const battleId = battleService?.currentBattleId;
         
+        console.log('[GameView] 当前战斗ID:', battleId);
+        
         if (battleId) {
             // 标记战斗为已完成
             this.completedBattles.add(battleId);
+            console.log('[GameView] 已将战斗ID添加到完成列表:', {
+                battleId,
+                newCompletedBattles: Array.from(this.completedBattles)
+            });
             
             // 更新对应的战斗按钮状态
             this.updateBattleButtonState(battleId);
@@ -2252,12 +2402,20 @@ updateAllCompletedBattleButtons() {
             if (battleService) {
                 battleService.currentBattleId = null;
             }
+        } else {
+            console.warn('[GameView] 战斗完成但没有找到战斗ID');
         }
     }
 
     // 更新战斗按钮状态
     updateBattleButtonState(battleId) {
         const button = document.querySelector(`.battle-start-button[data-battle-id="${battleId}"]`);
+        console.log(`[GameView] 尝试更新战斗按钮状态 ID: ${battleId}`, {
+            buttonFound: !!button,
+            buttonText: button?.textContent,
+            buttonDisabled: button?.disabled
+        });
+        
         if (button) {
             button.disabled = true;
             button.textContent = '战斗已结束';
@@ -2272,6 +2430,8 @@ updateAllCompletedBattleButtons() {
             }
             
             console.log(`[GameView] 已禁用战斗按钮 ID: ${battleId}`);
+        } else {
+            console.warn(`[GameView] 未找到战斗按钮 ID: ${battleId}`);
         }
     }
 
@@ -2421,11 +2581,20 @@ hideGlobalTooltip() {
 }
     // 处理新游戏开始事件
     handleNewGameStarted(data) {
-        console.log('[GameView] 新游戏开始，重置UI状态');
+        console.log('[GameView] 新游戏开始，重置UI状态', {
+            currentCompletedBattles: Array.from(this.completedBattles || []),
+            currentBattleIdCounter: this.battleIdCounter,
+            data
+        });
         
-        // 重置战斗状态跟踪
-        this.completedBattles.clear();
-        this.battleIdCounter = 0;
+        // 只有在明确是新游戏时才重置战斗状态跟踪
+        if (data && data.resetUI !== false) {
+            console.log('[GameView] 重置战斗状态跟踪');
+            this.completedBattles.clear();
+            this.battleIdCounter = 0;
+        } else {
+            console.log('[GameView] 跳过战斗状态重置');
+        }
         
         // 强制启用输入，清除任何禁用状态
         this.enableInput();

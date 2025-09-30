@@ -489,10 +489,18 @@ class StartView {
                         this.hide();
                         this.eventBus.emit('start:import-success', { slot: result.slot }, 'game');
                     } else {
-                        alert('导入失败：' + (result.error || '未知错误'));
+                        await window.gameDialog.error({
+                            title: '导入失败',
+                            message: `存档导入失败：\n\n${result.error || '未知错误'}`,
+                            icon: '❌'
+                        });
                     }
                 } catch (error) {
-                    alert('文件读取失败：' + error.message);
+                    await window.gameDialog.error({
+                        title: '文件读取失败',
+                        message: `无法读取存档文件：\n\n${error.message}`,
+                        icon: '📄'
+                    });
                 }
             }
             document.body.removeChild(input);

@@ -52,6 +52,12 @@ class GameStateService {
             this.handleSearchResult(result);
         }
         
+        // 对于交互式战斗（准备或开始），避免写入重复的函数结果到历史。
+        // 这些条目由 UI 层（GameView.displayFunctionResult）写入，并包含 battleId，用于按钮恢复。
+        if (name === 'start_battle' && (result?.outcome === 'battle_ready' || result?.outcome === 'battle_started')) {
+            return;
+        }
+        
         this.addConversationEntry({
             role: 'system',
             content: `函数执行结果: ${name}`,
