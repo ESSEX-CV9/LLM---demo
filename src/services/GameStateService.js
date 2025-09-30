@@ -101,18 +101,31 @@ class GameStateService {
     generateGamePrompt() {
         const state = this.gameState.getContextualState();
         
+        // 获取对话上下文
+        const conversationService = window.gameCore?.getService('conversationService');
+        let contextSection = '';
+        
+        if (conversationService) {
+            const conversationContext = conversationService.formatContextForPrompt();
+            if (conversationContext.trim()) {
+                contextSection = `\n## 游戏历史上下文：\n${conversationContext}\n`;
+            }
+        }
+        
         return `你是一个专业的游戏主持人(GM)，正在运行一个地牢探险RPG游戏。
-
+${contextSection}
 ## 当前游戏状态：
 - 玩家：${state.player.name} (等级${state.player.level})
 - 生命值：${state.player.hp}/${state.player.maxHp}
+- 经验值：${state.player.experience}
 - 位置：${state.world.currentLocation}
 - 时间：${state.world.timeOfDay}
 
 ## 游戏规则：
-1. 根据玩家行动生动描述场景和结果
-2. 在适当时机调用游戏功能
-3. 保持故事的连贯性和挑战性
+1. 根据玩家行动和历史上下文生动描述场景和结果
+2. 保持与之前剧情的连贯性和一致性
+3. 在适当时机调用游戏功能
+4. 考虑玩家的成长历程和之前的经历
 
 ## 函数调用规则：
 当需要调用游戏功能时，使用以下格式，并在调用后立即停止输出：

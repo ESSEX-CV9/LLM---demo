@@ -3,6 +3,7 @@ class GameView {
     constructor(eventBus) {
         this.eventBus = eventBus;
         this.isInputDisabled = false; // 输入禁用状态
+        this.loadingMessageElement = null; // 🔥 新增: 加载消息元素
         this.setupEventListeners();
         this.initializeUI();
     }
@@ -16,12 +17,13 @@ class GameView {
         this.eventBus.on('core:initialized', this.hideLoadingScreen.bind(this), 'system');
         
         // 输入控制相关事件监听
-        this.eventBus.on('llm:request:start', this.disableInput.bind(this), 'game');
-        this.eventBus.on('llm:response:complete', this.enableInput.bind(this), 'game');
+        this.eventBus.on('llm:request:start', this.handleLLMStart.bind(this), 'game');
+        this.eventBus.on('llm:response:complete', this.handleLLMComplete.bind(this), 'game');
         this.eventBus.on('function:execute:start', this.disableInput.bind(this), 'game');
         this.eventBus.on('function:execute:complete', this.handleFunctionComplete.bind(this), 'game');
-        this.eventBus.on('llm:error', this.enableInput.bind(this), 'game');
+        this.eventBus.on('llm:error', this.handleLLMError.bind(this), 'game');
         this.eventBus.on('function:execute:error', this.enableInput.bind(this), 'game');
+        this.eventBus.on('conversation:summary:complete', this.handleSummaryComplete.bind(this), 'game');
     }
 
     hideLoadingScreen() {
@@ -130,7 +132,7 @@ class GameView {
         input.value = '';
         input.focus();
         
-        this.disableInput(); // 🔥 立即禁用输入
+        this.disableInput(); // 立即禁用输入
         this.setStatus('processing', '正在处理行动...');
         this.eventBus.emit('ui:player:action', { action }, 'game');
     }
@@ -143,7 +145,7 @@ class GameView {
         }
         
         this.displayPlayerAction(action);
-        this.disableInput(); // 🔥 立即禁用输入
+        this.disableInput(); // 立即禁用输入
         this.setStatus('processing', '正在处理行动...');
         this.eventBus.emit('ui:player:action', { action }, 'game');
     }
@@ -213,6 +215,81 @@ class GameView {
         // 注意：这里不立即启用输入，因为还需要等待后续剧情生成
         // 输入将在 displayNarrative (gm_continuation) 时启用
     }
+    //  处理对话总结完成事件
+    handleSummaryComplete(data) {
+        console.log('[DEBUG] 对话总结完成:', data);
+        
+        this.showNotification(
+            `📚 历史记录已压缩：${data.compressedItems}条记录 → 1条总结`, 
+            'info'
+        );
+        
+        // 在叙述区域添加总结提示
+        this.addMessage({
+            content: `📚 系统提示：为了保持对话流畅，已将前${data.compressedItems}条历史记录压缩为总结。当前共有${data.summaryCount}个历史总结。`,
+            type: 'system_info'
+        });
+    }
+
+    // 🔥 新增: 处理LLM生成开始
+    handleLLMStart(data) {
+        console.log('[DEBUG] LLM生成开始');
+        this.disableInput();
+        this.showLoadingMessage();
+    }
+
+    // 🔥 新增: 处理LLM生成完成
+    handleLLMComplete(data) {
+        console.log('[DEBUG] LLM生成完成');
+        this.hideLoadingMessage();
+        // 注意：不在这里启用输入，因为可能还有函数执行或后续生成
+    }
+
+    // 🔥 新增: 处理LLM生成错误
+    handleLLMError(data) {
+        console.log('[DEBUG] LLM生成错误');
+        this.hideLoadingMessage();
+        this.enableInput();
+    }
+
+    // 🔥 新增: 显示加载消息
+    showLoadingMessage() {
+        if (this.loadingMessageElement) {
+            return; // 已经在显示了
+        }
+
+        const narrativeArea = document.getElementById('narrativeArea');
+        this.loadingMessageElement = document.createElement('div');
+        this.loadingMessageElement.className = 'narrative-message loading-message slide-up';
+        
+        this.loadingMessageElement.innerHTML = `
+            <div class="ai-loading-content">
+                <div class="loading-dots">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+                <span class="loading-text">AI正在思考中...</span>
+            </div>
+        `;
+        
+        narrativeArea.appendChild(this.loadingMessageElement);
+        narrativeArea.scrollTop = narrativeArea.scrollHeight;
+    }
+
+    // 🔥 新增: 隐藏加载消息
+    hideLoadingMessage() {
+        if (this.loadingMessageElement && this.loadingMessageElement.parentNode) {
+            this.loadingMessageElement.style.animation = 'fadeOut 0.3s ease-out';
+            setTimeout(() => {
+                if (this.loadingMessageElement && this.loadingMessageElement.parentNode) {
+                    this.loadingMessageElement.parentNode.removeChild(this.loadingMessageElement);
+                }
+                this.loadingMessageElement = null;
+            }, 300);
+        }
+    }
+
 
     displayPlayerAction(action) {
         this.addMessage({

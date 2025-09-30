@@ -77,13 +77,30 @@ class FunctionCallService {
         
         console.log('[DEBUG] 战斗结果:', { outcome, experience, hpLoss, hpGain });
         
+        const enemyNames = enemies?.map(e => e.type).join('和') || '敌人';
+        let battleDescription = '';
+        
+        if (outcome === 'victory') {
+            battleDescription = `你击败了${enemyNames}！`;
+        } else {
+            battleDescription = `你被${enemyNames}击败了！`;
+        }
+        
+        // 添加HP变化描述
+        if (hpLoss > 0) {
+            battleDescription += ` 损失了${hpLoss}点生命值。`;
+        }
+        if (hpGain > 0) {
+            battleDescription += ` 使用治疗药水恢复了${hpGain}点生命值。`;
+        }
+        
         return {
             outcome,
             experience,
             loot,
             hpLoss,
             hpGain,
-            description: `你${outcome === 'victory' ? '击败了' : '被击败了'}${enemies?.map(e => e.type).join('和') || '敌人'}！${hpLoss > 0 ? ` 损失了${hpLoss}点生命值。` : ''}${hpGain > 0 ? ` 使用治疗药水恢复了${hpGain}点生命值。` : ''}`
+            description: battleDescription
         };
     }
 

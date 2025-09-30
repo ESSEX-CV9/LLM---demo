@@ -5,6 +5,7 @@ import GameState from '../models/GameState.js';
 import LLMService from '../services/LLMService.js';
 import FunctionCallService from '../services/FunctionCallService.js';
 import GameStateService from '../services/GameStateService.js';
+import ConversationService from '../services/ConversationService.js';
 import GameController from '../controllers/GameController.js';
 import GameView from '../views/GameView.js';
 
@@ -46,6 +47,7 @@ class GameCore {
         this.serviceLocator.register('gameStateService', new GameStateService(this.eventBus));
         this.serviceLocator.register('llmService', new LLMService(this.eventBus));
         this.serviceLocator.register('functionCallService', new FunctionCallService(this.eventBus));
+        this.serviceLocator.register('conversationService', new ConversationService(this.eventBus));
     }
 
     async initializeServices() {
