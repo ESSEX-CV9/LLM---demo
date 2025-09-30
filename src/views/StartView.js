@@ -3,6 +3,8 @@ class StartView {
     constructor(eventBus) {
         this.eventBus = eventBus;
         this.container = null;
+        this._newGameInProgress = false; // 标记新游戏流程是否正在进行
+        this._setupNewGameEventListeners(); // 设置事件监听
     }
 
     // 显示开始页面
@@ -391,6 +393,9 @@ class StartView {
 
     // 开始新游戏
     startNewGame() {
+        // 标记新游戏流程开始，避免误判
+        this._newGameInProgress = true;
+        
         // 隐藏开始页面
         this.hide();
         
@@ -410,8 +415,11 @@ class StartView {
                         setTimeout(() => {
                             const stillHasModal = document.querySelector('.new-game-slot-modal');
                             const hasStartPage = document.querySelector('.start-page') || document.querySelector('#fallback-start');
-                            if (!stillHasModal && !hasStartPage) {
-                                // 没有模态框也没有开始页面，说明用户取消了，重新显示开始界面
+                            const gameStarted = this._checkGameStarted();
+                            
+                            if (!stillHasModal && !hasStartPage && !gameStarted && this._newGameInProgress) {
+                                // 没有模态框、没有开始页面、游戏未开始，且新游戏流程仍在进行中，说明用户取消了
+                                this._newGameInProgress = false;
                                 this.show();
                             }
                         }, 100);
@@ -431,6 +439,7 @@ class StartView {
             if (saveService) {
                 saveService.startNewGame();
             }
+            this._newGameInProgress = false;
             this.eventBus.emit('start:new-game', {}, 'game');
         }
     }
@@ -490,6 +499,49 @@ class StartView {
         });
         
         input.click();
+    }
+
+    // 检查游戏是否已开始（通过检查游戏界面是否显示）
+    _checkGameStarted() {
+        try {
+            // 检查游戏主界面是否存在且可见
+            const gameContainer = document.querySelector('.game-container');
+            if (gameContainer && !gameContainer.classList.contains('hidden')) {
+                return true;
+            }
+            
+            // 检查是否有活跃的游戏状态
+            const gameStateService = window.gameCore?.getService('gameStateService');
+            if (gameStateService) {
+                const state = gameStateService.getState();
+                // 如果玩家已经有了非默认状态，说明游戏已开始
+                if (state.player && (state.player.level > 1 || state.player.experience > 0)) {
+                    return true;
+                }
+            }
+            
+            return false;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // 监听新游戏成功开始事件
+    _setupNewGameEventListeners() {
+        // 监听新游戏开始事件
+        this.eventBus.on('start:new-game', () => {
+            this._newGameInProgress = false;
+        }, 'game');
+        
+        // 监听存档加载事件
+        this.eventBus.on('save:loaded', () => {
+            this._newGameInProgress = false;
+        }, 'game');
+        
+        // 监听新游戏取消事件
+        this.eventBus.on('start:new-game:cancelled', () => {
+            this._newGameInProgress = false;
+        }, 'game');
     }
 
     // 刷新页面（当存档状态改变时）

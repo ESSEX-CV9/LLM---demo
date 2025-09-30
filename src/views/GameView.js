@@ -13,7 +13,6 @@ class GameView {
         this.eventBus.on('ui:display:function:result', this.displayFunctionResult.bind(this), 'game');
         this.eventBus.on('ui:display:error', this.displayError.bind(this), 'game');
         this.eventBus.on('state:player:updated', this.updatePlayerStats.bind(this), 'game');
-        this.eventBus.on('llm:streaming', this.handleStreaming.bind(this), 'game');
         this.eventBus.on('core:initialized', this.hideLoadingScreen.bind(this), 'system');
         
         // 输入控制相关事件监听
@@ -550,10 +549,6 @@ class GameView {
         }, 3000);
     }
 
-    handleStreaming(data) {
-        const { chunk, accumulated } = data;
-        this.setStatus('processing', `正在生成回应... (${accumulated.length} 字符)`);
-    }
 
     addMessage(messageData) {
         const narrativeArea = document.getElementById('narrativeArea');
@@ -1368,11 +1363,15 @@ class GameView {
         // 关闭按钮事件
         box.querySelector('#closeNewGameSlot')?.addEventListener('click', () => {
             modal.remove();
+            // 通知StartView新游戏流程已取消
+            this.eventBus.emit('start:new-game:cancelled', {}, 'game');
             this.showStartPage(); // 返回开始界面
         });
         
         box.querySelector('#cancelNewGame')?.addEventListener('click', () => {
             modal.remove();
+            // 通知StartView新游戏流程已取消
+            this.eventBus.emit('start:new-game:cancelled', {}, 'game');
             this.showStartPage(); // 返回开始界面
         });
 
@@ -1380,6 +1379,8 @@ class GameView {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 modal.remove();
+                // 通知StartView新游戏流程已取消
+                this.eventBus.emit('start:new-game:cancelled', {}, 'game');
                 this.showStartPage(); // 返回开始界面
             }
         });
@@ -1466,10 +1467,25 @@ class GameView {
                 // 显示成功通知
                 this.showNotification(`🌱 新游戏已在槽位 ${slotIndex + 1} 开始！`, 'success');
                 
-                // 发送新游戏开始事件
+                // 发送新游戏开始事件（确保StartView能够接收到）
                 this.eventBus.emit('start:new-game', { slot: slotIndex }, 'game');
+                
+                // 确保游戏界面可见
+                const gameContainer = document.querySelector('.game-container');
+                if (gameContainer) {
+                    gameContainer.classList.remove('hidden');
+                    gameContainer.style.display = 'block';
+                }
+                
+                // 聚焦到输入框
+                const actionInput = document.getElementById('actionInput');
+                if (actionInput) {
+                    actionInput.focus();
+                }
             } else {
                 this.showNotification('新游戏启动失败', 'error');
+                // 如果新游戏启动失败，重新显示开始页面
+                this.showStartPage();
             }
         }
     }
