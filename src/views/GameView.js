@@ -3,7 +3,7 @@ class GameView {
     constructor(eventBus) {
         this.eventBus = eventBus;
         this.isInputDisabled = false; // 输入禁用状态
-        this.loadingMessageElement = null; // 🔥 新增: 加载消息元素
+        this.loadingMessageElement = null; // 加载消息元素
         this.setupEventListeners();
         this.initializeUI();
     }
@@ -231,28 +231,28 @@ class GameView {
         });
     }
 
-    // 🔥 新增: 处理LLM生成开始
+    // 处理LLM生成开始
     handleLLMStart(data) {
         console.log('[DEBUG] LLM生成开始');
         this.disableInput();
         this.showLoadingMessage();
     }
 
-    // 🔥 新增: 处理LLM生成完成
+    // 处理LLM生成完成
     handleLLMComplete(data) {
         console.log('[DEBUG] LLM生成完成');
         this.hideLoadingMessage();
         // 注意：不在这里启用输入，因为可能还有函数执行或后续生成
     }
 
-    // 🔥 新增: 处理LLM生成错误
+    // 处理LLM生成错误
     handleLLMError(data) {
         console.log('[DEBUG] LLM生成错误');
         this.hideLoadingMessage();
         this.enableInput();
     }
 
-    // 🔥 新增: 显示加载消息
+    // 显示加载消息
     showLoadingMessage() {
         if (this.loadingMessageElement) {
             return; // 已经在显示了
@@ -277,7 +277,7 @@ class GameView {
         narrativeArea.scrollTop = narrativeArea.scrollHeight;
     }
 
-    // 🔥 新增: 隐藏加载消息
+    // 隐藏加载消息
     hideLoadingMessage() {
         if (this.loadingMessageElement && this.loadingMessageElement.parentNode) {
             this.loadingMessageElement.style.animation = 'fadeOut 0.3s ease-out';
