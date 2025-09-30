@@ -97,6 +97,20 @@
   border-color: rgba(33,150,243,0.4);
 }
 
+.skill-card.insufficient-points {
+  opacity: 0.6;
+  border-color: rgba(255,193,7,0.4);
+  background: rgba(255,193,7,0.05);
+}
+
+.skill-card.insufficient-points .skill-title {
+  color: rgba(255,255,255,0.7);
+}
+
+.skill-card.insufficient-points .skill-desc {
+  color: rgba(255,255,255,0.6);
+}
+
 .skill-title {
   color: #fff;
   font-weight: 600;

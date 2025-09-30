@@ -27,11 +27,13 @@ class SkillService {
 
   // UI入口：显示技能页面
   showSkills() {
+    console.log('[SkillService] showSkills() 被调用');
     const player = this.getPlayer();
     const allSkills = SkillsDB.getAllSkills();
     const learnable = this.getLearnableSkills(player);
     const upgradable = this.getUpgradableSkills(player);
 
+    console.log('[SkillService] 发出 ui:skills:show 事件');
     this.eventBus.emit('ui:skills:show', {
       player,
       allSkills,
@@ -46,7 +48,34 @@ class SkillService {
     const learnedIds = new Set((player.skills || []).map(s => s.id));
     return SkillsDB.getAllSkills()
       .filter(skill => !learnedIds.has(skill.id))
-      .filter(skill => this.canLearn(player, skill.id).ok);
+      .filter(skill => {
+        // 修改逻辑：显示满足前置条件的技能，即使技能点不足
+        const check = this.canLearnIgnoreSkillPoints(player, skill.id);
+        return check.ok;
+      });
+  }
+
+  // 新增方法：检查是否可学习（忽略技能点限制）
+  canLearnIgnoreSkillPoints(player, skillId) {
+    const skill = SkillsDB.getSkillById(skillId);
+    if (!skill) return { ok: false, reason: '技能不存在' };
+    
+    // 要求等级
+    if (skill.requirements?.minLevel && player.level < skill.requirements.minLevel) {
+      return { ok: false, reason: `需要等级${skill.requirements.minLevel}` };
+    }
+    
+    // 前置技能
+    if (skill.requirements?.requires?.length) {
+      for (const req of skill.requirements.requires) {
+        const got = (player.skills || []).find(s => s.id === req.id);
+        if (!got || (got.level || 0) < req.level) {
+          return { ok: false, reason: `需要技能 ${req.id} Lv.${req.level}` };
+        }
+      }
+    }
+    
+    return { ok: true };
   }
 
   getUpgradableSkills(player) {
@@ -102,6 +131,7 @@ class SkillService {
     this.applyPassiveEffectsOnLearnOrUpgrade(updates, player, skill, 1);
 
     gs.updatePlayerStats(updates);
+    console.log('[SkillService] 学习技能后发出 skills:updated 事件');
     this.eventBus.emit('skills:updated', gs.getState().player, 'game');
 
     return { success: true, message: `学习了技能【${skill.name}】` };
@@ -126,6 +156,7 @@ class SkillService {
     this.applyPassiveEffectsOnLearnOrUpgrade(updates, player, skill, newLevel);
 
     gs.updatePlayerStats(updates);
+    console.log('[SkillService] 升级技能后发出 skills:updated 事件');
     this.eventBus.emit('skills:updated', gs.getState().player, 'game');
 
     return { success: true, message: `升级了技能【${skill.name}】到 Lv.${newLevel}` };
