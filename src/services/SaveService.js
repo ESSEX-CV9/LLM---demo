@@ -475,6 +475,8 @@ class SaveService {
   startNewGame() {
     const gsService = this.locator.get('gameStateService');
     const invService = this.locator.get('inventoryService');
+    const battleService = this.locator.get('battleService');
+    
     if (!gsService) {
       this.eventBus.emit('ui:notification', {
         message: '无法重置游戏状态',
@@ -492,15 +494,27 @@ class SaveService {
         invService.clearInventory();
       }
 
-      // Force no battle
+      // 完全清除战斗状态
       gsService.gameState.updateBattleState({
         isInBattle: false,
         currentBattle: null
       });
 
+      // 清除 BattleService 中的战斗准备状态
+      if (battleService) {
+        battleService.currentBattle = null;
+        battleService.battleState = null;
+        console.log('[SaveService] 已清除战斗服务状态');
+      }
+
       // emit updates
       this.eventBus.emit('state:player:updated', gsService.getState().player, 'game');
       this.eventBus.emit('state:world:updated', gsService.getState().world, 'game');
+
+      // 发送新游戏开始事件，通知UI重置状态
+      this.eventBus.emit('game:new-game:started', {
+        resetUI: true
+      }, 'game');
 
       // clear last slot context
       localStorage.removeItem(`${this.STORAGE_PREFIX}last_slot`);

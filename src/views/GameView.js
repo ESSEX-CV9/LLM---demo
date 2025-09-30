@@ -36,6 +36,9 @@ class GameView {
 
         // 存档加载后恢复叙述区
         this.eventBus.on('save:loaded', this.restoreNarrativeFromHistory.bind(this), 'game');
+        
+        // 新游戏开始时重置UI状态
+        this.eventBus.on('game:new-game:started', this.handleNewGameStarted.bind(this), 'game');
     }
 
     hideLoadingScreen() {
@@ -1582,7 +1585,8 @@ restoreBattleReadyButton(battleResult) {
                 targetMessage = msg;
                 break;
             }
-        }
+        
+            }
         
         if (targetMessage) {
             // 检查是否已经有按钮
@@ -1616,6 +1620,49 @@ restoreBattleReadyButton(battleResult) {
         console.warn('[UI] restoreBattleReadyButton error:', e);
     }
 }
+
+    // 处理新游戏开始事件
+    handleNewGameStarted(data) {
+        console.log('[GameView] 新游戏开始，重置UI状态');
+        
+        // 强制启用输入，清除任何禁用状态
+        this.enableInput();
+        
+        // 重置状态显示
+        this.setStatus('ready', '就绪');
+        
+        // 清空叙述区并显示新游戏欢迎信息
+        const narrativeArea = document.getElementById('narrativeArea');
+        if (narrativeArea) {
+            narrativeArea.innerHTML = '';
+            
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'narrative-message intro slide-up';
+            welcomeDiv.innerHTML = `
+                🌟 欢迎来到地牢探险！
+                <br><br>
+                你站在古老地牢的入口前，黑暗的通道向前延伸，空气中弥漫着神秘的气息...
+                <br><br>
+                <em>提示：试试输入"向前探索"、"搜索房间"或"查看状态"来开始你的冒险！</em>
+            `;
+            narrativeArea.appendChild(welcomeDiv);
+        }
+        
+        // 聚焦到输入框
+        const actionInput = document.getElementById('actionInput');
+        if (actionInput) {
+            actionInput.focus();
+        }
+        
+        // 确保游戏界面可见
+        const gameContainer = document.querySelector('.game-container');
+        if (gameContainer) {
+            gameContainer.classList.remove('hidden');
+            gameContainer.style.display = 'block';
+        }
+        
+        console.log('[GameView] 新游戏UI状态重置完成');
+    }
 }
  
 export default GameView;
