@@ -190,9 +190,11 @@ class SkillService {
     updates.stats = stats;
   }
 
-  // 战斗中：可用技能列表（过滤冷却/资源）
+   // 战斗中：可用技能列表（过滤冷却/资源，应用装备效果的消耗修正）
   getUsableSkills(battleState) {
     const player = battleState.player;
+    const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+  
     return (player.skills || [])
       .map(ps => {
         const skill = SkillsDB.getSkillById(ps.id);
@@ -202,9 +204,20 @@ class SkillService {
       .filter(({ skill, level, cooldownLeft }) => {
         if (cooldownLeft && cooldownLeft > 0) return false;
         const lvIdx = level - 1;
-        const mpCost = skill.cost?.mp?.[lvIdx] ?? 0;
-        const spCost = skill.cost?.sp?.[lvIdx] ?? 0;
-        return (player.mana || 0) >= mpCost && (player.stamina || 0) >= spCost;
+        const baseMp = skill.cost?.mp?.[lvIdx] ?? 0;
+        const baseSp = skill.cost?.sp?.[lvIdx] ?? 0;
+  
+        let finalMp = baseMp;
+        let finalSp = baseSp;
+  
+        if (equipmentEffectService && typeof equipmentEffectService.modifySkillCost === 'function') {
+          const costData = { skillId: skill.id, originalCost: { mp: baseMp, sp: baseSp } };
+          const modified = equipmentEffectService.modifySkillCost(costData);
+          finalMp = modified.modifiedCost?.mp ?? baseMp;
+          finalSp = modified.modifiedCost?.sp ?? baseSp;
+        }
+  
+        return (player.mana || 0) >= finalMp && (player.stamina || 0) >= finalSp;
       });
   }
 
@@ -215,10 +228,23 @@ class SkillService {
     if ((owned.cooldownLeft || 0) > 0) return { ok: false, reason: '冷却中' };
     const skill = SkillsDB.getSkillById(skillId);
     const lvIdx = (owned.level || 1) - 1;
-    const mpCost = skill.cost?.mp?.[lvIdx] ?? 0;
-    const spCost = skill.cost?.sp?.[lvIdx] ?? 0;
-    if ((player.mana || 0) < mpCost) return { ok: false, reason: '法力不足' };
-    if ((player.stamina || 0) < spCost) return { ok: false, reason: '耐力不足' };
+  
+    const baseMpCost = skill.cost?.mp?.[lvIdx] ?? 0;
+    const baseSpCost = skill.cost?.sp?.[lvIdx] ?? 0;
+  
+    let finalMpCost = baseMpCost;
+    let finalSpCost = baseSpCost;
+  
+    const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+    if (equipmentEffectService && typeof equipmentEffectService.modifySkillCost === 'function') {
+      const costData = { skillId, originalCost: { mp: baseMpCost, sp: baseSpCost } };
+      const modified = equipmentEffectService.modifySkillCost(costData);
+      finalMpCost = modified.modifiedCost?.mp ?? baseMpCost;
+      finalSpCost = modified.modifiedCost?.sp ?? baseSpCost;
+    }
+  
+    if ((player.mana || 0) < finalMpCost) return { ok: false, reason: '法力不足' };
+    if ((player.stamina || 0) < finalSpCost) return { ok: false, reason: '耐力不足' };
     return { ok: true };
   }
 
@@ -243,17 +269,31 @@ class SkillService {
     if (!check.ok) return { success: false, message: check.reason };
 
     const lvIdx = (owned.level || 1) - 1;
-    const mpCost = skill.cost?.mp?.[lvIdx] ?? 0;
-    const spCost = skill.cost?.sp?.[lvIdx] ?? 0;
+    const baseMpCost = skill.cost?.mp?.[lvIdx] ?? 0;
+    const baseSpCost = skill.cost?.sp?.[lvIdx] ?? 0;
     const cooldown = skill.cooldown?.[lvIdx] ?? 0;
+
+    // 装备效果修改技能消耗
+    let finalMpCost = baseMpCost;
+    let finalSpCost = baseSpCost;
+    const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+    if (equipmentEffectService && typeof equipmentEffectService.modifySkillCost === 'function') {
+      const costData = { skillId, originalCost: { mp: baseMpCost, sp: baseSpCost } };
+      const modified = equipmentEffectService.modifySkillCost(costData);
+      finalMpCost = modified.modifiedCost?.mp ?? baseMpCost;
+      finalSpCost = modified.modifiedCost?.sp ?? baseSpCost;
+      // 事件广播（用于其他监听器日志）
+      this.eventBus.emit('skill:cost:calculate', modified, 'game');
+      console.debug(`[EFF] 技能消耗修正: MP ${baseMpCost} -> ${finalMpCost}, SP ${baseSpCost} -> ${finalSpCost}`);
+    }
 
     let logMessage = '';
     let totalDamage = 0;
     let totalHeal = 0;
 
-    // 资源消耗
-    player.mana = Math.max(0, (player.mana || 0) - mpCost);
-    player.stamina = Math.max(0, (player.stamina || 0) - spCost);
+    // 资源消耗（应用装备效果后的消耗）
+    player.mana = Math.max(0, (player.mana || 0) - finalMpCost);
+    player.stamina = Math.max(0, (player.stamina || 0) - finalSpCost);
 
     // 伤害/治疗计算
     const baseDmg = skill.baseDamage?.[lvIdx] ?? 0;

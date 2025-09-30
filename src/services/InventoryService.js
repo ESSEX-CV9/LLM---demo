@@ -1,4 +1,6 @@
 // services/InventoryService.js
+import itemsDB from '../data/Items.js';
+
 class InventoryService {
     constructor(eventBus) {
         this.eventBus = eventBus;
@@ -13,12 +15,16 @@ class InventoryService {
         this.eventBus.on('inventory:remove', this.removeItem.bind(this), 'game');
         this.eventBus.on('inventory:use', this.useItem.bind(this), 'game');
         this.eventBus.on('inventory:show', this.showInventory.bind(this), 'game');
+        this.eventBus.on('inventory:equip', this.equipItem.bind(this), 'game');
     }
 
     initializeDefaultItems() {
-        // 给玩家一些初始物品
+        // 给玩家一些初始物品和装备
         this.addItem('治疗药水', 3);
         this.addItem('面包', 2);
+        this.addItem('木剑', 1);
+        this.addItem('皮甲', 1);
+        this.addItem('皮靴', 1);
     }
 
     addItem(itemName, quantity = 1) {
@@ -28,10 +34,22 @@ class InventoryService {
             return false;
         }
 
-        if (this.inventory.has(itemName)) {
+        // 检查是否可堆叠
+        const isStackable = itemData.stackable !== false; // 默认可堆叠
+        
+        if (isStackable && this.inventory.has(itemName)) {
             const existingItem = this.inventory.get(itemName);
-            existingItem.quantity += quantity;
-        } else {
+            const maxStack = itemData.maxStack || 99;
+            const canAdd = Math.min(quantity, maxStack - existingItem.quantity);
+            
+            if (canAdd > 0) {
+                existingItem.quantity += canAdd;
+                quantity -= canAdd;
+            }
+        }
+
+        // 如果还有剩余数量，需要新建槽位
+        while (quantity > 0) {
             if (this.inventory.size >= this.maxSlots) {
                 this.eventBus.emit('ui:notification', {
                     message: '背包已满！无法添加更多物品。',
@@ -40,10 +58,16 @@ class InventoryService {
                 return false;
             }
 
-            this.inventory.set(itemName, {
+            const stackSize = isStackable ? Math.min(quantity, itemData.maxStack || 99) : 1;
+            const uniqueKey = isStackable ? itemName : `${itemName}_${Date.now()}_${Math.random()}`;
+            
+            this.inventory.set(uniqueKey, {
                 ...itemData,
-                quantity: quantity
+                quantity: stackSize,
+                originalName: itemName // 保存原始名称用于装备等操作
             });
+            
+            quantity -= stackSize;
         }
 
         this.eventBus.emit('inventory:updated', {
@@ -106,53 +130,16 @@ class InventoryService {
             return false;
         }
 
+        // 检查是否是装备
+        const equipmentData = itemsDB.getEquipment(item.originalName || itemName);
+        if (equipmentData) {
+            return this.equipItem(itemName);
+        }
+
+        // 处理消耗品
         switch (item.type) {
-            case 'healing':
-                if (playerState.hp >= playerState.maxHp) {
-                    this.eventBus.emit('ui:notification', {
-                        message: '生命值已满，无需使用治疗物品',
-                        type: 'warning'
-                    }, 'game');
-                    return false;
-                }
-
-                const healAmount = item.effect.value;
-                const newHp = Math.min(playerState.maxHp, playerState.hp + healAmount);
-                const actualHeal = newHp - playerState.hp;
-
-                gameStateService.updatePlayerStats({ hp: newHp });
-                this.removeItem(itemName, 1);
-
-                this.eventBus.emit('ui:notification', {
-                    message: `使用${item.name}恢复了${actualHeal}点生命值`,
-                    type: 'success'
-                }, 'game');
-
-                result = true;
-                break;
-
-            case 'food':
-                if (playerState.hp >= playerState.maxHp) {
-                    this.eventBus.emit('ui:notification', {
-                        message: '生命值已满，无需进食',
-                        type: 'warning'
-                    }, 'game');
-                    return false;
-                }
-
-                const foodHeal = item.effect.value;
-                const newHpFood = Math.min(playerState.maxHp, playerState.hp + foodHeal);
-                const actualFoodHeal = newHpFood - playerState.hp;
-
-                gameStateService.updatePlayerStats({ hp: newHpFood });
-                this.removeItem(itemName, 1);
-
-                this.eventBus.emit('ui:notification', {
-                    message: `食用${item.name}恢复了${actualFoodHeal}点生命值`,
-                    type: 'success'
-                }, 'game');
-
-                result = true;
+            case 'consumable':
+                result = this.useConsumableItem(item, itemName, gameStateService, playerState);
                 break;
 
             default:
@@ -164,6 +151,114 @@ class InventoryService {
         }
 
         return result;
+    }
+
+    useConsumableItem(item, itemName, gameStateService, playerState) {
+        const effect = item.effect;
+        if (!effect) return false;
+
+        let result = false;
+        let message = '';
+
+        switch (effect.type) {
+            case 'heal':
+                if (playerState.hp >= playerState.maxHp) {
+                    this.eventBus.emit('ui:notification', {
+                        message: '生命值已满，无需使用治疗物品',
+                        type: 'warning'
+                    }, 'game');
+                    return false;
+                }
+
+                const healAmount = effect.value;
+                const newHp = Math.min(playerState.maxHp, playerState.hp + healAmount);
+                const actualHeal = newHp - playerState.hp;
+
+                gameStateService.updatePlayerStats({ hp: newHp });
+                this.removeItem(itemName, 1);
+
+                message = `使用${item.name}恢复了${actualHeal}点生命值`;
+                result = true;
+                break;
+
+            case 'restore_mana':
+                if (playerState.mana >= playerState.maxMana) {
+                    this.eventBus.emit('ui:notification', {
+                        message: '法力值已满，无需使用法力药水',
+                        type: 'warning'
+                    }, 'game');
+                    return false;
+                }
+
+                const manaAmount = effect.value;
+                const newMana = Math.min(playerState.maxMana, playerState.mana + manaAmount);
+                const actualMana = newMana - playerState.mana;
+
+                gameStateService.updatePlayerStats({ mana: newMana });
+                this.removeItem(itemName, 1);
+
+                message = `使用${item.name}恢复了${actualMana}点法力值`;
+                result = true;
+                break;
+
+            case 'restore_stamina':
+                if (playerState.stamina >= playerState.maxStamina) {
+                    this.eventBus.emit('ui:notification', {
+                        message: '耐力值已满，无需使用耐力药水',
+                        type: 'warning'
+                    }, 'game');
+                    return false;
+                }
+
+                const staminaAmount = effect.value;
+                const newStamina = Math.min(playerState.maxStamina, playerState.stamina + staminaAmount);
+                const actualStamina = newStamina - playerState.stamina;
+
+                gameStateService.updatePlayerStats({ stamina: newStamina });
+                this.removeItem(itemName, 1);
+
+                message = `使用${item.name}恢复了${actualStamina}点耐力值`;
+                result = true;
+                break;
+
+            case 'temp_buff':
+                // 临时增益效果（这里简化处理，实际可以实现更复杂的buff系统）
+                this.removeItem(itemName, 1);
+                message = `使用${item.name}获得了临时增益效果`;
+                result = true;
+                break;
+
+            default:
+                this.eventBus.emit('ui:notification', {
+                    message: '未知的物品效果',
+                    type: 'warning'
+                }, 'game');
+                return false;
+        }
+
+        if (result && message) {
+            this.eventBus.emit('ui:notification', {
+                message: message,
+                type: 'success'
+            }, 'game');
+        }
+
+        return result;
+    }
+
+    // 装备物品
+    equipItem(itemName) {
+        const equipmentService = window.gameCore?.getService('equipmentService');
+        if (!equipmentService) {
+            this.eventBus.emit('ui:notification', {
+                message: '装备系统不可用',
+                type: 'error'
+            }, 'game');
+            return false;
+        }
+
+        const result = equipmentService.equipItem(itemName);
+        return result.success;
     }
 
     getItem(itemName) {
@@ -191,74 +286,20 @@ class InventoryService {
     }
 
     getItemData(itemName) {
-        const itemDatabase = {
-            '治疗药水': {
-                name: '治疗药水',
-                type: 'healing',
-                description: '恢复50点生命值的神奇药水',
-                effect: { type: 'heal', value: 50 },
-                rarity: 'common',
-                icon: '🧪'
-            },
-            '高级治疗药水': {
-                name: '高级治疗药水',
-                type: 'healing',
-                description: '恢复100点生命值的强效药水',
-                effect: { type: 'heal', value: 100 },
-                rarity: 'rare',
-                icon: '🧪'
-            },
-            '面包': {
-                name: '面包',
-                type: 'food',
-                description: '简单的食物，恢复少量生命值',
-                effect: { type: 'heal', value: 20 },
-                rarity: 'common',
-                icon: '🍞'
-            },
-            '铜币': {
-                name: '铜币',
-                type: 'currency',
-                description: '基础货币',
-                effect: { type: 'none' },
-                rarity: 'common',
-                icon: '🪙'
-            },
-            '铁剑': {
-                name: '铁剑',
-                type: 'weapon',
-                description: '普通的铁制剑，增加攻击力',
-                effect: { type: 'attack', value: 10 },
-                rarity: 'common',
-                icon: '⚔️'
-            },
-            '皮甲': {
-                name: '皮甲',
-                type: 'armor',
-                description: '简单的皮制护甲，增加防御力',
-                effect: { type: 'defense', value: 5 },
-                rarity: 'common',
-                icon: '🛡️'
-            },
-            '魔法卷轴': {
-                name: '魔法卷轴',
-                type: 'consumable',
-                description: '蕴含神秘力量的卷轴',
-                effect: { type: 'magic', value: 30 },
-                rarity: 'rare',
-                icon: '📜'
-            },
-            '宝石': {
-                name: '宝石',
-                type: 'valuable',
-                description: '闪闪发光的珍贵宝石',
-                effect: { type: 'none' },
-                rarity: 'epic',
-                icon: '💎'
-            }
-        };
+        // 首先尝试从物品数据库获取
+        let itemData = itemsDB.getItem(itemName);
+        if (itemData) {
+            return itemData;
+        }
 
-        return itemDatabase[itemName] || null;
+        // 然后尝试从装备数据库获取
+        itemData = itemsDB.getEquipment(itemName);
+        if (itemData) {
+            return itemData;
+        }
+
+        // 如果都没找到，返回null
+        return null;
     }
 
     // 获取物品的稀有度颜色
@@ -290,6 +331,51 @@ class InventoryService {
             usedSlots: this.inventory.size,
             freeSlots: this.maxSlots - this.inventory.size
         };
+    }
+
+    // 获取装备类型的物品
+    getEquipmentItems() {
+        const equipmentItems = [];
+        for (const [key, item] of this.inventory.entries()) {
+            const equipmentData = itemsDB.getEquipment(item.originalName || item.name);
+            if (equipmentData) {
+                equipmentItems.push({
+                    key,
+                    name: item.originalName || item.name,
+                    ...item,
+                    equipmentData
+                });
+            }
+        }
+        return equipmentItems;
+    }
+
+    // 获取消耗品类型的物品
+    getConsumableItems() {
+        const consumableItems = [];
+        for (const [key, item] of this.inventory.entries()) {
+            if (item.type === 'consumable') {
+                consumableItems.push({
+                    key,
+                    ...item
+                });
+            }
+        }
+        return consumableItems;
+    }
+
+    // 获取材料类型的物品
+    getMaterialItems() {
+        const materialItems = [];
+        for (const [key, item] of this.inventory.entries()) {
+            if (item.type === 'material' || item.type === 'currency') {
+                materialItems.push({
+                    key,
+                    ...item
+                });
+            }
+        }
+        return materialItems;
     }
 }
 

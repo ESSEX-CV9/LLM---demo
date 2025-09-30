@@ -215,7 +215,7 @@ class BattleService {
         switch (action) {
             case '攻击':
                 if (target !== undefined && enemies[target]) {
-                    damage = this.calculatePlayerDamage(player.level, 'attack');
+                    damage = this.calculatePlayerDamage(player.level, 'attack', enemies[target]);
                     const actualDamage = Math.max(1, damage - (enemies[target].defense || 0));
                     enemies[target].hp = Math.max(0, enemies[target].hp - actualDamage);
                     logMessage = `你使用攻击力${player.attack}对${enemies[target].type}造成了${actualDamage}点伤害！`;
@@ -295,6 +295,19 @@ class BattleService {
                 const playerDefense = player.defense || 0;
                 let actualDamage = Math.max(1, damage - playerDefense);
 
+                // 应用装备效果（伤害减免）
+                const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+                if (equipmentEffectService) {
+                    const damageData = {
+                        attacker: 'enemy',
+                        target: 'player',
+                        damage: actualDamage,
+                        damageType: 'physical'
+                    };
+                    const modifiedData = equipmentEffectService.modifyDamage(damageData);
+                    actualDamage = modifiedData.modifiedDamage || actualDamage;
+                }
+
                 if (player.defending) {
                     actualDamage = Math.floor(actualDamage * 0.5);
                     player.defending = false;
@@ -309,6 +322,19 @@ class BattleService {
                 // 使用玩家防御力进行减伤
                 const playerDefense = player.defense || 0;
                 let actualDamage = Math.max(1, damage - playerDefense);
+
+                // 应用装备效果（伤害减免）
+                const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+                if (equipmentEffectService) {
+                    const damageData = {
+                        attacker: 'enemy',
+                        target: 'player',
+                        damage: actualDamage,
+                        damageType: 'magic'
+                    };
+                    const modifiedData = equipmentEffectService.modifyDamage(damageData);
+                    actualDamage = modifiedData.modifiedDamage || actualDamage;
+                }
 
                 if (player.defending) {
                     actualDamage = Math.floor(actualDamage * 0.5);
@@ -355,6 +381,13 @@ class BattleService {
             skillService.tickCooldowns(this.battleState);
         }
         
+        // 装备效果：回合开始的持续效果处理（通过事件与直接调用双保障）
+        this.eventBus.emit('battle:turn:start', this.battleState, 'game');
+        const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+        if (equipmentEffectService && typeof equipmentEffectService.processTurnEffects === 'function') {
+            equipmentEffectService.processTurnEffects(this.battleState);
+        }
+        
         // 回合结束，切换到玩家
         this.battleState.round++;
         this.battleState.turn = 'player';
@@ -399,11 +432,45 @@ class BattleService {
     }
 
     // 玩家伤害计算 - 使用实际攻击力
-    calculatePlayerDamage(level, type) {
+    calculatePlayerDamage(level, type, target = null) {
         const playerAttack = this.battleState.player.attack || (level * 10);
         const variance = Math.random() * 0.4 + 0.8; // 80%-120%
         const multiplier = type === 'skill' ? 1.5 : 1;
-        return Math.floor(playerAttack * variance * multiplier);
+        let baseDamage = Math.floor(playerAttack * variance * multiplier);
+        
+        // 应用装备效果
+        const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+        if (equipmentEffectService && target) {
+            const damageData = {
+                attacker: 'player',
+                target: 'enemy',
+                damage: baseDamage,
+                damageType: type,
+                targetType: target.type || '',
+                isCritical: this.checkCriticalHit()
+            };
+            
+            const modifiedData = equipmentEffectService.modifyDamage(damageData);
+            baseDamage = modifiedData.modifiedDamage || baseDamage;
+            
+            // 如果是暴击，应用暴击伤害
+            if (modifiedData.isCritical) {
+                baseDamage = Math.floor(baseDamage * 1.5);
+                this.battleState.battleLog.push({
+                    type: 'system',
+                    message: '暴击！',
+                    round: this.battleState.round
+                });
+            }
+        }
+        
+        return baseDamage;
+    }
+
+    // 检查暴击
+    checkCriticalHit() {
+        const criticalChance = this.battleState.player.criticalChance || 0;
+        return Math.random() * 100 < criticalChance;
     }
 
     // 敌人伤害计算

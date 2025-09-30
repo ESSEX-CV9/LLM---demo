@@ -9,6 +9,8 @@ import ConversationService from '../services/ConversationService.js';
 import BattleService from '../services/BattleService.js';
 import InventoryService from '../services/InventoryService.js';
 import SkillService from '../services/SkillService.js';
+import EquipmentService from '../services/EquipmentService.js';
+import EquipmentEffectService from '../services/EquipmentEffectService.js';
 import EnemyTemplates from '../data/EnemyTemplates.js';
 import SaveService from '../services/SaveService.js';
 import GameController from '../controllers/GameController.js';
@@ -57,6 +59,8 @@ class GameCore {
         this.serviceLocator.register('battleService', new BattleService(this.eventBus));
         this.serviceLocator.register('inventoryService', new InventoryService(this.eventBus));
         this.serviceLocator.register('skillService', new SkillService(this.eventBus));
+        this.serviceLocator.register('equipmentService', new EquipmentService(this.eventBus));
+        this.serviceLocator.register('equipmentEffectService', new EquipmentEffectService(this.eventBus));
         this.serviceLocator.register('enemyTemplates', new EnemyTemplates());
         this.serviceLocator.register('saveService', new SaveService(this.eventBus, this.serviceLocator));
     }

@@ -125,8 +125,8 @@ class GameView {
                             <button class="quick-action-button" onclick="window.gameView.showSkills()">
                                 🧠 技能
                             </button>
-                            <button class="quick-action-button inventory-button" onclick="window.gameView.showInventory()">
-                                🎒 背包
+                            <button class="quick-action-button inventory-button" onclick="window.gameView.showInventory()" title="打开装备与背包界面">
+                                🎒 装备
                             </button>
                         </div>
                     </div>
@@ -709,20 +709,45 @@ class GameView {
     showInventoryInterface(data) {
         const { items, maxSlots, usedSlots } = data;
         
+        // 获取玩家装备信息
+        const gameStateService = window.gameCore?.getService('gameStateService');
+        const player = gameStateService?.getState()?.player;
+        const equipment = player?.equipment || {};
+        
         // 创建背包界面
         const inventoryModal = document.createElement('div');
         inventoryModal.className = 'inventory-modal';
         inventoryModal.innerHTML = `
             <div class="inventory-content">
                 <div class="inventory-header">
-                    <h3>🎒 背包 (${usedSlots}/${maxSlots})</h3>
+                    <h3>🎒 背包与装备</h3>
                     <button class="close-button" onclick="this.closest('.inventory-modal').remove()">×</button>
                 </div>
-                <div class="inventory-grid" id="inventoryGrid">
-                    ${this.generateInventoryGrid(items, maxSlots)}
+                <div class="inventory-main">
+                    <div class="equipment-panel">
+                        <h4>⚔️ 装备</h4>
+                        <div class="equipment-slots">
+                            ${this.generateEquipmentSlots(equipment)}
+                        </div>
+                        <div class="equipment-stats">
+                            ${this.generateEquipmentStats(player)}
+                        </div>
+                    </div>
+                    <div class="inventory-panel">
+                        <h4>🎒 背包 (${usedSlots}/${maxSlots})</h4>
+                        <div class="inventory-tabs">
+                            <button class="tab-button active" data-tab="all">全部</button>
+                            <button class="tab-button" data-tab="equipment">装备</button>
+                            <button class="tab-button" data-tab="consumable">消耗品</button>
+                            <button class="tab-button" data-tab="material">材料</button>
+                        </div>
+                        <div class="inventory-grid" id="inventoryGrid">
+                            ${this.generateInventoryGrid(items, maxSlots)}
+                        </div>
+                    </div>
                 </div>
                 <div class="inventory-footer">
-                    <p>点击物品使用，右键查看详情</p>
+                    <p>左键使用/装备物品，右键查看详情，拖拽到装备槽位可直接装备</p>
                 </div>
             </div>
         `;
@@ -731,23 +756,34 @@ class GameView {
         
         // 添加点击事件
         this.setupInventoryEvents(inventoryModal);
+        this.setupEquipmentEvents(inventoryModal);
+        this.setupInventoryTabs(inventoryModal);
     }
 
     generateInventoryGrid(items, maxSlots) {
         let html = '';
-        const itemMap = new Map(items.map(item => [item.name, item]));
         
         for (let i = 0; i < maxSlots; i++) {
             const item = items[i];
             if (item) {
                 const rarityColor = this.getRarityColor(item.rarity);
+                const isEquipment = item.type === 'weapon' || item.type === 'armor' || item.type === 'accessory';
+                const itemClass = isEquipment ? 'equipment-item' : 'consumable-item';
+                
                 html += `
-                    <div class="inventory-slot filled" data-item="${item.name}" style="border-color: ${rarityColor}">
+                    <div class="inventory-slot filled ${itemClass}"
+                         data-item="${item.name}"
+                         data-type="${item.type}"
+                         data-subtype="${item.subType || ''}"
+                         style="border-color: ${rarityColor}"
+                         title="${item.name}: ${item.description}"
+                         draggable="true">
                         <div class="item-icon">${item.icon}</div>
-                        <div class="item-quantity">${item.quantity}</div>
+                        <div class="item-quantity">${item.quantity > 1 ? item.quantity : ''}</div>
                         <div class="item-tooltip">
                             <div class="tooltip-name" style="color: ${rarityColor}">${item.name}</div>
                             <div class="tooltip-description">${item.description}</div>
+                            ${isEquipment ? this.generateEquipmentTooltip(item) : ''}
                         </div>
                     </div>
                 `;
@@ -757,6 +793,118 @@ class GameView {
         }
         
         return html;
+    }
+
+    generateEquipmentTooltip(item) {
+        if (!item.stats) return '';
+        
+        let statsHtml = '<div class="tooltip-stats">';
+        const stats = item.stats;
+        
+        if (stats.attack) statsHtml += `<div>攻击力: +${stats.attack}</div>`;
+        if (stats.defense) statsHtml += `<div>防御力: +${stats.defense}</div>`;
+        if (stats.magicPower) statsHtml += `<div>魔法强度: +${stats.magicPower}</div>`;
+        if (stats.physicalPower) statsHtml += `<div>物理强度: +${stats.physicalPower}</div>`;
+        if (stats.speed) statsHtml += `<div>速度: ${stats.speed > 0 ? '+' : ''}${stats.speed}</div>`;
+        if (stats.maxHp) statsHtml += `<div>生命值: +${stats.maxHp}</div>`;
+        if (stats.maxMana) statsHtml += `<div>法力值: +${stats.maxMana}</div>`;
+        if (stats.maxStamina) statsHtml += `<div>耐力值: +${stats.maxStamina}</div>`;
+        if (stats.criticalChance) statsHtml += `<div>暴击率: +${stats.criticalChance}%</div>`;
+        
+        statsHtml += '</div>';
+        
+        if (item.requirements) {
+            statsHtml += '<div class="tooltip-requirements">';
+            if (item.requirements.minLevel) {
+                statsHtml += `<div>需要等级: ${item.requirements.minLevel}</div>`;
+            }
+            statsHtml += '</div>';
+        }
+        
+        return statsHtml;
+    }
+
+    generateEquipmentSlots(equipment) {
+        const slots = {
+            weapon: { name: '武器', icon: '⚔️', position: 'weapon' },
+            helmet: { name: '头盔', icon: '⛑️', position: 'helmet' },
+            chest: { name: '胸甲', icon: '🛡️', position: 'chest' },
+            legs: { name: '护腿', icon: '👖', position: 'legs' },
+            boots: { name: '靴子', icon: '👢', position: 'boots' },
+            ring: { name: '戒指', icon: '💍', position: 'ring' },
+            necklace: { name: '项链', icon: '📿', position: 'necklace' },
+            amulet: { name: '护符', icon: '🔱', position: 'amulet' }
+        };
+
+        let html = '';
+        for (const [slotKey, slotInfo] of Object.entries(slots)) {
+            const equippedItem = equipment[slotKey];
+            const isEmpty = !equippedItem;
+            
+            html += `
+                <div class="equipment-slot ${isEmpty ? 'empty' : 'filled'}"
+                     data-slot="${slotKey}"
+                     data-droppable="true">
+                    ${isEmpty ?
+                        `<div class="slot-placeholder">
+                            <div class="slot-icon">${slotInfo.icon}</div>
+                            <div class="slot-name">${slotInfo.name}</div>
+                        </div>` :
+                        `<div class="equipped-item" data-item="${equippedItem.name}" title="${equippedItem.name}: ${equippedItem.description}">
+                            <div class="item-icon">${equippedItem.icon}</div>
+                            <div class="item-tooltip">
+                                <div class="tooltip-name" style="color: ${this.getRarityColor(equippedItem.rarity)}">${equippedItem.name}</div>
+                                <div class="tooltip-description">${equippedItem.description}</div>
+                                ${this.generateEquipmentTooltip(equippedItem)}
+                            </div>
+                        </div>`
+                    }
+                </div>
+            `;
+        }
+        
+        return html;
+    }
+
+    generateEquipmentStats(player) {
+        if (!player) return '';
+        
+        const gameState = window.gameCore?.getService('gameStateService')?.getState();
+        const stats = gameState?.getPlayerStats() || player;
+        const equipmentSummary = gameState?.getEquipmentSummary() || {};
+        
+        return `
+            <div class="stats-summary">
+                <h5>属性总览</h5>
+                <div class="stat-row">
+                    <span>攻击力:</span>
+                    <span>${stats.attack || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span>防御力:</span>
+                    <span>${stats.defense || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span>魔法强度:</span>
+                    <span>${stats.magicPower || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span>物理强度:</span>
+                    <span>${stats.physicalPower || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span>速度:</span>
+                    <span>${stats.speed || 0}</span>
+                </div>
+                <div class="stat-row">
+                    <span>暴击率:</span>
+                    <span>${stats.criticalChance || 0}%</span>
+                </div>
+                <div class="equipment-count">
+                    已装备: ${equipmentSummary.equippedCount || 0}/${equipmentSummary.totalSlots || 8}
+                </div>
+            </div>
+        `;
     }
 
     getRarityColor(rarity) {
@@ -773,17 +921,181 @@ class GameView {
     setupInventoryEvents(modal) {
         const slots = modal.querySelectorAll('.inventory-slot.filled');
         slots.forEach(slot => {
+            // 左键点击使用/装备
             slot.addEventListener('click', (e) => {
                 const itemName = slot.dataset.item;
                 this.useInventoryItem(itemName);
             });
             
+            // 右键查看详情
             slot.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 const itemName = slot.dataset.item;
                 this.showItemDetails(itemName);
             });
+
+            // 拖拽开始
+            slot.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', slot.dataset.item);
+                e.dataTransfer.setData('application/json', JSON.stringify({
+                    itemName: slot.dataset.item,
+                    type: slot.dataset.type,
+                    subType: slot.dataset.subtype
+                }));
+                slot.classList.add('dragging');
+            });
+
+            // 拖拽结束
+            slot.addEventListener('dragend', (e) => {
+                slot.classList.remove('dragging');
+            });
         });
+    }
+
+    setupEquipmentEvents(modal) {
+        const equipmentSlots = modal.querySelectorAll('.equipment-slot');
+        equipmentSlots.forEach(slot => {
+            // 点击卸下装备
+            slot.addEventListener('click', (e) => {
+                if (slot.classList.contains('filled')) {
+                    const slotType = slot.dataset.slot;
+                    this.unequipItem(slotType);
+                }
+            });
+
+            // 拖拽放置
+            slot.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (slot.dataset.droppable === 'true') {
+                    slot.classList.add('drag-over');
+                }
+            });
+
+            slot.addEventListener('dragleave', (e) => {
+                slot.classList.remove('drag-over');
+            });
+
+            slot.addEventListener('drop', (e) => {
+                e.preventDefault();
+                slot.classList.remove('drag-over');
+                
+                try {
+                    const data = JSON.parse(e.dataTransfer.getData('application/json'));
+                    const slotType = slot.dataset.slot;
+                    
+                    // 检查装备类型是否匹配槽位
+                    if (this.canEquipToSlot(data, slotType)) {
+                        this.equipItemToSlot(data.itemName, slotType);
+                    } else {
+                        this.showNotification('该装备不能装备到此槽位', 'warning');
+                    }
+                } catch (error) {
+                    console.error('拖拽装备失败:', error);
+                }
+            });
+        });
+    }
+
+    setupInventoryTabs(modal) {
+        const tabButtons = modal.querySelectorAll('.tab-button');
+        const inventoryGrid = modal.querySelector('#inventoryGrid');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                // 更新标签状态
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // 过滤显示物品
+                const tabType = button.dataset.tab;
+                this.filterInventoryItems(inventoryGrid, tabType);
+            });
+        });
+    }
+
+    filterInventoryItems(grid, filterType) {
+        const slots = grid.querySelectorAll('.inventory-slot');
+        
+        slots.forEach(slot => {
+            if (slot.classList.contains('empty')) {
+                slot.style.display = filterType === 'all' ? 'block' : 'none';
+                return;
+            }
+            
+            const itemType = slot.dataset.type;
+            let shouldShow = false;
+            
+            switch (filterType) {
+                case 'all':
+                    shouldShow = true;
+                    break;
+                case 'equipment':
+                    shouldShow = itemType === 'weapon' || itemType === 'armor' || itemType === 'accessory';
+                    break;
+                case 'consumable':
+                    shouldShow = itemType === 'consumable';
+                    break;
+                case 'material':
+                    shouldShow = itemType === 'material' || itemType === 'currency';
+                    break;
+            }
+            
+            slot.style.display = shouldShow ? 'block' : 'none';
+        });
+    }
+
+    canEquipToSlot(itemData, slotType) {
+        const { type, subType } = itemData;
+        
+        // 武器槽位
+        if (slotType === 'weapon') {
+            return type === 'weapon';
+        }
+        
+        // 防具槽位
+        if (['helmet', 'chest', 'legs', 'boots'].includes(slotType)) {
+            return type === 'armor' && subType === slotType;
+        }
+        
+        // 饰品槽位
+        if (['ring', 'necklace', 'amulet'].includes(slotType)) {
+            return type === 'accessory' && subType === slotType;
+        }
+        
+        return false;
+    }
+
+    equipItemToSlot(itemName, slotType) {
+        const equipmentService = window.gameCore?.getService('equipmentService');
+        if (equipmentService) {
+            const result = equipmentService.equipItem(itemName, slotType);
+            if (result.success) {
+                // 刷新背包界面
+                this.refreshInventoryInterface();
+            }
+        }
+    }
+
+    unequipItem(slotType) {
+        const equipmentService = window.gameCore?.getService('equipmentService');
+        if (equipmentService) {
+            const result = equipmentService.unequipItem(slotType);
+            if (result.success) {
+                // 刷新背包界面
+                this.refreshInventoryInterface();
+            }
+        }
+    }
+
+    refreshInventoryInterface() {
+        const modal = document.querySelector('.inventory-modal');
+        if (modal) {
+            modal.remove();
+            // 重新显示背包
+            setTimeout(() => {
+                this.showInventory();
+            }, 100);
+        }
     }
 
     useInventoryItem(itemName) {
