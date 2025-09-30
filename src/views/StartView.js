@@ -391,12 +391,48 @@ class StartView {
 
     // 开始新游戏
     startNewGame() {
-        const saveService = window.gameCore?.getService('saveService');
-        if (saveService) {
-            saveService.startNewGame();
-        }
+        // 隐藏开始页面
         this.hide();
-        this.eventBus.emit('start:new-game', {}, 'game');
+        
+        // 显示存档位置选择对话框
+        const gameView = window.gameCore?.getService('gameView');
+        if (gameView && typeof gameView.showNewGameSlotSelection === 'function') {
+            // 设置取消回调，让用户可以返回开始界面
+            const originalShowNewGameSlotSelection = gameView.showNewGameSlotSelection.bind(gameView);
+            gameView.showNewGameSlotSelection = () => {
+                originalShowNewGameSlotSelection();
+                
+                // 监听模态框关闭事件，如果用户取消则重新显示开始界面
+                const checkModalClosed = () => {
+                    const modal = document.querySelector('.new-game-slot-modal');
+                    if (!modal) {
+                        // 模态框已关闭，检查是否开始了游戏
+                        setTimeout(() => {
+                            const stillHasModal = document.querySelector('.new-game-slot-modal');
+                            const hasStartPage = document.querySelector('.start-page') || document.querySelector('#fallback-start');
+                            if (!stillHasModal && !hasStartPage) {
+                                // 没有模态框也没有开始页面，说明用户取消了，重新显示开始界面
+                                this.show();
+                            }
+                        }, 100);
+                        return;
+                    }
+                    // 继续检查
+                    setTimeout(checkModalClosed, 100);
+                };
+                setTimeout(checkModalClosed, 100);
+            };
+            gameView.showNewGameSlotSelection();
+            // 恢复原始方法
+            gameView.showNewGameSlotSelection = originalShowNewGameSlotSelection;
+        } else {
+            // 降级处理：直接开始新游戏（保持原有逻辑）
+            const saveService = window.gameCore?.getService('saveService');
+            if (saveService) {
+                saveService.startNewGame();
+            }
+            this.eventBus.emit('start:new-game', {}, 'game');
+        }
     }
 
     // 继续游戏

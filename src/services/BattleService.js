@@ -16,7 +16,7 @@ class BattleService {
         this.eventBus.on('battle:end', this.endBattle.bind(this), 'game');
     }
 
-    // 使用“准备-点击进入”的战斗流程
+    // 使用"准备-点击进入"的战斗流程
     async prepareBattle(battleData) {
         const { enemies, environment, special_conditions } = battleData;
 

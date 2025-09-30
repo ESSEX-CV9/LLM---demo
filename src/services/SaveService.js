@@ -137,6 +137,14 @@ class SaveService {
         battleData.battleState = JSON.parse(JSON.stringify(currentBattleState));
         battleData.hasPreparedBattle = !currentBattleState.isActive; // 如果不活跃则是准备状态
         battleData.isInBattle = isInBattle;
+        
+        // 保留关键日志用于调试战斗状态保存
+        if (battleData.hasPreparedBattle || battleData.isInBattle) {
+          console.log('[SaveService] 保存战斗状态:', {
+            hasPreparedBattle: battleData.hasPreparedBattle,
+            isInBattle: battleData.isInBattle
+          });
+        }
       }
     }
 
@@ -198,6 +206,8 @@ class SaveService {
         } else if (s.battle.isInBattle && battleState.isActive) {
           battleService.currentBattle = battleState;
           console.log('[SaveService] 恢复活跃战斗状态');
+        } else {
+          battleService.currentBattle = null;
         }
       } catch (e) {
         console.warn('[SaveService] Failed to restore battle state:', e);
@@ -244,11 +254,13 @@ class SaveService {
     this.eventBus.emit('state:world:updated', gs.world, 'game');
 
     // 发送存档加载完成事件，触发UI恢复
-    this.eventBus.emit('save:loaded', {
+    const saveLoadedData = {
       slot: this.currentSlot,
       hasPreparedBattle: s.battle?.hasPreparedBattle || false,
       isInBattle: s.battle?.isInBattle || false
-    }, 'game');
+    };
+    
+    this.eventBus.emit('save:loaded', saveLoadedData, 'game');
 
     // Notify
     this.eventBus.emit('ui:notification', {
@@ -306,7 +318,7 @@ class SaveService {
       localStorage.setItem(`${this.STORAGE_PREFIX}last_slot`, String(slotIndex));
       this.currentSlot = slotIndex;
 
-      this.eventBus.emit('save:loaded', { slot: slotIndex }, 'game');
+      // 注意：save:loaded 事件已在 applySnapshot 中发送，不需要重复发送
       return { success: true };
     } catch (e) {
       console.error('[SaveService] loadFromSlot error:', e);

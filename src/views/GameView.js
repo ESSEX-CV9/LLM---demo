@@ -134,6 +134,7 @@ class GameView {
                         <span id="locationText">地牢入口</span>
                     </div>
                     <div class="status-right">
+                        <button class="quick-action-button" style="margin-right:8px" onclick="window.gameView.returnToStartPage()">🏠 开始界面</button>
                         <button class="quick-action-button" style="margin-right:8px" onclick="window.gameView.openSaveManager('manage')">💾 存档</button>
                         <span id="debugToggle" onclick="toggleDebugPanel()" style="cursor: pointer;">
                             🐛 调试 (Ctrl+D)
@@ -1297,6 +1298,180 @@ class GameView {
         });
         input.click();
     }
+
+    // 返回开始界面
+    returnToStartPage() {
+        // 确认对话框
+        if (confirm('确定要返回开始界面吗？当前进度将会自动保存。')) {
+            // 自动保存当前进度
+            const saveService = window.gameCore?.getService('saveService');
+            if (saveService) {
+                saveService._autoSave('返回开始界面自动存档');
+            }
+            
+            // 显示开始页面
+            this.showStartPage();
+            
+            // 显示通知
+            this.showNotification('已返回开始界面，进度已自动保存', 'info');
+        }
+    }
+
+    // 显示新游戏存档位置选择对话框
+    showNewGameSlotSelection() {
+        const existing = document.querySelector('.new-game-slot-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.className = 'new-game-slot-modal';
+        modal.style.cssText = `
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10001;
+        `;
+        
+        const box = document.createElement('div');
+        box.style.cssText = `
+            background: #1f2430; color: #fff; width: 600px; max-width: 96%;
+            border-radius: 12px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,.6);
+        `;
+        
+        box.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: #4CAF50;">🌱 选择新游戏存档位置</h3>
+                <button class="close-button" id="closeNewGameSlot" style="background: #f44336; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer;">×</button>
+            </div>
+            <div style="margin-bottom: 15px; padding: 10px; background: #2a3142; border-radius: 8px; border-left: 4px solid #ff9800;">
+                <p style="margin: 0; font-size: 14px; opacity: 0.9;">
+                    ⚠️ <strong>重要提示：</strong>选择存档槽位后将开始新游戏，该槽位的现有存档将被覆盖！
+                </p>
+            </div>
+            <div id="newGameSlotsContainer"></div>
+            <div style="margin-top: 15px; text-align: center;">
+                <button class="quick-action-button" id="cancelNewGame" style="background: #666; margin-right: 10px;">取消</button>
+            </div>
+        `;
+        
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+
+        // 渲染存档槽位
+        const container = box.querySelector('#newGameSlotsContainer');
+        const saveService = window.gameCore?.getService('saveService');
+        const list = saveService?.listSaves?.() || new Array(6).fill(null);
+        
+        container.innerHTML = this._renderNewGameSlotsHTML(list);
+        this._setupNewGameSlotEvents(modal);
+
+        // 关闭按钮事件
+        box.querySelector('#closeNewGameSlot')?.addEventListener('click', () => {
+            modal.remove();
+            this.showStartPage(); // 返回开始界面
+        });
+        
+        box.querySelector('#cancelNewGame')?.addEventListener('click', () => {
+            modal.remove();
+            this.showStartPage(); // 返回开始界面
+        });
+
+        // 点击背景关闭
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+                this.showStartPage(); // 返回开始界面
+            }
+        });
+    }
+
+    // 渲染新游戏存档槽位HTML
+    _renderNewGameSlotsHTML(list) {
+        const cards = list.map((slot, i) => {
+            const isEmpty = !slot;
+            const statusText = isEmpty ? '空槽位' : '有存档 - 将被覆盖';
+            const statusColor = isEmpty ? '#4CAF50' : '#ff9800';
+            const subtitle = isEmpty ? '推荐选择' :
+                `Lv.${slot.summary.level || 1}｜${slot.summary.name || '冒险者'}｜${slot.summary.location || '-'}`;
+            const updateTime = slot ? new Date(slot.updatedAt).toLocaleString() : '-';
+            
+            return `
+            <div class="new-game-slot-card" style="background: #2a3142; border-radius: 8px; padding: 15px; margin: 8px 0; border: 2px solid ${isEmpty ? '#4CAF50' : '#ff9800'};">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 5px;">
+                            槽位 ${i + 1}
+                            <span style="font-size: 12px; color: ${statusColor}; margin-left: 8px;">● ${statusText}</span>
+                        </div>
+                        <div style="opacity: 0.85; font-size: 12px; margin-bottom: 3px;">${subtitle}</div>
+                        ${!isEmpty ? `<div style="opacity: 0.7; font-size: 11px;">更新时间: ${updateTime}</div>` : ''}
+                    </div>
+                    <div>
+                        <button class="new-game-slot-btn" data-slot="${i}" style="
+                            background: ${isEmpty ? '#4CAF50' : '#ff9800'};
+                            border: none;
+                            color: white;
+                            padding: 10px 20px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-weight: 600;
+                        ">
+                            ${isEmpty ? '选择此槽位' : '覆盖此槽位'}
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+        
+        return `<div>${cards}</div>`;
+    }
+
+    // 设置新游戏槽位选择事件
+    _setupNewGameSlotEvents(modal) {
+        modal.querySelectorAll('.new-game-slot-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const slot = parseInt(btn.getAttribute('data-slot'), 10);
+                if (Number.isInteger(slot)) {
+                    // 确认对话框
+                    const saveService = window.gameCore?.getService('saveService');
+                    const list = saveService?.listSaves?.() || [];
+                    const hasExisting = list[slot] !== null;
+                    
+                    const confirmMsg = hasExisting ?
+                        `确定要在槽位 ${slot + 1} 开始新游戏吗？\n\n⚠️ 这将覆盖现有存档！` :
+                        `确定要在槽位 ${slot + 1} 开始新游戏吗？`;
+                    
+                    if (confirm(confirmMsg)) {
+                        modal.remove();
+                        this.startNewGameInSlot(slot);
+                    }
+                }
+            });
+        });
+    }
+
+    // 在指定槽位开始新游戏
+    startNewGameInSlot(slotIndex) {
+        const saveService = window.gameCore?.getService('saveService');
+        if (saveService) {
+            // 开始新游戏
+            const result = saveService.startNewGame();
+            if (result.success) {
+                // 立即保存到指定槽位
+                saveService.saveToSlot(slotIndex, { label: '新游戏' });
+                
+                // 隐藏开始页面
+                this.hideStartPage();
+                
+                // 显示成功通知
+                this.showNotification(`🌱 新游戏已在槽位 ${slotIndex + 1} 开始！`, 'success');
+                
+                // 发送新游戏开始事件
+                this.eventBus.emit('start:new-game', { slot: slotIndex }, 'game');
+            } else {
+                this.showNotification('新游戏启动失败', 'error');
+            }
+        }
+    }
+
 // 从存档恢复叙述区历史
 restoreNarrativeFromHistory(data) {
     try {
