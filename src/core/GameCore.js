@@ -10,6 +10,7 @@ import BattleService from '../services/BattleService.js';
 import InventoryService from '../services/InventoryService.js';
 import SkillService from '../services/SkillService.js';
 import EnemyTemplates from '../data/EnemyTemplates.js';
+import SaveService from '../services/SaveService.js';
 import GameController from '../controllers/GameController.js';
 import GameView from '../views/GameView.js';
 import SkillsView from '../views/SkillsView.js';
@@ -57,10 +58,16 @@ class GameCore {
         this.serviceLocator.register('inventoryService', new InventoryService(this.eventBus));
         this.serviceLocator.register('skillService', new SkillService(this.eventBus));
         this.serviceLocator.register('enemyTemplates', new EnemyTemplates());
+        this.serviceLocator.register('saveService', new SaveService(this.eventBus, this.serviceLocator));
     }
 
     async initializeServices() {
         const gameStateService = this.serviceLocator.get('gameStateService');
+        const saveService = this.serviceLocator.get('saveService');
+        if (saveService) {
+            saveService.init();
+            saveService.enableAutoSave();
+        }
     }
 
     createControllers() {

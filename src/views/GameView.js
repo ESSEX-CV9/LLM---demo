@@ -34,6 +34,9 @@ class GameView {
         this.eventBus.on('ui:inventory:show', this.showInventoryInterface.bind(this), 'game');
         this.eventBus.on('inventory:updated', this.updateInventoryDisplay.bind(this), 'game');
         this.eventBus.on('ui:notification', this.showNotification.bind(this), 'game');
+
+        // 存档加载后恢复叙述区
+        this.eventBus.on('save:loaded', this.restoreNarrativeFromHistory.bind(this), 'game');
     }
 
     hideLoadingScreen() {
@@ -41,6 +44,8 @@ class GameView {
         if (loadingScreen) {
             loadingScreen.classList.add('hidden');
         }
+        // 显示开始覆盖层（根据存档情况显示“继续/开始”）
+        this.showStartOverlay();
     }
 
     initializeUI() {
@@ -129,6 +134,7 @@ class GameView {
                         <span id="locationText">地牢入口</span>
                     </div>
                     <div class="status-right">
+                        <button class="quick-action-button" style="margin-right:8px" onclick="window.gameView.openSaveManager('manage')">💾 存档</button>
                         <span id="debugToggle" onclick="toggleDebugPanel()" style="cursor: pointer;">
                             🐛 调试 (Ctrl+D)
                         </span>
@@ -551,8 +557,9 @@ class GameView {
         const messageDiv = document.createElement('div');
         messageDiv.className = `narrative-message ${messageData.type} slide-up`;
         
-        // 添加时间戳
-        const timestamp = new Date().toLocaleTimeString();
+        // 添加时间戳（支持外部传入）
+        const ts = messageData.timestamp ? new Date(messageData.timestamp) : new Date();
+        const timestamp = ts.toLocaleTimeString();
         const timeElement = document.createElement('div');
         timeElement.style.fontSize = '10px';
         timeElement.style.opacity = '0.6';
@@ -560,13 +567,30 @@ class GameView {
         timeElement.textContent = timestamp;
         
         const contentElement = document.createElement('div');
-        contentElement.textContent = messageData.content;
+        contentElement.textContent = messageData.content ?? '';
         
         messageDiv.appendChild(timeElement);
         messageDiv.appendChild(contentElement);
         
         narrativeArea.appendChild(messageDiv);
         narrativeArea.scrollTop = narrativeArea.scrollHeight;
+        
+        // 将 GM 叙述加入历史，以便存档恢复（避免重复，仅针对 gm_* 类型，且不是从历史恢复的）
+        try {
+            const typeVal = messageData.type || '';
+            if (!messageData.skipHistory && (typeVal === 'gm_narrative' || typeVal === 'gm_continuation' || typeVal === 'gm_fallback')) {
+                const gsService = window.gameCore?.getService('gameStateService');
+                if (gsService && typeof gsService.addConversationEntry === 'function') {
+                    gsService.addConversationEntry({
+                        role: 'system',
+                        content: messageData.content ?? '',
+                        type: typeVal
+                    });
+                }
+            }
+        } catch (e) {
+            // 忽略历史写入异常，避免影响UI
+        }
         
         // 更新调试信息
         this.updateDebugLog(`Message: ${messageData.type}`, 'info');
@@ -580,10 +604,42 @@ class GameView {
         statusText.textContent = text;
     }
 
-    showNotification(message, type = 'info') {
+    showNotification(input, type = 'info') {
+        // 兼容事件总线传入对象 { message, type }
+        let message = '';
+        let level = type;
+        if (input && typeof input === 'object') {
+            message = input.message ?? (typeof input === 'string' ? input : '[通知]');
+            level = input.type ?? type;
+        } else {
+            message = input ?? '';
+        }
+        
         const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
+        notification.className = `notification ${level}`;
         notification.textContent = message;
+        
+        // 计算当前通知的位置，避免重叠
+        const existingNotifications = document.querySelectorAll('.notification');
+        let topOffset = 20; // 初始距离顶部20px
+        existingNotifications.forEach((existing, index) => {
+            topOffset += 60; // 每个通知高度约50px + 10px间距
+        });
+        
+        notification.style.cssText = `
+            position: fixed;
+            top: ${topOffset}px;
+            right: 20px;
+            background: ${level === 'error' ? '#ff4444' : level === 'warning' ? '#ffaa00' : level === 'success' ? '#44ff44' : '#4488ff'};
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            z-index: 10000;
+            animation: slideInRight 0.3s ease-out;
+            max-width: 300px;
+            word-wrap: break-word;
+        `;
         
         document.body.appendChild(notification);
         
@@ -986,9 +1042,305 @@ class GameView {
         // 重新启用游戏输入
         this.enableInput();
     }
+
+    // 开始页面覆盖层
+    showStartOverlay() {
+        try {
+            const existing = document.getElementById('start-overlay');
+            if (existing) return;
+            const saveService = window.gameCore?.getService('saveService');
+            const latest = saveService?.getLatestSlot?.() || null;
+            const hasSaves = !!latest;
+            const overlay = document.createElement('div');
+            overlay.id = 'start-overlay';
+            overlay.style.cssText = `
+                position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+                display: flex; align-items: center; justify-content: center;
+                z-index: 9999;
+            `;
+            const panel = document.createElement('div');
+            panel.style.cssText = `
+                background: #1f2430; color: #fff; width: 520px; max-width: 90%;
+                border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.4);
+                padding: 24px;
+            `;
+            panel.innerHTML = `
+                <h2 style="margin:0 0 8px 0;">🏰 地牢探险</h2>
+                <p style="margin:0 0 16px 0; opacity:.85">LLM 驱动 RPG Demo</p>
+                ${hasSaves ? `
+                    <div style="margin-bottom:12px; font-size:14px; opacity:.9;">
+                        最近存档：${new Date(latest.meta.updatedAt).toLocaleString()}
+                    </div>` : ''
+                }
+                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:6px;">
+                    <button id="startPrimaryBtn" class="primary-button" style="flex:1; min-width:180px;">
+                        ${hasSaves ? '▶️ 继续游戏' : '🌱 开始游戏'}
+                    </button>
+                    <button id="loadSavesBtn" class="quick-action-button" style="min-width:140px;">📂 加载存档</button>
+                </div>
+                <div style="margin-top:10px; font-size:12px; opacity:.8;">
+                    <a id="importSaveLink" href="javascript:void(0)" style="color:#7fb3ff; text-decoration:underline;">📥 从文件导入存档</a>
+                </div>
+            `;
+            overlay.appendChild(panel);
+            document.body.appendChild(overlay);
+
+            // 事件
+            const primary = panel.querySelector('#startPrimaryBtn');
+            primary.addEventListener('click', () => {
+                const ss = window.gameCore?.getService('saveService');
+                if (!ss) { this.hideStartOverlay(); return; }
+                if (hasSaves) {
+                    const idx = latest.index;
+                    ss.loadFromSlot(idx);
+                    this.hideStartOverlay();
+                } else {
+                    ss.startNewGame();
+                    this.hideStartOverlay();
+                }
+            });
+
+            const loadBtn = panel.querySelector('#loadSavesBtn');
+            loadBtn.addEventListener('click', () => {
+                this.openSaveManager('load');
+            });
+
+            const importLink = panel.querySelector('#importSaveLink');
+            importLink.addEventListener('click', async () => {
+                this._promptImport(true /*autoLoad*/);
+            });
+        } catch (e) {
+            console.warn('[UI] showStartOverlay error:', e);
+        }
+    }
+
+    hideStartOverlay() {
+        const overlay = document.getElementById('start-overlay');
+        if (overlay && overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+        }
+    }
+
+    // 存档管理器（加载/保存/导入/导出/删除）
+    openSaveManager(mode = 'load') {
+        // 如果来自开始覆盖层，优先隐藏它
+        this.hideStartOverlay();
+
+        const existing = document.querySelector('.save-manager-modal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.className = 'save-manager-modal';
+        modal.style.cssText = `
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+        `;
+        const box = document.createElement('div');
+        box.style.cssText = `
+            background:#1f2430; color:#fff; width: 720px; max-width: 96%;
+            border-radius:12px; padding:20px; box-shadow:0 8px 24px rgba(0,0,0,.45);
+        `;
+        const title = mode === 'manage' ? '💾 存档管理' : '📂 加载存档';
+        box.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                <h3 style="margin:0;">${title}</h3>
+                <div>
+                    <button class="quick-action-button" id="importBtn">📥 导入</button>
+                    <button class="close-button" id="closeSaveMgr" style="margin-left:8px;">×</button>
+                </div>
+            </div>
+            <div id="slotsContainer"></div>
+            <div style="margin-top:12px; font-size:12px; opacity:.85">
+                提示：共有 6 个槽位。导出为 JSON 可分享或备份，导入可恢复进度。
+            </div>
+        `;
+        modal.appendChild(box);
+        document.body.appendChild(modal);
+
+        const container = box.querySelector('#slotsContainer');
+        const saveService = window.gameCore?.getService('saveService');
+        const list = saveService?.listSaves?.() || new Array(6).fill(null);
+        container.innerHTML = this._renderSlotsHTML(list, mode);
+
+        this._setupSaveManagerEvents(modal, mode);
+
+        box.querySelector('#closeSaveMgr')?.addEventListener('click', () => modal.remove());
+        box.querySelector('#importBtn')?.addEventListener('click', () => {
+            this._promptImport(false /*autoLoad*/, () => {
+                // 刷新列表
+                const updated = saveService?.listSaves?.() || new Array(6).fill(null);
+                container.innerHTML = this._renderSlotsHTML(updated, mode);
+                this._setupSaveManagerEvents(modal, mode);
+            });
+        });
+    }
+
+    _renderSlotsHTML(list, mode) {
+        const saveService = window.gameCore?.getService('saveService');
+        const latest = saveService?.getLatestSlot?.();
+        const cards = list.map((slot, i) => {
+            if (!slot) {
+                return `
+                <div class="slot-card" style="background:#2a3142; border-radius:8px; padding:12px; margin:8px 0; display:flex; align-items:center; justify-content:space-between;">
+                    <div>
+                        <div style="font-weight:600;">槽位 ${i + 1}</div>
+                        <div style="opacity:.8; font-size:12px;">空槽位</div>
+                    </div>
+                    <div>
+                        <button class="quick-action-button save-btn" data-slot="${i}">保存</button>
+                    </div>
+                </div>`;
+            }
+            const isLatest = latest && latest.index === i;
+            const dt = slot.updatedAt ? new Date(slot.updatedAt).toLocaleString() : '-';
+            const subtitle = `Lv.${slot.summary.level || 1}｜${slot.summary.name || '冒险者'}｜${slot.summary.location || '-'}`;
+            return `
+            <div class="slot-card" style="background:#2a3142; border-radius:8px; padding:12px; margin:8px 0; display:flex; align-items:center; justify-content:space-between;">
+                <div>
+                    <div style="font-weight:600;">槽位 ${i + 1} ${isLatest ? '<span style="font-size:12px; color:#ffd54f; margin-left:6px;">最新</span>' : ''}</div>
+                    <div style="opacity:.85; font-size:12px;">${subtitle}</div>
+                    <div style="opacity:.7; font-size:12px;">更新：${dt}</div>
+                </div>
+                <div>
+                    <button class="quick-action-button load-btn" data-slot="${i}">加载</button>
+                    <button class="quick-action-button save-btn" data-slot="${i}">保存</button>
+                    <button class="quick-action-button export-btn" data-slot="${i}">导出</button>
+                    <button class="quick-action-button delete-btn" data-slot="${i}">删除</button>
+                </div>
+            </div>`;
+        }).join('');
+        return `<div>${cards}</div>`;
+    }
+
+    _setupSaveManagerEvents(modal, mode) {
+        const saveService = window.gameCore?.getService('saveService');
+
+        modal.querySelectorAll('.load-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const slot = parseInt(btn.getAttribute('data-slot'), 10);
+                if (Number.isInteger(slot)) {
+                    saveService.loadFromSlot(slot);
+                    modal.remove();
+                }
+            });
+        });
+        modal.querySelectorAll('.save-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const slot = parseInt(btn.getAttribute('data-slot'), 10);
+                if (Number.isInteger(slot)) {
+                    saveService.saveToSlot(slot, { label: '手动存档' });
+                }
+            });
+        });
+        modal.querySelectorAll('.export-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const slot = parseInt(btn.getAttribute('data-slot'), 10);
+                if (Number.isInteger(slot)) {
+                    saveService.exportSlot(slot);
+                }
+            });
+        });
+        modal.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const slot = parseInt(btn.getAttribute('data-slot'), 10);
+                if (Number.isInteger(slot)) {
+                    if (confirm(`确认删除槽位 ${slot + 1} 的存档？`)) {
+                        saveService.deleteSlot(slot);
+                        // 刷新列表
+                        const container = modal.querySelector('#slotsContainer');
+                        const list = saveService.listSaves();
+                        container.innerHTML = this._renderSlotsHTML(list, mode);
+                        this._setupSaveManagerEvents(modal, mode);
+                    }
+                }
+            });
+        });
+    }
+
+    _promptImport(autoLoad = false, onDone) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+        input.addEventListener('change', async () => {
+            const file = input.files && input.files[0];
+            if (file) {
+                const text = await file.text();
+                const saveService = window.gameCore?.getService('saveService');
+                const res = saveService.importToSlot(text);
+                if (res.success) {
+                    if (autoLoad) {
+                        saveService.loadFromSlot(res.slot);
+                    }
+                    if (typeof onDone === 'function') onDone(res);
+                } else {
+                    this.showNotification(res.error || '导入失败', 'error');
+                }
+            }
+            document.body.removeChild(input);
+        });
+        input.click();
+    }
+// 从存档恢复叙述区历史
+restoreNarrativeFromHistory() {
+    try {
+        const gs = window.gameCore?.getService('gameStateService');
+        const history = gs?.getState()?.conversation?.history || [];
+        const narrativeArea = document.getElementById('narrativeArea');
+        if (!narrativeArea) return;
+
+        // 清空当前叙述区（移除欢迎提示），用存档历史重建
+        narrativeArea.innerHTML = '';
+
+        // 如果没有历史记录，显示欢迎消息
+        if (history.length === 0) {
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'narrative-message intro';
+            welcomeDiv.innerHTML = `
+                🌟 欢迎来到地牢探险！
+                <br><br>
+                你站在古老地牢的入口前，黑暗的通道向前延伸，空气中弥漫着神秘的气息...
+                <br><br>
+                <em>提示：试试输入"向前探索"、"搜索房间"或"查看状态"来开始你的冒险！</em>
+            `;
+            narrativeArea.appendChild(welcomeDiv);
+            return;
+        }
+
+        history.forEach(entry => {
+            let content = entry.content || '';
+            let type = entry.type || (entry.role === 'user' ? 'player_action' : 'gm_narrative');
+            
+            // 修复玩家行动格式：确保有 > 前缀
+            if (type === 'player_action' && !content.startsWith('>')) {
+                content = `> ${content}`;
+            }
+            
+            // 修复函数结果显示：从 result 字段恢复原始显示内容
+            if (type === 'function_result' && entry.result) {
+                if (entry.result.description) {
+                    // 从存档的 result.description 恢复原始显示格式
+                    const functionName = content.match(/函数执行结果:\s*(\w+)/)?.[1] || 'unknown';
+                    content = `⚔️ 【${functionName}】${entry.result.description}`;
+                }
+            }
+
+            this.addMessage({
+                content,
+                type,
+                timestamp: entry.timestamp || Date.now(),
+                skipHistory: true // 避免重复写入历史
+            });
+        });
+    } catch (e) {
+        console.warn('[UI] restoreNarrativeFromHistory error:', e);
+    }
 }
-
+}
+ 
 export default GameView;
-
+ 
 // 确保类在全局可用
 window.GameView = GameView;

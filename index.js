@@ -18,9 +18,10 @@ import GameCore from './src/core/GameCore.js';
         console.log('LLM Game Demo starting...');
         
         const gameCore = new GameCore();
+        // 提前暴露到全局，避免 core:initialized 事件触发时 window.gameCore 为空导致开始覆盖层无法访问存档服务
+        window.gameCore = gameCore;
         await gameCore.initialize();
         
-        window.gameCore = gameCore;
         console.log('Game ready!');
         
     } catch (error) {
