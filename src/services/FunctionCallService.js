@@ -62,6 +62,8 @@ class FunctionCallService {
     async handleBattle(args) {
         const { enemies, environment, special_conditions } = args;
         
+        console.log('[DEBUG] 战斗开始:', { enemies, environment, special_conditions });
+        
         // 模拟战斗逻辑
         await new Promise(resolve => setTimeout(resolve, 2000)); // 模拟战斗时间
         
@@ -69,11 +71,19 @@ class FunctionCallService {
         const experience = outcome === 'victory' ? Math.floor(Math.random() * 100) + 50 : 0;
         const loot = outcome === 'victory' ? ['治疗药水', '铜币'] : [];
         
+        // 缺少HP损失计算
+        const hpLoss = Math.floor(Math.random() * 30) + 10; // 战斗中总是会损失HP
+        const hpGain = outcome === 'victory' && loot.includes('治疗药水') ? 20 : 0;
+        
+        console.log('[DEBUG] 战斗结果:', { outcome, experience, hpLoss, hpGain });
+        
         return {
             outcome,
             experience,
             loot,
-            description: `你${outcome === 'victory' ? '击败了' : '被击败了'}${enemies?.map(e => e.type).join('和') || '敌人'}！`
+            hpLoss,
+            hpGain,
+            description: `你${outcome === 'victory' ? '击败了' : '被击败了'}${enemies?.map(e => e.type).join('和') || '敌人'}！${hpLoss > 0 ? ` 损失了${hpLoss}点生命值。` : ''}${hpGain > 0 ? ` 使用治疗药水恢复了${hpGain}点生命值。` : ''}`
         };
     }
 

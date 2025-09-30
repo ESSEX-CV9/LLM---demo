@@ -43,11 +43,45 @@ class GameStateService {
     handleFunctionResult(data) {
         const { name, result } = data;
         
+        console.log('[DEBUG] 处理函数结果:', { name, result });
+        
         // 根据函数结果更新游戏状态
-        if (name === 'start_battle' && result.outcome === 'victory') {
-            this.updatePlayerStats({
-                experience: this.gameState.player.experience + result.experience
-            });
+        if (name === 'start_battle') {
+            const updates = {};
+            
+            // 无论胜负都要处理HP变化
+            if (result.hpLoss > 0) {
+                const newHp = Math.max(0, this.gameState.player.hp - result.hpLoss);
+                updates.hp = newHp;
+                console.log('[DEBUG] HP损失:', { 原HP: this.gameState.player.hp, 损失: result.hpLoss, 新HP: newHp });
+            }
+            
+            if (result.hpGain > 0) {
+                const newHp = Math.min(this.gameState.player.maxHp, this.gameState.player.hp + result.hpGain);
+                updates.hp = newHp;
+                console.log('[DEBUG] HP恢复:', { 原HP: this.gameState.player.hp, 恢复: result.hpGain, 新HP: newHp });
+            }
+            
+            // 无论胜负都可能获得经验值
+            if (result.experience > 0) {
+                const newExp = this.gameState.player.experience + result.experience;
+                updates.experience = newExp;
+                console.log('[DEBUG] 经验值获得:', { 原经验: this.gameState.player.experience, 获得: result.experience, 新经验: newExp });
+                
+                // 检查是否升级
+                const newLevel = this.calculateLevel(newExp);
+                if (newLevel > this.gameState.player.level) {
+                    updates.level = newLevel;
+                    // 升级时恢复满血
+                    updates.hp = this.gameState.player.maxHp;
+                    updates.maxHp = this.gameState.player.maxHp + 20; // 每级增加20最大HP
+                    console.log('[DEBUG] 等级提升!', { 原等级: this.gameState.player.level, 新等级: newLevel });
+                }
+            }
+            
+            if (Object.keys(updates).length > 0) {
+                this.updatePlayerStats(updates);
+            }
         }
         
         this.addConversationEntry({
@@ -56,6 +90,12 @@ class GameStateService {
             result: result,
             type: 'function_result'
         });
+    }
+
+    // 等级计算函数
+    calculateLevel(experience) {
+        // 简单的等级计算：每100经验值升1级
+        return Math.floor(experience / 100) + 1;
     }
 
     generateGamePrompt() {

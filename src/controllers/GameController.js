@@ -14,10 +14,14 @@ class GameController {
 
     async handlePlayerAction(actionData) {
         if (this.isProcessing) {
-            console.warn('Already processing an action, ignoring new action');
+            console.warn('[DEBUG] 已在处理行动中，忽略新行动');
+            this.eventBus.emit('ui:display:error', {
+                message: '请等待当前行动处理完成'
+            }, 'game');
             return;
         }
 
+        console.log('[DEBUG] 开始处理玩家行动:', actionData.action);
         this.isProcessing = true;
         
         try {
@@ -72,12 +76,14 @@ class GameController {
             }
 
         } catch (error) {
-            console.error('Error handling player action:', error);
+            console.error('[DEBUG] 处理玩家行动时发生错误:', error);
             this.eventBus.emit('ui:display:error', {
                 message: '处理行动时发生错误，请重试。'
             }, 'game');
         } finally {
+            console.log('[DEBUG] 玩家行动处理完成，重置处理状态');
             this.isProcessing = false;
+            // 注意：不在这里启用输入，因为可能还有后续的LLM生成或函数执行
         }
     }
 
