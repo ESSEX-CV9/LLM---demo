@@ -1,13 +1,13 @@
 // index.js
-import EventBus from './core/EventBus.js';
-import ServiceLocator from './core/ServiceLocator.js';
-import GameState from './models/GameState.js';
-import LLMService from './services/LLMService.js';
-import FunctionCallService from './services/FunctionCallService.js';
-import GameStateService from './services/GameStateService.js';
-import GameController from './controllers/GameController.js';
-import GameView from './views/GameView.js';
-import GameCore from './core/GameCore.js';
+import EventBus from './src/core/EventBus.js';
+import ServiceLocator from './src/core/ServiceLocator.js';
+import GameState from './src/models/GameState.js';
+import LLMService from './src/services/LLMService.js';
+import FunctionCallService from './src/services/FunctionCallService.js';
+import GameStateService from './src/services/GameStateService.js';
+import GameController from './src/controllers/GameController.js';
+import GameView from './src/views/GameView.js';
+import GameCore from './src/core/GameCore.js';
 
 (async () => {
     try {
