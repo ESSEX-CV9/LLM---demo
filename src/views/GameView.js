@@ -792,14 +792,13 @@ class GameView {
                          data-type="${item.type}"
                          data-subtype="${item.subType || ''}"
                          style="border-color: ${rarityColor}"
-                         title="${item.name}: ${item.description}"
                          draggable="true">
                         <div class="item-icon">${item.icon}</div>
                         <div class="item-quantity">${item.quantity > 1 ? item.quantity : ''}</div>
                         <div class="item-tooltip">
                             <div class="tooltip-name" style="color: ${rarityColor}">${item.name}</div>
                             <div class="tooltip-description">${item.description}</div>
-                            ${isEquipment ? this.generateEquipmentTooltip(item) : ''}
+                            ${isEquipment ? this.generateEquipmentTooltip(item) : this.generateItemTooltip(item)}
                         </div>
                     </div>
                 `;
@@ -838,6 +837,90 @@ class GameView {
         }
         
         return statsHtml;
+    }
+
+    generateItemTooltip(item) {
+        let tooltipHtml = '';
+        
+        // 添加物品类型信息
+        tooltipHtml += '<div class="tooltip-stats">';
+        
+        // 根据物品类型显示不同信息
+        if (item.type === 'consumable') {
+            tooltipHtml += `<div class="tooltip-type">类型: 消耗品</div>`;
+            
+            // 显示效果信息
+            if (item.effect) {
+                const effect = item.effect;
+                switch (effect.type) {
+                    case 'heal':
+                        tooltipHtml += `<div class="tooltip-effect">💚 恢复生命值: +${effect.value}</div>`;
+                        break;
+                    case 'restore_mana':
+                        tooltipHtml += `<div class="tooltip-effect">🔷 恢复法力值: +${effect.value}</div>`;
+                        break;
+                    case 'restore_stamina':
+                        tooltipHtml += `<div class="tooltip-effect">🟠 恢复耐力值: +${effect.value}</div>`;
+                        break;
+                    case 'temp_buff':
+                        if (effect.stats) {
+                            const buffStats = Object.entries(effect.stats).map(([key, value]) => {
+                                const statNames = {
+                                    attack: '攻击力',
+                                    defense: '防御力',
+                                    magicPower: '魔法强度',
+                                    physicalPower: '物理强度'
+                                };
+                                return `${statNames[key] || key}: +${value}`;
+                            }).join(', ');
+                            tooltipHtml += `<div class="tooltip-effect">✨ 临时增益: ${buffStats}</div>`;
+                            if (effect.duration) {
+                                tooltipHtml += `<div class="tooltip-duration">⏱️ 持续: ${effect.duration}回合</div>`;
+                            }
+                        }
+                        break;
+                }
+            }
+            
+            // 显示堆叠信息
+            if (item.stackable !== false && item.maxStack) {
+                tooltipHtml += `<div class="tooltip-stack">📦 最大堆叠: ${item.maxStack}</div>`;
+            }
+        } else if (item.type === 'material') {
+            tooltipHtml += `<div class="tooltip-type">类型: 材料</div>`;
+            tooltipHtml += `<div class="tooltip-effect">🔨 用于制作和锻造</div>`;
+            if (item.stackable !== false && item.maxStack) {
+                tooltipHtml += `<div class="tooltip-stack">📦 最大堆叠: ${item.maxStack}</div>`;
+            }
+        } else if (item.type === 'currency') {
+            tooltipHtml += `<div class="tooltip-type">类型: 货币</div>`;
+            tooltipHtml += `<div class="tooltip-effect">💰 用于交易和购买</div>`;
+            if (item.stackable !== false && item.maxStack) {
+                tooltipHtml += `<div class="tooltip-stack">📦 最大堆叠: ${item.maxStack}</div>`;
+            }
+        }
+        
+        // 显示稀有度
+        if (item.rarity) {
+            const rarityNames = {
+                'common': '普通',
+                'uncommon': '优秀',
+                'rare': '稀有',
+                'epic': '史诗',
+                'legendary': '传说'
+            };
+            const rarityColor = this.getRarityColor(item.rarity);
+            tooltipHtml += `<div class="tooltip-rarity" style="color: ${rarityColor}">⭐ 稀有度: ${rarityNames[item.rarity] || item.rarity}</div>`;
+        }
+        
+        // 显示价值
+        if (item.value) {
+            tooltipHtml += `<div class="tooltip-value">💰 价值: ${item.value} 铜币</div>`;
+        }
+        
+        tooltipHtml += '</div>';
+        
+        return tooltipHtml;
     }
 
     generateEquipmentSlots(equipment) {
@@ -952,18 +1035,37 @@ class GameView {
 
             // 拖拽开始
             slot.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('text/plain', slot.dataset.item);
+                const itemName = slot.dataset.item;
+                const itemType = slot.dataset.type;
+                const itemSubType = slot.dataset.subtype;
+                
+                console.log('[拖拽] 开始拖拽物品:', itemName, itemType, itemSubType);
+                
+                e.dataTransfer.setData('text/plain', itemName);
                 e.dataTransfer.setData('application/json', JSON.stringify({
-                    itemName: slot.dataset.item,
-                    type: slot.dataset.type,
-                    subType: slot.dataset.subtype
+                    itemName: itemName,
+                    type: itemType,
+                    subType: itemSubType
                 }));
+                e.dataTransfer.effectAllowed = 'move';
                 slot.classList.add('dragging');
             });
 
             // 拖拽结束
             slot.addEventListener('dragend', (e) => {
                 slot.classList.remove('dragging');
+                console.log('[拖拽] 拖拽结束');
+            });
+
+            // 悬浮全局提示（Portal），避免被 inventoryGrid/inventoryContent 裁剪
+            slot.addEventListener('mouseenter', () => {
+                const tooltipEl = slot.querySelector('.item-tooltip');
+                if (tooltipEl) {
+                    this.showGlobalTooltip(slot, tooltipEl.innerHTML);
+                }
+            });
+            slot.addEventListener('mouseleave', () => {
+                this.hideGlobalTooltip();
             });
         });
     }
@@ -982,22 +1084,41 @@ class GameView {
             // 拖拽放置
             slot.addEventListener('dragover', (e) => {
                 e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
                 if (slot.dataset.droppable === 'true') {
                     slot.classList.add('drag-over');
                 }
             });
 
             slot.addEventListener('dragleave', (e) => {
-                slot.classList.remove('drag-over');
+                // 只有当鼠标真正离开槽位时才移除样式
+                if (!slot.contains(e.relatedTarget)) {
+                    slot.classList.remove('drag-over');
+                }
             });
 
             slot.addEventListener('drop', (e) => {
                 e.preventDefault();
                 slot.classList.remove('drag-over');
                 
+                console.log('[拖拽] 物品放置到装备槽');
+                
                 try {
-                    const data = JSON.parse(e.dataTransfer.getData('application/json'));
+                    const jsonData = e.dataTransfer.getData('application/json');
+                    const textData = e.dataTransfer.getData('text/plain');
+                    
+                    let data;
+                    if (jsonData) {
+                        data = JSON.parse(jsonData);
+                    } else if (textData) {
+                        // 降级处理：如果没有JSON数据，使用文本数据
+                        data = { itemName: textData };
+                    } else {
+                        throw new Error('无法获取拖拽数据');
+                    }
+                    
                     const slotType = slot.dataset.slot;
+                    console.log('[拖拽] 尝试装备:', data.itemName, '到槽位:', slotType);
                     
                     // 检查装备类型是否匹配槽位
                     if (this.canEquipToSlot(data, slotType)) {
@@ -1006,8 +1127,22 @@ class GameView {
                         this.showNotification('该装备不能装备到此槽位', 'warning');
                     }
                 } catch (error) {
-                    console.error('拖拽装备失败:', error);
+                    console.error('[拖拽] 装备失败:', error);
+                    this.showNotification('装备失败: ' + error.message, 'error');
                 }
+            });
+
+            // 悬浮全局提示（Portal），避免被 inventory-content 裁剪
+            slot.addEventListener('mouseenter', () => {
+                // 使用已装备的图标作为锚点
+                const anchor = slot.querySelector('.equipped-item') || slot;
+                const tooltipEl = slot.querySelector('.item-tooltip');
+                if (tooltipEl) {
+                    this.showGlobalTooltip(anchor, tooltipEl.innerHTML);
+                }
+            });
+            slot.addEventListener('mouseleave', () => {
+                this.hideGlobalTooltip();
             });
         });
     }
@@ -1061,7 +1196,33 @@ class GameView {
     }
 
     canEquipToSlot(itemData, slotType) {
-        const { type, subType } = itemData;
+        const { type, subType, itemName } = itemData;
+        
+        console.log('[装备检查] 物品:', itemName, '类型:', type, '子类型:', subType, '目标槽位:', slotType);
+        
+        // 如果没有类型信息，尝试从物品数据库获取
+        if (!type && itemName) {
+            // 尝试多种方式获取物品数据库
+            let itemsDB = window.itemsDB;
+            if (!itemsDB) {
+                // 尝试通过模块导入获取
+                try {
+                    itemsDB = window.gameCore?.itemsDB;
+                } catch (e) {
+                    console.warn('[装备检查] 无法获取物品数据库');
+                }
+            }
+            
+            if (itemsDB) {
+                const equipmentData = itemsDB.getEquipment(itemName);
+                if (equipmentData) {
+                    const equipmentType = equipmentData.type;
+                    const equipmentSubType = equipmentData.subType;
+                    console.log('[装备检查] 从数据库获取类型:', equipmentType, equipmentSubType);
+                    return this.canEquipToSlot({ type: equipmentType, subType: equipmentSubType }, slotType);
+                }
+            }
+        }
         
         // 武器槽位
         if (slotType === 'weapon') {
@@ -1078,17 +1239,28 @@ class GameView {
             return type === 'accessory' && subType === slotType;
         }
         
+        console.log('[装备检查] 无法匹配槽位');
         return false;
     }
 
     equipItemToSlot(itemName, slotType) {
+        console.log('[装备] 尝试装备物品:', itemName, '到槽位:', slotType);
+        
         const equipmentService = window.gameCore?.getService('equipmentService');
         if (equipmentService) {
             const result = equipmentService.equipItem(itemName, slotType);
+            console.log('[装备] 装备结果:', result);
+            
             if (result.success) {
                 // 刷新背包界面
                 this.refreshInventoryInterface();
+                this.showNotification(result.message, 'success');
+            } else {
+                this.showNotification(result.message, 'error');
             }
+        } else {
+            console.error('[装备] 装备服务不可用');
+            this.showNotification('装备系统不可用', 'error');
         }
     }
 
@@ -1106,18 +1278,61 @@ class GameView {
     refreshInventoryInterface() {
         const modal = document.querySelector('.inventory-modal');
         if (modal) {
-            modal.remove();
-            // 重新显示背包
-            setTimeout(() => {
-                this.showInventory();
-            }, 100);
+            // 不移除整个模态框，只刷新内容
+            const inventoryService = window.gameCore?.getService('inventoryService');
+            const gameStateService = window.gameCore?.getService('gameStateService');
+            
+            if (inventoryService && gameStateService) {
+                const stats = inventoryService.getInventoryStats();
+                const player = gameStateService.getState().player;
+                const equipment = player?.equipment || {};
+                
+                // 更新装备面板
+                const equipmentPanel = modal.querySelector('.equipment-slots');
+                if (equipmentPanel) {
+                    equipmentPanel.innerHTML = this.generateEquipmentSlots(equipment);
+                }
+                
+                // 更新装备统计
+                const equipmentStats = modal.querySelector('.equipment-stats');
+                if (equipmentStats) {
+                    equipmentStats.innerHTML = this.generateEquipmentStats(player);
+                }
+                
+                // 更新背包标题
+                const inventoryTitle = modal.querySelector('.inventory-panel h4');
+                if (inventoryTitle) {
+                    inventoryTitle.textContent = `🎒 背包 (${stats.usedSlots}/${stats.maxSlots})`;
+                }
+                
+                // 更新背包网格
+                const inventoryGrid = modal.querySelector('#inventoryGrid');
+                if (inventoryGrid) {
+                    inventoryGrid.innerHTML = this.generateInventoryGrid(inventoryService.getAllItems(), stats.maxSlots);
+                }
+                
+                // 重新设置事件监听器
+                this.setupInventoryEvents(modal);
+                this.setupEquipmentEvents(modal);
+            }
         }
     }
 
     useInventoryItem(itemName) {
+        console.log('[使用物品] 尝试使用/装备:', itemName);
+        
         const inventoryService = window.gameCore?.getService('inventoryService');
         if (inventoryService) {
-            inventoryService.useItem(itemName);
+            const result = inventoryService.useItem(itemName);
+            console.log('[使用物品] 使用结果:', result);
+            
+            // 如果使用成功，刷新界面
+            if (result) {
+                this.refreshInventoryInterface();
+            }
+        } else {
+            console.error('[使用物品] 背包服务不可用');
+            this.showNotification('背包系统不可用', 'error');
         }
     }
 
@@ -2060,6 +2275,150 @@ updateAllCompletedBattleButtons() {
         }
     }
 
+// 全局提示（Portal）——避免被滚动容器裁剪
+showGlobalTooltip(anchor, html) {
+    try {
+        // 创建或复用全局提示容器
+        if (!this.globalTooltipEl) {
+            this.globalTooltipEl = document.createElement('div');
+            this.globalTooltipEl.className = 'global-item-tooltip';
+            this.globalTooltipEl.style.cssText = `
+                position: fixed;
+                z-index: 1000000;
+                pointer-events: none;
+                background: rgba(0, 0, 0, 0.95);
+                color: #fff;
+                padding: 12px;
+                border-radius: 8px;
+                font-size: 12px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+                border: 1px solid rgba(255,255,255,0.2);
+                max-width: 320px;
+                min-width: 200px;
+                opacity: 0;
+                transition: opacity 0.15s ease-out;
+            `;
+            document.body.appendChild(this.globalTooltipEl);
+        }
+
+        this.globalTooltipEl.innerHTML = html;
+        this.globalTooltipAnchor = anchor;
+
+        // 抑制原有槽位内的提示，避免重复显示
+        const inline = anchor.querySelector('.item-tooltip');
+        if (inline) {
+            this._suppressedInlineTooltip = inline;
+            inline.dataset._prevDisplay = inline.style.display || '';
+            inline.style.display = 'none';
+        }
+
+        // 初始定位
+        this.repositionGlobalTooltip();
+        this.globalTooltipEl.style.opacity = '1';
+
+        // 监听滚动与缩放，保持定位
+        this._globalTooltipReposition = () => this.repositionGlobalTooltip();
+
+        // 收集可能滚动的容器，确保滚动时重新定位
+        this._globalScrollTargets = [];
+        const addScrollTarget = (el) => {
+            if (el && typeof el.addEventListener === 'function') {
+                el.addEventListener('scroll', this._globalTooltipReposition, true);
+                this._globalScrollTargets.push(el);
+            }
+        };
+
+        const modal = document.querySelector('.inventory-modal');
+        const content = modal ? modal.querySelector('.inventory-content') : null;
+        const grid = modal ? modal.querySelector('#inventoryGrid') : null;
+
+        addScrollTarget(window);
+        addScrollTarget(document);
+        addScrollTarget(modal);
+        addScrollTarget(content);
+        addScrollTarget(grid);
+
+        window.addEventListener('resize', this._globalTooltipReposition, true);
+    } catch (e) {
+        console.warn('[UI] showGlobalTooltip error:', e);
+    }
+}
+
+// 重新计算并定位全局提示
+repositionGlobalTooltip() {
+    try {
+        if (!this.globalTooltipEl || !this.globalTooltipAnchor) return;
+
+        const rect = this.globalTooltipAnchor.getBoundingClientRect();
+        const margin = 8;
+
+        // 渲染后获取提示尺寸
+        const ttRect = this.globalTooltipEl.getBoundingClientRect();
+
+        // 优先显示在上方
+        let top = rect.top - ttRect.height - margin;
+        let left = rect.left + rect.width / 2 - ttRect.width / 2;
+
+        // 视口左右边界限制
+        const clamp = (min, v, max) => Math.max(min, Math.min(v, max));
+        left = clamp(10, left, window.innerWidth - ttRect.width - 10);
+
+        // 如果上方空间不足，则显示在下方
+        if (top < 10) {
+            top = rect.bottom + margin;
+        }
+        // 如果下方也靠近底部，尽量不超出视口
+        if (top + ttRect.height > window.innerHeight - 10) {
+            top = window.innerHeight - ttRect.height - 10;
+        }
+
+        this.globalTooltipEl.style.left = `${Math.round(left)}px`;
+        this.globalTooltipEl.style.top = `${Math.round(top)}px`;
+    } catch (e) {
+        console.warn('[UI] repositionGlobalTooltip error:', e);
+    }
+}
+
+// 隐藏并清理全局提示
+hideGlobalTooltip() {
+    try {
+        // 移除定位监听
+        if (this._globalTooltipReposition) {
+            window.removeEventListener('resize', this._globalTooltipReposition, true);
+        }
+        if (this._globalScrollTargets && this._globalScrollTargets.length) {
+            for (const el of this._globalScrollTargets) {
+                el.removeEventListener('scroll', this._globalTooltipReposition, true);
+            }
+            this._globalScrollTargets = null;
+        }
+        this._globalTooltipReposition = null;
+
+        // 还原被抑制的内联提示
+        if (this._suppressedInlineTooltip) {
+            const inline = this._suppressedInlineTooltip;
+            inline.style.display = inline.dataset._prevDisplay || '';
+            delete inline.dataset._prevDisplay;
+            this._suppressedInlineTooltip = null;
+        }
+
+        // 渐隐并移除
+        if (this.globalTooltipEl && this.globalTooltipEl.parentNode) {
+            const el = this.globalTooltipEl;
+            el.style.opacity = '0';
+            setTimeout(() => {
+                if (el.parentNode) {
+                    el.parentNode.removeChild(el);
+                }
+            }, 150);
+        }
+
+        this.globalTooltipEl = null;
+        this.globalTooltipAnchor = null;
+    } catch (e) {
+        console.warn('[UI] hideGlobalTooltip error:', e);
+    }
+}
     // 处理新游戏开始事件
     handleNewGameStarted(data) {
         console.log('[GameView] 新游戏开始，重置UI状态');

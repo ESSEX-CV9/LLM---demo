@@ -12,6 +12,7 @@ import SkillService from '../services/SkillService.js';
 import EquipmentService from '../services/EquipmentService.js';
 import EquipmentEffectService from '../services/EquipmentEffectService.js';
 import EnemyTemplates from '../data/EnemyTemplates.js';
+import itemsDB from '../data/Items.js';
 import SaveService from '../services/SaveService.js';
 import GameController from '../controllers/GameController.js';
 import GameView from '../views/GameView.js';
@@ -62,7 +63,12 @@ class GameCore {
         this.serviceLocator.register('equipmentService', new EquipmentService(this.eventBus));
         this.serviceLocator.register('equipmentEffectService', new EquipmentEffectService(this.eventBus));
         this.serviceLocator.register('enemyTemplates', new EnemyTemplates());
+        this.serviceLocator.register('itemsDB', itemsDB);
         this.serviceLocator.register('saveService', new SaveService(this.eventBus, this.serviceLocator));
+        
+        // 确保 itemsDB 在全局可用
+        window.itemsDB = itemsDB;
+        this.itemsDB = itemsDB;
     }
 
     async initializeServices() {

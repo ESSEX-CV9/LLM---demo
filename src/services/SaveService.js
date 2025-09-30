@@ -523,9 +523,10 @@ class SaveService {
       // Replace GameState instance to default
       gsService.gameState = new GameState();
 
-      // Clear inventory
+      // Clear inventory and reinitialize with default items
       if (invService) {
         invService.clearInventory();
+        invService.initializeDefaultItems();
       }
 
       // 完全清除战斗状态

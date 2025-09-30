@@ -11,7 +11,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000;
+    z-index: 200000; /* 提升模态层级，确保内部提示可覆盖所有界面元素 */
     animation: fadeIn 0.3s ease-out;
 }
 
@@ -19,15 +19,16 @@
     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
     border-radius: 15px;
     padding: 20px;
-    max-width: 90vw;
+    max-width: 95vw;
     max-height: 90vh;
     /* 启用垂直滚动，显示自定义滚动条 */
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: visible; /* 允许提示框横向溢出到面板外 */
     /* 移除隐藏滚动条的设置，让自定义样式生效 */
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     color: white;
-    min-width: 800px;
+    min-width: 1000px;
+    width: 1200px;
 }
 /* 自定义滚动条样式 - 与主界面保持一致 */
 .inventory-content::-webkit-scrollbar {
@@ -114,6 +115,7 @@
     gap: 8px;
     margin-bottom: 20px;
     height: 240px;
+    overflow: visible; /* 允许装备栏中的提示超出槽位和面板边界显示 */
 }
 
 .equipment-slot {
@@ -133,6 +135,7 @@
 .equipment-slot:hover {
     border-color: rgba(255, 255, 255, 0.6);
     background: rgba(255, 255, 255, 0.1);
+    z-index: 100000; /* 提升层级，确保装备栏提示在最上层 */
 }
 
 .equipment-slot.filled {
@@ -275,7 +278,7 @@
     max-height: 400px;
     /* 启用垂直滚动，显示自定义滚动条 */
     overflow-y: auto;
-    overflow-x: hidden;
+    overflow-x: visible; /* 允许提示框横向超出背包网格显示 */
     /* 移除隐藏滚动条的设置，让自定义样式生效 */
     padding: 10px;
     background: rgba(0, 0, 0, 0.2);
@@ -312,13 +315,14 @@
     cursor: pointer;
     transition: all 0.3s;
     position: relative;
-    overflow: hidden;
+    overflow: visible; /* 允许提示框在格子外显示，避免被裁剪 */
 }
 
 .inventory-slot:hover {
     border-color: rgba(255, 255, 255, 0.6);
     background: rgba(255, 255, 255, 0.1);
     transform: scale(1.05);
+    z-index: 100000; /* 提升层级，确保背包提示在最上层且不被图标或框体遮挡 */
 }
 
 .inventory-slot.filled {
@@ -341,7 +345,8 @@
 
 .inventory-slot .item-icon {
     font-size: 24px;
-    z-index: 1;
+    position: relative; /* 形成本地层叠上下文 */
+    z-index: 1; /* 图标层级低于提示（提示将有更高z-index） */
 }
 
 .inventory-slot .item-quantity {
@@ -365,22 +370,34 @@
     transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.95);
     color: white;
-    padding: 10px;
-    border-radius: 6px;
+    padding: 12px;
+    border-radius: 8px;
     font-size: 12px;
-    white-space: nowrap;
+    white-space: normal;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s;
-    z-index: 10001;
+    transition: opacity 0.3s ease-in-out;
+    z-index: 1000000; /* 显示在最上层，覆盖图标与面板 */
     min-width: 200px;
-    white-space: normal;
-    max-width: 300px;
+    max-width: 320px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 8px;
 }
 
 .inventory-slot:hover .item-tooltip,
 .equipment-slot:hover .item-tooltip {
     opacity: 1;
+    pointer-events: auto;
+}
+
+/* 确保提示框在悬浮时显示 */
+.inventory-slot {
+    position: relative;
+}
+
+.equipment-slot {
+    position: relative;
 }
 
 .tooltip-name {
@@ -455,11 +472,62 @@
     animation: equipGlow 1s infinite;
 }
 
-/* 响应式设计 */
-@media (max-width: 1024px) {
+/* 响应式设计 - 超过768px后均采用宽屏横布局 */
+@media (max-width: 1300px) and (min-width: 769px) {
     .inventory-content {
-        min-width: 600px;
+        min-width: 900px;
+        width: 95vw;
         max-width: 95vw;
+    }
+}
+
+@media (max-width: 1024px) and (min-width: 769px) {
+    .inventory-content {
+        min-width: 800px;
+        width: 95vw;
+        max-width: 95vw;
+    }
+    
+    .equipment-panel {
+        flex: 0 0 280px;
+    }
+    
+    .equipment-slots {
+        height: 220px;
+    }
+    
+    .equipment-slot {
+        width: 70px;
+        height: 70px;
+    }
+}
+
+@media (max-width: 900px) and (min-width: 769px) {
+    .inventory-content {
+        min-width: 700px;
+        width: 95vw;
+        max-width: 95vw;
+    }
+    
+    .equipment-panel {
+        flex: 0 0 260px;
+    }
+    
+    .equipment-slots {
+        height: 200px;
+    }
+    
+    .equipment-slot {
+        width: 65px;
+        height: 65px;
+    }
+}
+
+/* 768px及以下才使用垂直布局 */
+@media (max-width: 768px) {
+    .inventory-content {
+        min-width: 300px;
+        padding: 15px;
     }
     
     .inventory-main {
@@ -484,20 +552,9 @@
     .equipment-slot:nth-child(6) { grid-area: 2 / 2 / 3 / 3; }
     .equipment-slot:nth-child(7) { grid-area: 2 / 3 / 3 / 4; }
     .equipment-slot:nth-child(8) { grid-area: 2 / 4 / 3 / 5; }
-}
-
-@media (max-width: 768px) {
-    .inventory-content {
-        min-width: 300px;
-        padding: 15px;
-    }
     
     .inventory-grid {
         grid-template-columns: repeat(4, 1fr);
-    }
-    
-    .equipment-slots {
-        grid-template-columns: repeat(3, 1fr);
     }
     
     .inventory-slot,

@@ -19,12 +19,62 @@ class InventoryService {
     }
 
     initializeDefaultItems() {
-        // 给玩家一些初始物品和装备
-        this.addItem('治疗药水', 3);
-        this.addItem('面包', 2);
+        // 给玩家一些初始物品和装备用于测试装备系统
+        
+        // 消耗品
+        this.addItem('治疗药水', 5);
+        this.addItem('高级治疗药水', 2);
+        this.addItem('法力药水', 3);
+        this.addItem('耐力药水', 3);
+        this.addItem('面包', 3);
+        this.addItem('力量药水', 2);
+        this.addItem('防御药水', 2);
+        
+        // 武器 - 剑类（不同等级）
         this.addItem('木剑', 1);
+        this.addItem('铁剑', 1);
+        this.addItem('精制铁剑', 1);
+        this.addItem('钢剑', 1);
+        this.addItem('银剑', 1);
+        
+        // 武器 - 法杖类
+        this.addItem('木杖', 1);
+        this.addItem('法师杖', 1);
+        this.addItem('奥术法杖', 1);
+        
+        // 防具 - 头盔
+        this.addItem('皮帽', 1);
+        this.addItem('铁盔', 1);
+        
+        // 防具 - 胸甲
         this.addItem('皮甲', 1);
+        this.addItem('链甲', 1);
+        this.addItem('板甲', 1);
+        
+        // 防具 - 护腿
+        this.addItem('皮裤', 1);
+        
+        // 防具 - 靴子
         this.addItem('皮靴', 1);
+        this.addItem('疾风靴', 1);
+        
+        // 饰品 - 戒指
+        this.addItem('力量戒指', 1);
+        this.addItem('智慧戒指', 1);
+        
+        // 饰品 - 项链
+        this.addItem('生命项链', 1);
+        
+        // 饰品 - 护符
+        this.addItem('守护护符', 1);
+        
+        // 材料和货币
+        this.addItem('铁矿石', 10);
+        this.addItem('皮革', 8);
+        this.addItem('魔法水晶', 3);
+        this.addItem('铜币', 100);
+        this.addItem('银币', 10);
+        this.addItem('金币', 2);
     }
 
     addItem(itemName, quantity = 1) {
@@ -258,6 +308,20 @@ class InventoryService {
         }
 
         const result = equipmentService.equipItem(itemName);
+        
+        // 显示装备结果通知
+        if (result.success) {
+            this.eventBus.emit('ui:notification', {
+                message: result.message,
+                type: 'success'
+            }, 'game');
+        } else {
+            this.eventBus.emit('ui:notification', {
+                message: result.message,
+                type: 'error'
+            }, 'game');
+        }
+        
         return result.success;
     }
 
