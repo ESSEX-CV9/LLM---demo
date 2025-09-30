@@ -6,7 +6,15 @@ class GameState {
             level: 1,
             hp: 100,
             maxHp: 100,
+            // 新增资源：法力与耐力
+            mana: 50,
+            maxMana: 50,
+            stamina: 50,
+            maxStamina: 50,
+            // 成长与技能
             experience: 0,
+            skillPoints: 4,
+            skills: [],
             inventory: [],
             equipment: {
                 weapon: null,
@@ -16,7 +24,10 @@ class GameState {
             stats: {
                 baseAttack: 10,
                 baseDefense: 5,
-                speed: 8
+                speed: 8,
+                // 新增派生基础：魔法/物理强度
+                baseMagicPower: 5,
+                basePhysicalPower: 10
             }
         };
         
@@ -100,12 +111,30 @@ class GameState {
         return baseDefense + levelBonus + armorBonus;
     }
 
-    // 获取玩家完整属性（包含计算后的攻防）
+    // 计算玩家魔法强度（基础 + 等级 + 装备）
+    getPlayerMagicPower() {
+        const base = this.player.stats.baseMagicPower || 0;
+        const levelBonus = (this.player.level - 1) * 3; // 每级+3魔强
+        const weaponBonus = this.player.equipment.weapon ? (this.player.equipment.weapon.magicPower || 0) : 0;
+        return base + levelBonus + weaponBonus;
+    }
+
+    // 计算玩家物理强度（基础 + 等级 + 装备）
+    getPlayerPhysicalPower() {
+        const base = this.player.stats.basePhysicalPower || 0;
+        const levelBonus = (this.player.level - 1) * 4; // 每级+4物强
+        const weaponBonus = this.player.equipment.weapon ? (this.player.equipment.weapon.physicalPower || 0) : 0;
+        return base + levelBonus + weaponBonus;
+    }
+
+    // 获取玩家完整属性（包含计算后的攻防与魔法/物理强度）
     getPlayerStats() {
         return {
             ...this.player,
             attack: this.getPlayerAttack(),
             defense: this.getPlayerDefense(),
+            magicPower: this.getPlayerMagicPower(),
+            physicalPower: this.getPlayerPhysicalPower(),
             speed: this.player.stats.speed
         };
     }

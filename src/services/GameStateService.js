@@ -91,11 +91,23 @@ class GameStateService {
             // 检查是否升级
             const newLevel = this.calculateLevel(newExp);
             if (newLevel > this.gameState.player.level) {
+                const levelDiff = newLevel - this.gameState.player.level;
                 updates.level = newLevel;
-                // 升级时恢复满血
-                updates.hp = this.gameState.player.maxHp;
-                updates.maxHp = this.gameState.player.maxHp + 20; // 每级增加20最大HP
-                console.log('[DEBUG] 等级提升!', { 原等级: this.gameState.player.level, 新等级: newLevel });
+
+                // 生命上限提升与满血
+                updates.maxHp = this.gameState.player.maxHp + levelDiff * 20; // 每级增加20最大HP
+                updates.hp = updates.maxHp;
+
+                // 技能点奖励
+                updates.skillPoints = (this.gameState.player.skillPoints || 0) + levelDiff;
+
+                // 法力与耐力上限成长与全满
+                updates.maxMana = (this.gameState.player.maxMana || 0) + levelDiff * 10;
+                updates.maxStamina = (this.gameState.player.maxStamina || 0) + levelDiff * 10;
+                updates.mana = updates.maxMana;
+                updates.stamina = updates.maxStamina;
+
+                console.log('[DEBUG] 等级提升!', { 原等级: this.gameState.player.level, 新等级: newLevel, 技能点增加: levelDiff, 资源上限成长: { mana: levelDiff * 10, stamina: levelDiff * 10 } });
             }
         }
         
@@ -128,9 +140,13 @@ class GameStateService {
         
         const updates = {};
         
-        // 更新HP
-        if (battleResult.player && battleResult.player.hp !== undefined) {
-            updates.hp = battleResult.player.hp;
+        // 同步玩家资源与HP
+        if (battleResult.player) {
+            if (battleResult.player.hp !== undefined) updates.hp = battleResult.player.hp;
+            if (battleResult.player.mana !== undefined) updates.mana = battleResult.player.mana;
+            if (battleResult.player.stamina !== undefined) updates.stamina = battleResult.player.stamina;
+            if (battleResult.player.maxMana !== undefined) updates.maxMana = battleResult.player.maxMana;
+            if (battleResult.player.maxStamina !== undefined) updates.maxStamina = battleResult.player.maxStamina;
         }
         
         // 处理经验值和掉落
@@ -141,10 +157,21 @@ class GameStateService {
             // 检查升级
             const newLevel = this.calculateLevel(newExp);
             if (newLevel > this.gameState.player.level) {
+                const levelDiff = newLevel - this.gameState.player.level;
                 updates.level = newLevel;
-                updates.maxHp = this.gameState.player.maxHp + 20;
-                // 升级时恢复满血
+
+                // HP 上限与满血
+                updates.maxHp = this.gameState.player.maxHp + levelDiff * 20;
                 updates.hp = updates.maxHp;
+
+                // 技能点奖励
+                updates.skillPoints = (this.gameState.player.skillPoints || 0) + levelDiff;
+
+                // MP/SP 上限成长与全满
+                updates.maxMana = (this.gameState.player.maxMana || 0) + levelDiff * 10;
+                updates.maxStamina = (this.gameState.player.maxStamina || 0) + levelDiff * 10;
+                updates.mana = updates.maxMana;
+                updates.stamina = updates.maxStamina;
             }
         }
         

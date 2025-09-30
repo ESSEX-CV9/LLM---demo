@@ -1,0 +1,191 @@
+/* Skills modal and cards */
+
+.skills-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.skills-content {
+  background: linear-gradient(135deg, #1f2a44 0%, #243552 100%);
+  border-radius: 15px;
+  padding: 20px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.skills-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.skills-header h3 {
+  margin: 0;
+  color: #ffd54f;
+}
+
+.skills-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 15px;
+}
+
+.top-stat {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 14px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.skills-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.skills-section h4 {
+  margin: 0 0 8px 0;
+  color: #90caf9;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .skills-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.skill-card {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.skill-card.owned {
+  border-color: rgba(76,175,80,0.4);
+}
+
+.skill-card.learnable {
+  border-color: rgba(33,150,243,0.4);
+}
+
+.skill-title {
+  color: #fff;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.skill-title .lv {
+  color: #ffd54f;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.skill-desc {
+  color: rgba(255,255,255,0.85);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.skill-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.skill-tags .tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #e0e0e0;
+}
+
+.skill-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.secondary-button {
+  padding: 8px 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 20px;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.secondary-button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.secondary-button:hover:not([disabled]) {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.6);
+}
+
+.close-button {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 24px;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  background: rgba(255,255,255,0.3);
+  transform: scale(1.05);
+}
+
+.empty-hint {
+  color: rgba(255,255,255,0.7);
+  font-style: italic;
+}
+
+.req {
+  display: inline-block;
+  font-size: 12px;
+  color: #ffcc80;
+}
+
+.req.ok {
+  color: #a5d6a7;
+}

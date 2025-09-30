@@ -8,9 +8,11 @@ import GameStateService from '../services/GameStateService.js';
 import ConversationService from '../services/ConversationService.js';
 import BattleService from '../services/BattleService.js';
 import InventoryService from '../services/InventoryService.js';
+import SkillService from '../services/SkillService.js';
 import EnemyTemplates from '../data/EnemyTemplates.js';
 import GameController from '../controllers/GameController.js';
 import GameView from '../views/GameView.js';
+import SkillsView from '../views/SkillsView.js';
 
 class GameCore {
     constructor() {
@@ -53,6 +55,7 @@ class GameCore {
         this.serviceLocator.register('conversationService', new ConversationService(this.eventBus));
         this.serviceLocator.register('battleService', new BattleService(this.eventBus));
         this.serviceLocator.register('inventoryService', new InventoryService(this.eventBus));
+        this.serviceLocator.register('skillService', new SkillService(this.eventBus));
         this.serviceLocator.register('enemyTemplates', new EnemyTemplates());
     }
 
@@ -69,6 +72,10 @@ class GameCore {
         const gameView = new GameView(this.eventBus);
         this.serviceLocator.register('gameView', gameView);
         window.gameView = gameView;
+
+        const skillsView = new SkillsView(this.eventBus);
+        this.serviceLocator.register('skillsView', skillsView);
+        window.skillsView = skillsView;
     }
 
     setupErrorHandling() {

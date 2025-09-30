@@ -42,7 +42,16 @@ class BattleService {
                 level: playerStats.level,
                 attack: playerStats.attack,
                 defense: playerStats.defense,
-                actions: ['攻击', '防御', '使用物品', '逃跑']
+                // 新增资源与强度、技能同步
+                mana: playerStats.mana ?? 0,
+                maxMana: playerStats.maxMana ?? 0,
+                stamina: playerStats.stamina ?? 0,
+                maxStamina: playerStats.maxStamina ?? 0,
+                magicPower: playerStats.magicPower ?? 0,
+                physicalPower: playerStats.physicalPower ?? 0,
+                skills: Array.isArray(playerStats.skills) ? JSON.parse(JSON.stringify(playerStats.skills)) : [],
+                // 动作加入“技能”
+                actions: ['攻击', '技能', '防御', '使用物品', '逃跑']
             },
             enemies: processedEnemies,
             environment,
@@ -102,7 +111,16 @@ class BattleService {
                 level: playerStats.level,
                 attack: playerStats.attack,
                 defense: playerStats.defense,
-                actions: ['攻击', '防御', '使用物品', '逃跑']
+                // 新增资源与强度、技能同步
+                mana: playerStats.mana ?? 0,
+                maxMana: playerStats.maxMana ?? 0,
+                stamina: playerStats.stamina ?? 0,
+                maxStamina: playerStats.maxStamina ?? 0,
+                magicPower: playerStats.magicPower ?? 0,
+                physicalPower: playerStats.physicalPower ?? 0,
+                skills: Array.isArray(playerStats.skills) ? JSON.parse(JSON.stringify(playerStats.skills)) : [],
+                // 动作加入“技能”
+                actions: ['攻击', '技能', '防御', '使用物品', '逃跑']
             },
             enemies: processedEnemies,
             environment,
@@ -162,11 +180,11 @@ class BattleService {
             return { success: false, message: '当前没有进行中的战斗' };
         }
 
-        const { action, target, item } = actionData;
+        const { action, target, item, skillId } = actionData;
         let result = {};
 
         if (this.battleState.turn === 'player') {
-            result = await this.executePlayerAction(action, target, item);
+            result = await this.executePlayerAction(action, target, item, skillId);
             
             // 检查敌人是否全部死亡
             if (this.battleState.enemies.every(enemy => enemy.hp <= 0)) {
@@ -187,7 +205,7 @@ class BattleService {
         return result;
     }
 
-    async executePlayerAction(action, target, item) {
+    async executePlayerAction(action, target, item, skillId) {
         const player = this.battleState.player;
         const enemies = this.battleState.enemies.filter(e => e.hp > 0);
         
@@ -205,6 +223,22 @@ class BattleService {
                     if (enemies[target].hp <= 0) {
                         logMessage += ` ${enemies[target].type}被击败了！`;
                     }
+                }
+                break;
+            
+            case '技能':
+                // 技能释放交由 SkillService 处理，避免重复日志，这里不追加日志
+                try {
+                    const skillService = window.gameCore?.getService('skillService');
+                    const result = skillService?.useSkill(skillId, target);
+                    // 如果技能服务返回了失败信息，作为当前回合消息提示
+                    if (!result?.success && result?.message) {
+                        logMessage = result.message;
+                    } else {
+                        logMessage = ''; // 技能服务已写入日志
+                    }
+                } catch (e) {
+                    logMessage = '技能释放失败';
                 }
                 break;
                 
@@ -230,11 +264,14 @@ class BattleService {
                 break;
         }
 
-        this.battleState.battleLog.push({
-            type: 'player',
-            message: logMessage,
-            round: this.battleState.round
-        });
+        // 技能服务已输出日志时避免重复追加
+        if (logMessage) {
+            this.battleState.battleLog.push({
+                type: 'player',
+                message: logMessage,
+                round: this.battleState.round
+            });
+        }
 
         return { success: true, message: logMessage };
     }
@@ -298,6 +335,26 @@ class BattleService {
             }
         }
 
+        // 回合结束自然回复少量法力与耐力
+        const p = this.battleState.player;
+        p.mana = Math.min(p.maxMana || 0, (p.mana || 0) + 2);
+        p.stamina = Math.min(p.maxStamina || 0, (p.stamina || 0) + 2);
+        
+        // 同步到全局玩家状态（用于顶部栏展示与提示）
+        const gameStateService = window.gameCore?.getService('gameStateService');
+        if (gameStateService) {
+            gameStateService.updatePlayerStats({
+                mana: p.mana,
+                stamina: p.stamina
+            });
+        }
+
+        // 在切换到玩家回合前，递减技能冷却并同步到全局状态
+        const skillService = window.gameCore?.getService('skillService');
+        if (skillService && typeof skillService.tickCooldowns === 'function') {
+            skillService.tickCooldowns(this.battleState);
+        }
+        
         // 回合结束，切换到玩家
         this.battleState.round++;
         this.battleState.turn = 'player';

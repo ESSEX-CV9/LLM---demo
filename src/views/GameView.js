@@ -62,6 +62,18 @@ class GameView {
                             <span class="stat-label">经验:</span>
                             <span class="stat-value" id="playerExp">0</span>
                         </div>
+                        <div class="stat tooltip" data-tooltip="法力值">
+                            <span class="stat-label">MP:</span>
+                            <span class="stat-value" id="playerMana">50</span>/<span id="playerMaxMana">50</span>
+                        </div>
+                        <div class="stat tooltip" data-tooltip="耐力值">
+                            <span class="stat-label">SP:</span>
+                            <span class="stat-value" id="playerStamina">50</span>/<span id="playerMaxStamina">50</span>
+                        </div>
+                        <div class="stat tooltip" data-tooltip="技能点">
+                            <span class="stat-label">技能点:</span>
+                            <span class="stat-value" id="playerSkillPoints">0</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -97,6 +109,9 @@ class GameView {
                             </button>
                             <button class="quick-action-button" onclick="window.gameView.quickAction('休息回血')">
                                 💤 休息回血
+                            </button>
+                            <button class="quick-action-button" onclick="window.gameView.showSkills()">
+                                🧠 技能
                             </button>
                             <button class="quick-action-button inventory-button" onclick="window.gameView.showInventory()">
                                 🎒 背包
@@ -407,6 +422,9 @@ class GameView {
         const oldLevel = parseInt(document.getElementById('playerLevel').textContent);
         const oldHp = parseInt(document.getElementById('playerHp').textContent);
         const oldExp = parseInt(document.getElementById('playerExp').textContent);
+        const oldMana = parseInt(document.getElementById('playerMana')?.textContent || '0');
+        const oldStamina = parseInt(document.getElementById('playerStamina')?.textContent || '0');
+        const oldSkillPoints = parseInt(document.getElementById('playerSkillPoints')?.textContent || '0');
         
         console.log('[DEBUG] UI更新玩家状态:', {
             旧状态: { level: oldLevel, hp: oldHp, exp: oldExp },
@@ -418,6 +436,23 @@ class GameView {
         document.getElementById('playerHp').textContent = playerData.hp;
         document.getElementById('playerMaxHp').textContent = playerData.maxHp;
         document.getElementById('playerExp').textContent = playerData.experience;
+        // 新增资源显示
+        const manaEl = document.getElementById('playerMana');
+        const maxManaEl = document.getElementById('playerMaxMana');
+        const staminaEl = document.getElementById('playerStamina');
+        const maxStaminaEl = document.getElementById('playerMaxStamina');
+        const spEl = document.getElementById('playerSkillPoints');
+        if (manaEl && maxManaEl) {
+            manaEl.textContent = playerData.mana ?? 0;
+            maxManaEl.textContent = playerData.maxMana ?? 0;
+        }
+        if (staminaEl && maxStaminaEl) {
+            staminaEl.textContent = playerData.stamina ?? 0;
+            maxStaminaEl.textContent = playerData.maxStamina ?? 0;
+        }
+        if (spEl) {
+            spEl.textContent = playerData.skillPoints ?? 0;
+        }
         
         // 升级提示
         if (playerData.level > oldLevel) {
@@ -434,6 +469,28 @@ class GameView {
             }
         }
         
+        // 法力/耐力变化提示
+        if (playerData.mana !== undefined && playerData.mana !== oldMana) {
+            const delta = playerData.mana - oldMana;
+            if (delta > 0) {
+                this.showNotification(`🔷 恢复了 ${delta} 点法力`, 'success');
+            } else if (delta < 0) {
+                this.showNotification(`🔷 消耗了 ${Math.abs(delta)} 点法力`, 'warning');
+            }
+        }
+        if (playerData.stamina !== undefined && playerData.stamina !== oldStamina) {
+            const delta = playerData.stamina - oldStamina;
+            if (delta > 0) {
+                this.showNotification(`🟠 恢复了 ${delta} 点耐力`, 'success');
+            } else if (delta < 0) {
+                this.showNotification(`🟠 消耗了 ${Math.abs(delta)} 点耐力`, 'warning');
+            }
+        }
+        if (playerData.skillPoints !== undefined && playerData.skillPoints > oldSkillPoints) {
+            const delta = playerData.skillPoints - oldSkillPoints;
+            this.showNotification(`🧠 获得了 ${delta} 点技能点`, 'info');
+        }
+
         // 经验值变化提示
         if (playerData.experience > oldExp) {
             const expGain = playerData.experience - oldExp;
@@ -562,6 +619,14 @@ class GameView {
         const inventoryService = window.gameCore?.getService('inventoryService');
         if (inventoryService) {
             inventoryService.showInventory();
+        }
+    }
+
+    // 显示技能页面
+    showSkills() {
+        const skillService = window.gameCore?.getService('skillService');
+        if (skillService) {
+            skillService.showSkills();
         }
     }
 
@@ -705,6 +770,14 @@ class GameView {
                                 <div class="hp-fill" style="width: ${(battleState.player.hp / battleState.player.maxHp) * 100}%"></div>
                                 <span class="hp-text">${battleState.player.hp}/${battleState.player.maxHp}</span>
                             </div>
+                            <div class="hp-bar mp-bar">
+                                <div class="hp-fill mp-fill" style="width: ${((battleState.player.mana || 0) / (battleState.player.maxMana || 1)) * 100}%"></div>
+                                <span class="hp-text">${battleState.player.mana || 0}/${battleState.player.maxMana || 0} MP</span>
+                            </div>
+                            <div class="hp-bar sp-bar">
+                                <div class="hp-fill sp-fill" style="width: ${((battleState.player.stamina || 0) / (battleState.player.maxStamina || 1)) * 100}%"></div>
+                                <span class="hp-text">${battleState.player.stamina || 0}/${battleState.player.maxStamina || 0} SP</span>
+                            </div>
                         </div>
                         <div class="enemies-section">
                             ${battleState.enemies.map((enemy, index) => `
@@ -740,14 +813,18 @@ class GameView {
         }
         
         const aliveEnemies = battleState.enemies.filter(e => e.hp > 0);
+        const skillService = window.gameCore?.getService('skillService');
+        const usableSkills = skillService ? skillService.getUsableSkills(battleState) : [];
         
         return `
             <div class="action-buttons">
                 <button class="battle-action-btn attack-btn" data-action="攻击">⚔️ 攻击</button>
+                <button class="battle-action-btn skill-btn" data-action="技能">✨ 技能</button>
                 <button class="battle-action-btn defend-btn" data-action="防御">🛡️ 防御</button>
                 <button class="battle-action-btn item-btn" data-action="使用物品">🧪 使用物品</button>
                 <button class="battle-action-btn escape-btn" data-action="逃跑">🏃 逃跑</button>
             </div>
+            ${aliveEnemies.length > 1 ? `
             <div class="target-selection hidden" id="targetSelection">
                 <h4>选择目标：</h4>
                 ${aliveEnemies.map((enemy, index) => `
@@ -755,6 +832,14 @@ class GameView {
                         ${enemy.type} (${enemy.hp}/${enemy.maxHp})
                     </button>
                 `).join('')}
+            </div>` : '' }
+            <div class="skills-selection hidden" id="skillsSelection">
+                <h4>选择技能：</h4>
+                ${usableSkills.length > 0 ? usableSkills.map(({ skill, level }) => `
+                    <button class="skill-btn" data-skill="${skill.id}" data-level="${level}">
+                        ${skill.name} Lv.${level}
+                    </button>
+                `).join('') : '<div class="no-skills">暂无可用技能（资源不足或冷却中）</div>'}
             </div>
         `;
     }
@@ -762,14 +847,26 @@ class GameView {
     setupBattleEvents(modal, battleState) {
         const actionButtons = modal.querySelectorAll('.battle-action-btn');
         const targetSelection = modal.querySelector('#targetSelection');
+        const skillsSelection = modal.querySelector('#skillsSelection');
         
+        const aliveEnemies = battleState.enemies.filter(e => e.hp > 0);
+        const singleTargetIndex = aliveEnemies.length === 1 ? battleState.enemies.indexOf(aliveEnemies[0]) : null;
+
         actionButtons.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const action = btn.dataset.action;
                 
                 if (action === '攻击') {
-                    // 显示目标选择
-                    targetSelection.classList.remove('hidden');
+                    // 1v1直接攻击，无需选择目标
+                    if (singleTargetIndex !== null) {
+                        this.executeBattleAction('攻击', singleTargetIndex);
+                    } else {
+                        // 多目标时显示目标选择
+                        if (targetSelection) targetSelection.classList.remove('hidden');
+                    }
+                } else if (action === '技能') {
+                    // 打开技能选择列表
+                    if (skillsSelection) skillsSelection.classList.remove('hidden');
                 } else {
                     // 直接执行行动
                     this.executeBattleAction(action);
@@ -777,21 +874,37 @@ class GameView {
             });
         });
         
-        // 目标选择事件
+        // 目标选择事件（用于多目标时）
         const targetButtons = modal.querySelectorAll('.target-btn');
         targetButtons.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const target = parseInt(btn.dataset.target);
                 this.executeBattleAction('攻击', target);
-                targetSelection.classList.add('hidden');
+                if (targetSelection) targetSelection.classList.add('hidden');
+            });
+        });
+
+        // 技能选择事件
+        const skillButtons = modal.querySelectorAll('.skills-selection .skill-btn');
+        skillButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const skillId = btn.dataset.skill;
+                if (singleTargetIndex !== null) {
+                    this.executeBattleAction('技能', singleTargetIndex, null, skillId);
+                } else {
+                    // 多目标下默认选第一个存活敌人（后续可扩展为选择目标）
+                    const fallbackIndex = aliveEnemies.length > 0 ? battleState.enemies.indexOf(aliveEnemies[0]) : 0;
+                    this.executeBattleAction('技能', fallbackIndex, null, skillId);
+                }
+                if (skillsSelection) skillsSelection.classList.add('hidden');
             });
         });
     }
 
-    executeBattleAction(action, target, item) {
+    executeBattleAction(action, target, item, skillId) {
         const battleService = window.gameCore?.getService('battleService');
         if (battleService) {
-            battleService.handleBattleAction({ action, target, item });
+            battleService.handleBattleAction({ action, target, item, skillId });
         }
     }
 
@@ -812,6 +925,21 @@ class GameView {
             const hpPercent = (battleState.player.hp / battleState.player.maxHp) * 100;
             playerHpFill.style.width = hpPercent + '%';
             playerHpText.textContent = `${battleState.player.hp}/${battleState.player.maxHp}`;
+        }
+        // 更新MP/SP
+        const playerMpFill = battleModal.querySelector('.player-section .mp-fill');
+        const playerSpFill = battleModal.querySelector('.player-section .sp-fill');
+        const mpTextEl = battleModal.querySelector('.player-section .mp-bar .hp-text');
+        const spTextEl = battleModal.querySelector('.player-section .sp-bar .hp-text');
+        if (playerMpFill && mpTextEl) {
+            const mpPercent = ((battleState.player.mana || 0) / (battleState.player.maxMana || 1)) * 100;
+            playerMpFill.style.width = mpPercent + '%';
+            mpTextEl.textContent = `${battleState.player.mana || 0}/${battleState.player.maxMana || 0} MP`;
+        }
+        if (playerSpFill && spTextEl) {
+            const spPercent = ((battleState.player.stamina || 0) / (battleState.player.maxStamina || 1)) * 100;
+            playerSpFill.style.width = spPercent + '%';
+            spTextEl.textContent = `${battleState.player.stamina || 0}/${battleState.player.maxStamina || 0} SP`;
         }
         
         // 更新敌人HP
