@@ -6,6 +6,9 @@ import LLMService from '../services/LLMService.js';
 import FunctionCallService from '../services/FunctionCallService.js';
 import GameStateService from '../services/GameStateService.js';
 import ConversationService from '../services/ConversationService.js';
+import BattleService from '../services/BattleService.js';
+import InventoryService from '../services/InventoryService.js';
+import EnemyTemplates from '../data/EnemyTemplates.js';
 import GameController from '../controllers/GameController.js';
 import GameView from '../views/GameView.js';
 
@@ -48,6 +51,9 @@ class GameCore {
         this.serviceLocator.register('llmService', new LLMService(this.eventBus));
         this.serviceLocator.register('functionCallService', new FunctionCallService(this.eventBus));
         this.serviceLocator.register('conversationService', new ConversationService(this.eventBus));
+        this.serviceLocator.register('battleService', new BattleService(this.eventBus));
+        this.serviceLocator.register('inventoryService', new InventoryService(this.eventBus));
+        this.serviceLocator.register('enemyTemplates', new EnemyTemplates());
     }
 
     async initializeServices() {

@@ -10,6 +10,8 @@ class GameController {
     setupEventListeners() {
         this.eventBus.on('ui:player:action', this.handlePlayerAction.bind(this), 'game');
         this.eventBus.on('function:execute:complete', this.handleFunctionComplete.bind(this), 'game');
+        // 监听战斗完成事件，用最终结果驱动后续剧情生成
+        this.eventBus.on('battle:completed', this.handleBattleCompleted.bind(this), 'game');
     }
 
     async handlePlayerAction(actionData) {
@@ -65,8 +67,10 @@ class GameController {
                     result: functionResult
                 }, 'game');
 
-                // 继续生成后续叙述
-                await this.generateContinuation(functionResult, parseResult.functionCall.name);
+                // 继续生成后续叙述（交互式战斗开始或战斗准备态时，不在此处生成，等待战斗完成事件）
+                if (!(parseResult.functionCall.name === 'start_battle' && functionResult && (functionResult.outcome === 'battle_started' || functionResult.outcome === 'battle_ready'))) {
+                    await this.generateContinuation(functionResult, parseResult.functionCall.name);
+                }
             } else {
                 // 直接显示叙述
                 this.eventBus.emit('ui:display:narrative', {
@@ -120,6 +124,11 @@ class GameController {
                 type: 'gm_fallback'
             }, 'game');
         }
+    }
+
+    handleBattleCompleted(battleResult) {
+        // 战斗完成后，用最终战斗结果驱动后续剧情生成
+        this.generateContinuation(battleResult, 'start_battle');
     }
 
     handleFunctionComplete(data) {

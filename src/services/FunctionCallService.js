@@ -58,24 +58,58 @@ class FunctionCallService {
         }
     }
 
-    // 战斗系统示例
+    // 战斗系统 - 启动交互式战斗
     async handleBattle(args) {
         const { enemies, environment, special_conditions } = args;
         
-        console.log('[DEBUG] 战斗开始:', { enemies, environment, special_conditions });
+        console.log('[DEBUG] 启动交互式战斗:', { enemies, environment, special_conditions });
+        
+        // 获取战斗服务
+        const battleService = window.gameCore?.getService('battleService');
+        if (!battleService) {
+            console.error('战斗服务不可用，使用旧版战斗系统');
+            return this.handleLegacyBattle(args);
+        }
+
+        try {
+            // 不立即弹窗，先准备战斗数据，等待玩家点击进入
+            await battleService.prepareBattle({
+                enemies,
+                environment,
+                special_conditions
+            });
+
+            return {
+                outcome: 'battle_ready',
+                experience: 0,
+                loot: [],
+                hpLoss: 0,
+                hpGain: 0,
+                description: '你遭遇了敌人。点击下方“进入战斗”按钮后开始战斗。'
+            };
+        } catch (error) {
+            console.error('启动战斗失败:', error);
+            return this.handleLegacyBattle(args);
+        }
+    }
+
+    // 旧版战斗系统作为后备
+    async handleLegacyBattle(args) {
+        const { enemies, environment, special_conditions } = args;
+        
+        console.log('[DEBUG] 使用旧版战斗系统:', { enemies, environment, special_conditions });
         
         // 模拟战斗逻辑
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 模拟战斗时间
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         const outcome = Math.random() > 0.3 ? 'victory' : 'defeat';
         const experience = outcome === 'victory' ? Math.floor(Math.random() * 100) + 50 : 0;
         const loot = outcome === 'victory' ? ['治疗药水', '铜币'] : [];
         
-        // 缺少HP损失计算
-        const hpLoss = Math.floor(Math.random() * 30) + 10; // 战斗中总是会损失HP
+        const hpLoss = Math.floor(Math.random() * 30) + 10;
         const hpGain = outcome === 'victory' && loot.includes('治疗药水') ? 20 : 0;
         
-        console.log('[DEBUG] 战斗结果:', { outcome, experience, hpLoss, hpGain });
+        console.log('[DEBUG] 旧版战斗结果:', { outcome, experience, hpLoss, hpGain });
         
         const enemyNames = enemies?.map(e => e.type).join('和') || '敌人';
         let battleDescription = '';
@@ -86,7 +120,6 @@ class FunctionCallService {
             battleDescription = `你被${enemyNames}击败了！`;
         }
         
-        // 添加HP变化描述
         if (hpLoss > 0) {
             battleDescription += ` 损失了${hpLoss}点生命值。`;
         }
@@ -120,17 +153,73 @@ class FunctionCallService {
         };
     }
 
-    // 搜索系统示例
+    // 搜索系统 - 支持物品发现
     async handleSearch(args) {
         const { target, difficulty } = args;
         
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        const findings = Math.random() > 0.5 ? ['隐藏的宝箱', '秘密通道'] : ['什么也没找到'];
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        const searchSuccess = Math.random() > (difficulty === 'hard' ? 0.7 : difficulty === 'medium' ? 0.4 : 0.2);
+        
+        let findings = [];
+        let foundItems = [];
+        
+        if (searchSuccess) {
+            // 可能发现的物品
+            const possibleItems = [
+                { name: '治疗药水', chance: 0.4 },
+                { name: '铜币', chance: 0.6 },
+                { name: '面包', chance: 0.3 },
+                { name: '魔法卷轴', chance: 0.1 },
+                { name: '宝石', chance: 0.05 }
+            ];
+            
+            // 可能发现的其他东西
+            const possibleFindings = ['隐藏的宝箱', '秘密通道', '古老的铭文', '神秘的符号'];
+            
+            // 随机选择发现的物品
+            possibleItems.forEach(item => {
+                if (Math.random() < item.chance) {
+                    foundItems.push(item.name);
+                    if (inventoryService) {
+                        inventoryService.addItem(item.name, 1);
+                    }
+                }
+            });
+            
+            // 随机选择其他发现
+            if (Math.random() > 0.6) {
+                const randomFinding = possibleFindings[Math.floor(Math.random() * possibleFindings.length)];
+                findings.push(randomFinding);
+            }
+            
+            // 如果什么都没找到，至少给一个基础发现
+            if (foundItems.length === 0 && findings.length === 0) {
+                findings.push('一些有趣的痕迹');
+            }
+        } else {
+            findings.push('什么也没找到');
+        }
+        
+        let description = `你仔细搜索了${target}`;
+        
+        if (foundItems.length > 0) {
+            description += `，发现了：${foundItems.join('、')}`;
+        }
+        
+        if (findings.length > 0) {
+            if (foundItems.length > 0) {
+                description += `，还有：${findings.join('、')}`;
+            } else {
+                description += `，${findings.join('、')}`;
+            }
+        }
         
         return {
-            findings,
-            description: `你搜索了${target}，发现了：${findings.join('、')}`
+            findings: [...foundItems, ...findings],
+            foundItems,
+            description
         };
     }
 }

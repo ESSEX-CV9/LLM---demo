@@ -24,6 +24,16 @@ class GameView {
         this.eventBus.on('llm:error', this.handleLLMError.bind(this), 'game');
         this.eventBus.on('function:execute:error', this.enableInput.bind(this), 'game');
         this.eventBus.on('conversation:summary:complete', this.handleSummaryComplete.bind(this), 'game');
+        
+        // 战斗界面事件监听
+        this.eventBus.on('ui:battle:show', this.showBattleInterface.bind(this), 'game');
+        this.eventBus.on('ui:battle:hide', this.hideBattleInterface.bind(this), 'game');
+        this.eventBus.on('ui:battle:update', this.updateBattleInterface.bind(this), 'game');
+        
+        // 背包界面事件监听
+        this.eventBus.on('ui:inventory:show', this.showInventoryInterface.bind(this), 'game');
+        this.eventBus.on('inventory:updated', this.updateInventoryDisplay.bind(this), 'game');
+        this.eventBus.on('ui:notification', this.showNotification.bind(this), 'game');
     }
 
     hideLoadingScreen() {
@@ -88,6 +98,9 @@ class GameView {
                             <button class="quick-action-button" onclick="window.gameView.quickAction('休息回血')">
                                 💤 休息回血
                             </button>
+                            <button class="quick-action-button inventory-button" onclick="window.gameView.showInventory()">
+                                🎒 背包
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -150,14 +163,15 @@ class GameView {
         this.eventBus.emit('ui:player:action', { action }, 'game');
     }
 
-    // 禁用输入控制
+    // 禁用输入控制（仅限制操作区域，不影响叙述区的“进入战斗”按钮）
     disableInput() {
         console.log('[DEBUG] 禁用用户输入');
         this.isInputDisabled = true;
         
+        const actionArea = document.querySelector('.action-area');
         const input = document.getElementById('actionInput');
-        const button = document.querySelector('.primary-button');
-        const quickButtons = document.querySelectorAll('.quick-action-button');
+        const mainActionButton = actionArea ? actionArea.querySelector('.primary-button') : null;
+        const quickButtons = actionArea ? actionArea.querySelectorAll('.quick-action-button') : [];
         
         if (input) {
             input.disabled = true;
@@ -165,10 +179,10 @@ class GameView {
             input.style.opacity = '0.6';
         }
         
-        if (button) {
-            button.disabled = true;
-            button.style.opacity = '0.6';
-            button.style.cursor = 'not-allowed';
+        if (mainActionButton) {
+            mainActionButton.disabled = true;
+            mainActionButton.style.opacity = '0.6';
+            mainActionButton.style.cursor = 'not-allowed';
         }
         
         quickButtons.forEach(btn => {
@@ -176,16 +190,24 @@ class GameView {
             btn.style.opacity = '0.6';
             btn.style.cursor = 'not-allowed';
         });
+
+        // 保持“进入战斗”按钮可用
+        document.querySelectorAll('.battle-start-button').forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        });
     }
 
-    // 启用输入控制
+    // 启用输入控制（仅恢复操作区域按钮）
     enableInput() {
         console.log('[DEBUG] 启用用户输入');
         this.isInputDisabled = false;
         
+        const actionArea = document.querySelector('.action-area');
         const input = document.getElementById('actionInput');
-        const button = document.querySelector('.primary-button');
-        const quickButtons = document.querySelectorAll('.quick-action-button');
+        const mainActionButton = actionArea ? actionArea.querySelector('.primary-button') : null;
+        const quickButtons = actionArea ? actionArea.querySelectorAll('.quick-action-button') : [];
         
         if (input) {
             input.disabled = false;
@@ -194,10 +216,10 @@ class GameView {
             input.focus(); // 重新聚焦
         }
         
-        if (button) {
-            button.disabled = false;
-            button.style.opacity = '1';
-            button.style.cursor = 'pointer';
+        if (mainActionButton) {
+            mainActionButton.disabled = false;
+            mainActionButton.style.opacity = '1';
+            mainActionButton.style.cursor = 'pointer';
         }
         
         quickButtons.forEach(btn => {
@@ -316,10 +338,60 @@ class GameView {
     }
 
     displayFunctionResult(data) {
-        this.addMessage({
-            content: `⚔️ 【${data.functionName}】${data.result.description}`,
-            type: 'function_result'
-        });
+        // 普通函数结果显示
+        if (!(data.functionName === 'start_battle' && data.result && data.result.outcome === 'battle_ready')) {
+            this.addMessage({
+                content: `⚔️ 【${data.functionName}】${data.result.description}`,
+                type: 'function_result'
+            });
+            return;
+        }
+
+        // 战斗准备态：显示“进入战斗”按钮，禁止其他行动，直到玩家点击
+        const narrativeArea = document.getElementById('narrativeArea');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'narrative-message function_result slide-up';
+
+        // 时间戳
+        const timestamp = new Date().toLocaleTimeString();
+        const timeElement = document.createElement('div');
+        timeElement.style.fontSize = '10px';
+        timeElement.style.opacity = '0.6';
+        timeElement.style.marginBottom = '5px';
+        timeElement.textContent = timestamp;
+
+        // 内容
+        const contentElement = document.createElement('div');
+        contentElement.textContent = `⚔️ 【${data.functionName}】${data.result.description}`;
+
+        // 进入战斗按钮
+        const buttonWrapper = document.createElement('div');
+        buttonWrapper.style.marginTop = '10px';
+        const startBtn = document.createElement('button');
+        startBtn.className = 'primary-button battle-start-button';
+        startBtn.textContent = '进入战斗';
+        startBtn.disabled = false;
+        startBtn.style.opacity = '1';
+        startBtn.style.cursor = 'pointer';
+        startBtn.onclick = () => {
+            // 点击进入战斗
+            const battleService = window.gameCore?.getService('battleService');
+            if (battleService && typeof battleService.launchPreparedBattle === 'function') {
+                battleService.launchPreparedBattle();
+            }
+        };
+
+        buttonWrapper.appendChild(startBtn);
+        messageDiv.appendChild(timeElement);
+        messageDiv.appendChild(contentElement);
+        messageDiv.appendChild(buttonWrapper);
+
+        narrativeArea.appendChild(messageDiv);
+        narrativeArea.scrollTop = narrativeArea.scrollHeight;
+
+        // 战斗准备期间禁止其他输入
+        this.disableInput();
+        this.setStatus('processing', '战斗待开始...');
     }
 
     displayError(data) {
@@ -483,6 +555,308 @@ class GameView {
                 debugLog.removeChild(debugLog.firstChild);
             }
         }
+    }
+
+    // 显示背包界面
+    showInventory() {
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        if (inventoryService) {
+            inventoryService.showInventory();
+        }
+    }
+
+    // 显示背包界面弹窗
+    showInventoryInterface(data) {
+        const { items, maxSlots, usedSlots } = data;
+        
+        // 创建背包界面
+        const inventoryModal = document.createElement('div');
+        inventoryModal.className = 'inventory-modal';
+        inventoryModal.innerHTML = `
+            <div class="inventory-content">
+                <div class="inventory-header">
+                    <h3>🎒 背包 (${usedSlots}/${maxSlots})</h3>
+                    <button class="close-button" onclick="this.closest('.inventory-modal').remove()">×</button>
+                </div>
+                <div class="inventory-grid" id="inventoryGrid">
+                    ${this.generateInventoryGrid(items, maxSlots)}
+                </div>
+                <div class="inventory-footer">
+                    <p>点击物品使用，右键查看详情</p>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(inventoryModal);
+        
+        // 添加点击事件
+        this.setupInventoryEvents(inventoryModal);
+    }
+
+    generateInventoryGrid(items, maxSlots) {
+        let html = '';
+        const itemMap = new Map(items.map(item => [item.name, item]));
+        
+        for (let i = 0; i < maxSlots; i++) {
+            const item = items[i];
+            if (item) {
+                const rarityColor = this.getRarityColor(item.rarity);
+                html += `
+                    <div class="inventory-slot filled" data-item="${item.name}" style="border-color: ${rarityColor}">
+                        <div class="item-icon">${item.icon}</div>
+                        <div class="item-quantity">${item.quantity}</div>
+                        <div class="item-tooltip">
+                            <div class="tooltip-name" style="color: ${rarityColor}">${item.name}</div>
+                            <div class="tooltip-description">${item.description}</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += '<div class="inventory-slot empty"></div>';
+            }
+        }
+        
+        return html;
+    }
+
+    getRarityColor(rarity) {
+        const colors = {
+            'common': '#ffffff',
+            'uncommon': '#1eff00',
+            'rare': '#0070dd',
+            'epic': '#a335ee',
+            'legendary': '#ff8000'
+        };
+        return colors[rarity] || colors.common;
+    }
+
+    setupInventoryEvents(modal) {
+        const slots = modal.querySelectorAll('.inventory-slot.filled');
+        slots.forEach(slot => {
+            slot.addEventListener('click', (e) => {
+                const itemName = slot.dataset.item;
+                this.useInventoryItem(itemName);
+            });
+            
+            slot.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                const itemName = slot.dataset.item;
+                this.showItemDetails(itemName);
+            });
+        });
+    }
+
+    useInventoryItem(itemName) {
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        if (inventoryService) {
+            inventoryService.useItem(itemName);
+        }
+    }
+
+    showItemDetails(itemName) {
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        if (inventoryService) {
+            const item = inventoryService.getItem(itemName);
+            if (item) {
+                this.showNotification(`${item.name}: ${item.description}`, 'info');
+            }
+        }
+    }
+
+    updateInventoryDisplay(data) {
+        // 如果背包界面打开，更新显示
+        const inventoryModal = document.querySelector('.inventory-modal');
+        if (inventoryModal) {
+            const inventoryService = window.gameCore?.getService('inventoryService');
+            if (inventoryService) {
+                const stats = inventoryService.getInventoryStats();
+                const header = inventoryModal.querySelector('.inventory-header h3');
+                if (header) {
+                    header.textContent = `🎒 背包 (${stats.usedSlots}/${stats.maxSlots})`;
+                }
+                
+                const grid = inventoryModal.querySelector('#inventoryGrid');
+                if (grid) {
+                    grid.innerHTML = this.generateInventoryGrid(inventoryService.getAllItems(), stats.maxSlots);
+                    this.setupInventoryEvents(inventoryModal);
+                }
+            }
+        }
+    }
+
+    // 显示战斗界面
+    showBattleInterface(battleState) {
+        // 禁用游戏输入
+        this.disableInput();
+        
+        // 创建战斗界面
+        const battleModal = document.createElement('div');
+        battleModal.className = 'battle-modal';
+        battleModal.innerHTML = `
+            <div class="battle-content">
+                <div class="battle-header">
+                    <h3>⚔️ 战斗 - 第${battleState.round}回合</h3>
+                </div>
+                <div class="battle-main">
+                    <div class="battle-participants">
+                        <div class="player-section">
+                            <h4>🛡️ ${battleState.player.name || '冒险者'}</h4>
+                            <div class="hp-bar">
+                                <div class="hp-fill" style="width: ${(battleState.player.hp / battleState.player.maxHp) * 100}%"></div>
+                                <span class="hp-text">${battleState.player.hp}/${battleState.player.maxHp}</span>
+                            </div>
+                        </div>
+                        <div class="enemies-section">
+                            ${battleState.enemies.map((enemy, index) => `
+                                <div class="enemy ${enemy.hp <= 0 ? 'defeated' : ''}" data-index="${index}">
+                                    <h4>👹 ${enemy.type}</h4>
+                                    <div class="hp-bar">
+                                        <div class="hp-fill enemy-hp" style="width: ${(enemy.hp / enemy.maxHp) * 100}%"></div>
+                                        <span class="hp-text">${enemy.hp}/${enemy.maxHp}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="battle-log" id="battleLog">
+                        ${battleState.battleLog.map(log => `
+                            <div class="log-entry ${log.type}">${log.message}</div>
+                        `).join('')}
+                    </div>
+                    <div class="battle-actions" id="battleActions">
+                        ${this.generateBattleActions(battleState)}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(battleModal);
+        this.setupBattleEvents(battleModal, battleState);
+    }
+
+    generateBattleActions(battleState) {
+        if (battleState.turn !== 'player') {
+            return '<div class="waiting-message">等待敌人行动...</div>';
+        }
+        
+        const aliveEnemies = battleState.enemies.filter(e => e.hp > 0);
+        
+        return `
+            <div class="action-buttons">
+                <button class="battle-action-btn attack-btn" data-action="攻击">⚔️ 攻击</button>
+                <button class="battle-action-btn defend-btn" data-action="防御">🛡️ 防御</button>
+                <button class="battle-action-btn item-btn" data-action="使用物品">🧪 使用物品</button>
+                <button class="battle-action-btn escape-btn" data-action="逃跑">🏃 逃跑</button>
+            </div>
+            <div class="target-selection hidden" id="targetSelection">
+                <h4>选择目标：</h4>
+                ${aliveEnemies.map((enemy, index) => `
+                    <button class="target-btn" data-target="${battleState.enemies.indexOf(enemy)}">
+                        ${enemy.type} (${enemy.hp}/${enemy.maxHp})
+                    </button>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    setupBattleEvents(modal, battleState) {
+        const actionButtons = modal.querySelectorAll('.battle-action-btn');
+        const targetSelection = modal.querySelector('#targetSelection');
+        
+        actionButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = btn.dataset.action;
+                
+                if (action === '攻击') {
+                    // 显示目标选择
+                    targetSelection.classList.remove('hidden');
+                } else {
+                    // 直接执行行动
+                    this.executeBattleAction(action);
+                }
+            });
+        });
+        
+        // 目标选择事件
+        const targetButtons = modal.querySelectorAll('.target-btn');
+        targetButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const target = parseInt(btn.dataset.target);
+                this.executeBattleAction('攻击', target);
+                targetSelection.classList.add('hidden');
+            });
+        });
+    }
+
+    executeBattleAction(action, target, item) {
+        const battleService = window.gameCore?.getService('battleService');
+        if (battleService) {
+            battleService.handleBattleAction({ action, target, item });
+        }
+    }
+
+    updateBattleInterface(battleState) {
+        const battleModal = document.querySelector('.battle-modal');
+        if (!battleModal) return;
+        
+        // 更新回合数
+        const header = battleModal.querySelector('.battle-header h3');
+        if (header) {
+            header.textContent = `⚔️ 战斗 - 第${battleState.round}回合`;
+        }
+        
+        // 更新HP条
+        const playerHpFill = battleModal.querySelector('.player-section .hp-fill');
+        const playerHpText = battleModal.querySelector('.player-section .hp-text');
+        if (playerHpFill && playerHpText) {
+            const hpPercent = (battleState.player.hp / battleState.player.maxHp) * 100;
+            playerHpFill.style.width = hpPercent + '%';
+            playerHpText.textContent = `${battleState.player.hp}/${battleState.player.maxHp}`;
+        }
+        
+        // 更新敌人HP
+        battleState.enemies.forEach((enemy, index) => {
+            const enemyDiv = battleModal.querySelector(`.enemy[data-index="${index}"]`);
+            if (enemyDiv) {
+                const hpFill = enemyDiv.querySelector('.hp-fill');
+                const hpText = enemyDiv.querySelector('.hp-text');
+                if (hpFill && hpText) {
+                    const hpPercent = (enemy.hp / enemy.maxHp) * 100;
+                    hpFill.style.width = hpPercent + '%';
+                    hpText.textContent = `${enemy.hp}/${enemy.maxHp}`;
+                }
+                
+                if (enemy.hp <= 0) {
+                    enemyDiv.classList.add('defeated');
+                }
+            }
+        });
+        
+        // 更新战斗日志
+        const battleLog = battleModal.querySelector('#battleLog');
+        if (battleLog) {
+            battleLog.innerHTML = battleState.battleLog.map(log => `
+                <div class="log-entry ${log.type}">${log.message}</div>
+            `).join('');
+            battleLog.scrollTop = battleLog.scrollHeight;
+        }
+        
+        // 更新行动按钮
+        const battleActions = battleModal.querySelector('#battleActions');
+        if (battleActions) {
+            battleActions.innerHTML = this.generateBattleActions(battleState);
+            this.setupBattleEvents(battleModal, battleState);
+        }
+    }
+
+    hideBattleInterface() {
+        const battleModal = document.querySelector('.battle-modal');
+        if (battleModal) {
+            battleModal.remove();
+        }
+        
+        // 重新启用游戏输入
+        this.enableInput();
     }
 }
 
