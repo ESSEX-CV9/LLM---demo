@@ -188,12 +188,13 @@ class ItemsDB {
 
     initializeEquipment() {
         return {
-            // 武器 - 剑类
+            // 武器 - 剑类（单手）
             '木剑': {
                 id: 'wooden_sword',
                 name: '木剑',
                 type: 'weapon',
                 subType: 'sword',
+                weaponType: 'one-handed',
                 description: '简陋的木制训练剑',
                 rarity: 'common',
                 icon: '🗡️',
@@ -211,6 +212,7 @@ class ItemsDB {
                 name: '铁剑',
                 type: 'weapon',
                 subType: 'sword',
+                weaponType: 'one-handed',
                 description: '普通的铁制剑，增加攻击力',
                 rarity: 'common',
                 icon: '⚔️',
@@ -228,6 +230,7 @@ class ItemsDB {
                 name: '精制铁剑',
                 type: 'weapon',
                 subType: 'sword',
+                weaponType: 'one-handed',
                 description: '经过精心锻造的铁剑，锋利无比',
                 rarity: 'uncommon',
                 icon: '⚔️',
@@ -246,6 +249,7 @@ class ItemsDB {
                 name: '钢剑',
                 type: 'weapon',
                 subType: 'sword',
+                weaponType: 'one-handed',
                 description: '坚固的钢制长剑，平衡性极佳',
                 rarity: 'uncommon',
                 icon: '⚔️',
@@ -264,6 +268,7 @@ class ItemsDB {
                 name: '银剑',
                 type: 'weapon',
                 subType: 'sword',
+                weaponType: 'one-handed',
                 description: '银制长剑，对邪恶生物有特效',
                 rarity: 'rare',
                 icon: '⚔️',
@@ -281,12 +286,80 @@ class ItemsDB {
                 value: 400
             },
 
-            // 武器 - 法杖类
+            // 双手武器 - 大剑类
+            '木制双手剑': {
+                id: 'wooden_two_handed_sword',
+                name: '木制双手剑',
+                type: 'weapon',
+                subType: 'greatsword',
+                weaponType: 'two-handed',
+                description: '简陋的木制双手剑，适合初学者练习',
+                rarity: 'common',
+                icon: '🗡️',
+                level: 1,
+                stats: {
+                    attack: 18,
+                    physicalPower: 8,
+                    speed: -1
+                },
+                requirements: { minLevel: 1 },
+                durability: { current: 80, max: 80 },
+                value: 30
+            },
+
+            '双手大剑': {
+                id: 'two_handed_greatsword',
+                name: '双手大剑',
+                type: 'weapon',
+                subType: 'greatsword',
+                weaponType: 'two-handed',
+                description: '需要双手持握的巨大剑刃，威力惊人',
+                rarity: 'uncommon',
+                icon: '🗡️',
+                level: 3,
+                stats: {
+                    attack: 45,
+                    physicalPower: 20,
+                    criticalChance: 12,
+                    speed: -2
+                },
+                requirements: { minLevel: 3 },
+                durability: { current: 140, max: 140 },
+                value: 300
+            },
+
+            '巨龙屠戮者': {
+                id: 'dragon_slayer',
+                name: '巨龙屠戮者',
+                type: 'weapon',
+                subType: 'greatsword',
+                weaponType: 'two-handed',
+                description: '传说中的双手巨剑，专为屠龙而锻造',
+                rarity: 'legendary',
+                icon: '⚔️',
+                level: 6,
+                stats: {
+                    attack: 65,
+                    physicalPower: 30,
+                    criticalChance: 15,
+                    speed: -1
+                },
+                effects: [
+                    { type: 'damage_bonus', target: 'dragon', value: 2.0, description: '对龙类伤害+100%' },
+                    { type: 'critical_damage', value: 1.5, description: '暴击伤害+50%' }
+                ],
+                requirements: { minLevel: 6 },
+                durability: { current: 250, max: 250 },
+                value: 1000
+            },
+
+            // 武器 - 法杖类（单手）
             '木杖': {
                 id: 'wooden_staff',
                 name: '木杖',
                 type: 'weapon',
                 subType: 'staff',
+                weaponType: 'one-handed',
                 description: '简单的木制法杖',
                 rarity: 'common',
                 icon: '🪄',
@@ -305,6 +378,7 @@ class ItemsDB {
                 name: '法师杖',
                 type: 'weapon',
                 subType: 'staff',
+                weaponType: 'one-handed',
                 description: '镶嵌水晶的法师专用法杖',
                 rarity: 'uncommon',
                 icon: '🔮',
@@ -326,6 +400,7 @@ class ItemsDB {
                 name: '奥术法杖',
                 type: 'weapon',
                 subType: 'staff',
+                weaponType: 'one-handed',
                 description: '蕴含强大奥术能量的高级法杖',
                 rarity: 'rare',
                 icon: '🔮',
@@ -529,25 +604,58 @@ class ItemsDB {
                 value: 160
             },
 
-            // 饰品 - 项链
-            '生命项链': {
-                id: 'necklace_of_life',
-                name: '生命项链',
+            // 饰品 - 背包
+            '皮革背包': {
+                id: 'leather_backpack',
+                name: '皮革背包',
                 type: 'accessory',
-                subType: 'necklace',
-                description: '增强生命力的神秘项链',
-                rarity: 'rare',
-                icon: '📿',
+                subType: 'backpack',
+                description: '简单的皮革背包，增加背包容量',
+                rarity: 'common',
+                icon: '🎒',
+                level: 1,
+                stats: {
+                    inventorySlots: 5
+                },
+                requirements: { minLevel: 1 },
+                value: 100
+            },
+
+            '旅行者背包': {
+                id: 'traveler_backpack',
+                name: '旅行者背包',
+                type: 'accessory',
+                subType: 'backpack',
+                description: '专为长途旅行设计的大容量背包',
+                rarity: 'uncommon',
+                icon: '🎒',
                 level: 3,
                 stats: {
-                    maxHp: 50,
-                    defense: 3
+                    inventorySlots: 10,
+                    speed: 1
                 },
-                effects: [
-                    { type: 'hp_regeneration', value: 1 }
-                ],
                 requirements: { minLevel: 3 },
                 value: 250
+            },
+
+            '魔法储物袋': {
+                id: 'magic_storage_bag',
+                name: '魔法储物袋',
+                type: 'accessory',
+                subType: 'backpack',
+                description: '使用空间魔法制作的神奇背包',
+                rarity: 'rare',
+                icon: '🎒',
+                level: 5,
+                stats: {
+                    inventorySlots: 15,
+                    maxMana: 20
+                },
+                effects: [
+                    { type: 'item_weight_reduction', value: 0.5, description: '物品重量减少50%' }
+                ],
+                requirements: { minLevel: 5 },
+                value: 500
             },
 
             // 饰品 - 护符

@@ -50,10 +50,15 @@ class EquipmentService {
         // 检查装备需求
         const requirementCheck = itemsDB.checkEquipmentRequirements(equipmentData, player);
         if (!requirementCheck.canEquip) {
-            return { 
-                success: false, 
-                message: `无法装备：${requirementCheck.issues.join(', ')}` 
+            return {
+                success: false,
+                message: `无法装备：${requirementCheck.issues.join(', ')}`
             };
+        }
+
+        // 处理双手武器装备逻辑
+        if (equipmentData.type === 'weapon' && equipmentData.weaponType === 'two-handed') {
+            return this.equipTwoHandedWeapon(itemName, equipmentData, player, inventoryService, gameStateService);
         }
 
         // 确定装备槽位
@@ -65,10 +70,14 @@ class EquipmentService {
         // 检查是否已有装备在该槽位
         const currentEquipment = player.equipment[targetSlot];
         if (currentEquipment) {
-            // 卸下当前装备
-            const unequipResult = this.unequipItem(targetSlot, false);
+            // 先尝试将当前装备放回背包
+            const unequipResult = this.unequipItem(targetSlot, true);
             if (!unequipResult.success) {
-                return { success: false, message: '无法卸下当前装备' };
+                // 如果背包满了，给用户明确提示
+                return {
+                    success: false,
+                    message: `无法装备：${unequipResult.message}。请先清理背包空间。`
+                };
             }
         }
 
@@ -100,10 +109,80 @@ class EquipmentService {
             type: 'success'
         }, 'game');
 
-        return { 
-            success: true, 
+        return {
+            success: true,
             message: `成功装备 ${equipmentData.name}`,
             slot: targetSlot
+        };
+    }
+
+    // 装备双手武器
+    equipTwoHandedWeapon(itemName, equipmentData, player, inventoryService, gameStateService) {
+        const newEquipment = { ...player.equipment };
+        
+        // 检查两个武器槽位是否都可用
+        const weapon1 = newEquipment.weapon1;
+        const weapon2 = newEquipment.weapon2;
+        
+        // 如果有任何武器槽位被占用，需要先卸下
+        const itemsToUnequip = [];
+        if (weapon1) itemsToUnequip.push({ slot: 'weapon1', item: weapon1 });
+        if (weapon2) itemsToUnequip.push({ slot: 'weapon2', item: weapon2 });
+        
+        // 检查背包是否有足够空间
+        if (itemsToUnequip.length > 0) {
+            const inventoryStats = inventoryService.getInventoryStats();
+            const availableSlots = inventoryStats.freeSlots;
+            
+            if (availableSlots < itemsToUnequip.length) {
+                return {
+                    success: false,
+                    message: `无法装备双手武器：背包空间不足。需要 ${itemsToUnequip.length} 个空位来存放当前武器。`
+                };
+            }
+            
+            // 卸下现有武器
+            for (const { slot, item } of itemsToUnequip) {
+                inventoryService.addItem(item.name, 1);
+                newEquipment[slot] = null;
+            }
+        }
+        
+        // 从背包移除双手武器
+        inventoryService.removeItem(itemName, 1);
+        
+        // 装备双手武器到两个槽位
+        const weaponItem = {
+            name: itemName,
+            ...equipmentData
+        };
+        newEquipment.weapon1 = weaponItem;
+        newEquipment.weapon2 = { ...weaponItem, isSecondarySlot: true }; // 标记为副槽位
+        
+        // 计算装备效果并更新玩家属性
+        const statUpdates = this.calculateEquipmentEffects(newEquipment, player);
+        statUpdates.equipment = newEquipment;
+        
+        gameStateService.updatePlayerStats(statUpdates);
+        
+        // 发送事件通知
+        this.eventBus.emit('equipment:equipped', {
+            item: itemName,
+            slot: 'weapon1',
+            equipment: equipmentData,
+            isTwoHanded: true
+        }, 'game');
+        
+        this.eventBus.emit('ui:notification', {
+            message: `装备了双手武器 ${equipmentData.name}`,
+            type: 'success'
+        }, 'game');
+        
+        return {
+            success: true,
+            message: `成功装备双手武器 ${equipmentData.name}`,
+            slot: 'weapon1',
+            isTwoHanded: true
         };
     }
 
@@ -125,6 +204,15 @@ class EquipmentService {
             return { success: false, message: '该槽位没有装备' };
         }
 
+        // 检查是否是双手武器
+        const isTwoHandedWeapon = currentEquipment.weaponType === 'two-handed';
+        const isSecondarySlot = currentEquipment.isSecondarySlot;
+
+        // 如果是双手武器的副槽位，不允许单独卸下
+        if (isSecondarySlot) {
+            return { success: false, message: '请从主武器槽位卸下双手武器' };
+        }
+
         // 返回背包
         if (returnToInventory) {
             const addResult = inventoryService.addItem(currentEquipment.name, 1);
@@ -137,6 +225,15 @@ class EquipmentService {
         const newEquipment = { ...player.equipment };
         newEquipment[slot] = null;
 
+        // 如果是双手武器，同时移除另一个槽位
+        if (isTwoHandedWeapon) {
+            if (slot === 'weapon1') {
+                newEquipment.weapon2 = null;
+            } else if (slot === 'weapon2') {
+                newEquipment.weapon1 = null;
+            }
+        }
+
         // 重新计算装备效果
         const statUpdates = this.calculateEquipmentEffects(newEquipment, player);
         statUpdates.equipment = newEquipment;
@@ -147,18 +244,19 @@ class EquipmentService {
         this.eventBus.emit('equipment:unequipped', {
             item: currentEquipment.name,
             slot: slot,
-            equipment: currentEquipment
+            equipment: currentEquipment,
+            isTwoHanded: isTwoHandedWeapon
         }, 'game');
 
         if (returnToInventory) {
             this.eventBus.emit('ui:notification', {
-                message: `卸下了 ${currentEquipment.name}`,
+                message: `卸下了 ${isTwoHandedWeapon ? '双手武器 ' : ''}${currentEquipment.name}`,
                 type: 'info'
             }, 'game');
         }
 
-        return { 
-            success: true, 
+        return {
+            success: true,
             message: `成功卸下 ${currentEquipment.name}`,
             item: currentEquipment
         };
@@ -167,12 +265,38 @@ class EquipmentService {
     // 确定装备槽位
     getEquipmentSlot(equipmentData) {
         const typeSlotMap = {
-            'weapon': 'weapon',
+            'weapon': this.getWeaponSlot(equipmentData),
             'armor': this.getArmorSlot(equipmentData.subType),
             'accessory': this.getAccessorySlot(equipmentData.subType)
         };
 
         return typeSlotMap[equipmentData.type] || null;
+    }
+
+    // 获取武器槽位
+    getWeaponSlot(equipmentData) {
+        // 检查是否为双手武器
+        if (equipmentData.weaponType === 'two-handed') {
+            return 'weapon1'; // 双手武器默认占用第一个槽位，但会占用两个槽位
+        }
+        
+        // 单手武器，寻找可用的槽位
+        const gameStateService = this.getGameStateService();
+        if (gameStateService) {
+            const player = gameStateService.getState().player;
+            const equipment = player.equipment;
+            
+            // 优先使用第一个武器槽
+            if (!equipment.weapon1) {
+                return 'weapon1';
+            }
+            // 如果第一个槽位被占用，使用第二个槽位
+            if (!equipment.weapon2) {
+                return 'weapon2';
+            }
+        }
+        
+        return 'weapon1'; // 默认返回第一个槽位
     }
 
     // 获取防具槽位
@@ -190,8 +314,8 @@ class EquipmentService {
     getAccessorySlot(subType) {
         const accessorySlotMap = {
             'ring': 'ring',
-            'necklace': 'necklace',
-            'amulet': 'amulet'
+            'amulet': 'amulet',
+            'backpack': 'backpack'
         };
         return accessorySlotMap[subType] || 'accessory';
     }
@@ -232,6 +356,11 @@ class EquipmentService {
         // 遍历所有装备槽位
         for (const [slot, item] of Object.entries(equipment)) {
             if (item && item.stats) {
+                // 跳过双手武器的副槽位，避免重复计算
+                if (item.isSecondarySlot) {
+                    continue;
+                }
+                
                 const stats = item.stats;
                 
                 totalAttackBonus += stats.attack || 0;
@@ -243,6 +372,12 @@ class EquipmentService {
                 totalMaxManaBonus += stats.maxMana || 0;
                 totalMaxStaminaBonus += stats.maxStamina || 0;
                 totalCriticalChanceBonus += stats.criticalChance || 0;
+                
+                // 背包装备增加背包容量
+                if (stats.inventorySlots) {
+                    // 这里可以通知背包服务增加容量
+                    // 暂时先记录，后续可以实现动态背包容量
+                }
             }
         }
 
@@ -334,14 +469,15 @@ class EquipmentService {
     // 获取可用装备槽位
     getAvailableSlots() {
         return {
-            weapon: { name: '武器', icon: '⚔️' },
+            weapon1: { name: '武器槽1', icon: '⚔️' },
+            weapon2: { name: '武器槽2', icon: '🗡️' },
             helmet: { name: '头盔', icon: '⛑️' },
             chest: { name: '胸甲', icon: '🛡️' },
             legs: { name: '护腿', icon: '👖' },
             boots: { name: '靴子', icon: '👢' },
             ring: { name: '戒指', icon: '💍' },
-            necklace: { name: '项链', icon: '📿' },
-            amulet: { name: '护符', icon: '🔱' }
+            amulet: { name: '护符', icon: '🔱' },
+            backpack: { name: '背包', icon: '🎒' }
         };
     }
 

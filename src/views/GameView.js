@@ -17,6 +17,11 @@ class GameView {
         this.eventBus.on('state:player:updated', this.updatePlayerStats.bind(this), 'game');
         this.eventBus.on('core:initialized', this.hideLoadingScreen.bind(this), 'system');
         
+        // 监听游戏状态变化，更新调试面板
+        this.eventBus.on('state:player:updated', this.updateDebugGameState.bind(this), 'game');
+        this.eventBus.on('state:world:updated', this.updateDebugGameState.bind(this), 'game');
+        this.eventBus.on('core:initialized', this.updateDebugGameState.bind(this), 'system');
+        
         // 输入控制相关事件监听
         this.eventBus.on('llm:request:start', this.handleLLMStart.bind(this), 'game');
         this.eventBus.on('llm:response:complete', this.handleLLMComplete.bind(this), 'game');
@@ -53,6 +58,11 @@ class GameView {
         }
         // 显示新的开始页面
         this.showStartPage();
+        
+        // 初始化调试面板的游戏状态显示
+        setTimeout(() => {
+            this.updateDebugGameState();
+        }, 100);
     }
 
     initializeUI() {
@@ -671,7 +681,7 @@ class GameView {
             position: fixed;
             top: ${topOffset}px;
             right: 20px;
-            background: ${level === 'error' ? '#ff4444' : level === 'warning' ? '#ffaa00' : level === 'success' ? '#44ff44' : '#4488ff'};
+            background: ${level === 'error' ? '#ff4444' : level === 'warning' ? '#ffaa00' : level === 'success' ? '#2e7d32' : '#4488ff'};
             color: white;
             padding: 12px 16px;
             border-radius: 6px;
@@ -708,6 +718,58 @@ class GameView {
             while (debugLog.children.length > 50) {
                 debugLog.removeChild(debugLog.firstChild);
             }
+        }
+    }
+
+    // 更新调试面板中的游戏状态显示
+    updateDebugGameState() {
+        const debugGameState = document.getElementById('debug-game-state');
+        if (!debugGameState) return;
+
+        try {
+            const gameStateService = window.gameCore?.getService('gameStateService');
+            if (!gameStateService) {
+                debugGameState.textContent = '游戏状态服务未初始化';
+                return;
+            }
+
+            const gameState = gameStateService.getState();
+            if (!gameState) {
+                debugGameState.textContent = '游戏状态未创建';
+                return;
+            }
+
+            // 格式化游戏状态信息
+            const stateInfo = {
+                玩家: {
+                    姓名: gameState.player.name,
+                    等级: gameState.player.level,
+                    生命值: `${gameState.player.hp}/${gameState.player.maxHp}`,
+                    法力值: `${gameState.player.mana || 0}/${gameState.player.maxMana || 0}`,
+                    耐力值: `${gameState.player.stamina || 0}/${gameState.player.maxStamina || 0}`,
+                    经验值: gameState.player.experience,
+                    技能点: gameState.player.skillPoints || 0
+                },
+                世界: {
+                    当前位置: gameState.world.currentLocation,
+                    时间: gameState.world.timeOfDay,
+                    天气: gameState.world.weather
+                },
+                战斗: {
+                    是否在战斗中: gameState.battle.isInBattle ? '是' : '否'
+                },
+                对话历史: `${gameState.conversation.history.length} 条记录`
+            };
+
+            // 将状态信息转换为易读的JSON格式
+            debugGameState.textContent = JSON.stringify(stateInfo, null, 2);
+            
+            // 更新调试日志
+            this.updateDebugLog('游戏状态已更新', 'info');
+            
+        } catch (error) {
+            console.error('[DEBUG] 更新调试游戏状态失败:', error);
+            debugGameState.textContent = `状态更新失败: ${error.message}`;
         }
     }
 
@@ -831,6 +893,14 @@ class GameView {
         if (stats.maxMana) statsHtml += `<div>法力值: +${stats.maxMana}</div>`;
         if (stats.maxStamina) statsHtml += `<div>耐力值: +${stats.maxStamina}</div>`;
         if (stats.criticalChance) statsHtml += `<div>暴击率: +${stats.criticalChance}%</div>`;
+        // 背包扩容格数显示
+        if (stats.inventorySlots) statsHtml += `<div>背包容量: +${stats.inventorySlots}格</div>`;
+        // 武器持握方式提示（便于辨识单双手）
+        if (item.weaponType === 'two-handed') {
+            statsHtml += `<div>持握方式: 双手武器</div>`;
+        } else if (item.weaponType === 'one-handed') {
+            statsHtml += `<div>持握方式: 单手武器</div>`;
+        }
         
         statsHtml += '</div>';
         
@@ -931,14 +1001,15 @@ class GameView {
 
     generateEquipmentSlots(equipment) {
         const slots = {
-            weapon: { name: '武器', icon: '⚔️', position: 'weapon' },
+            weapon1: { name: '武器槽1', icon: '⚔️', position: 'weapon1' },
             helmet: { name: '头盔', icon: '⛑️', position: 'helmet' },
+            amulet: { name: '护符', icon: '🔱', position: 'amulet' },
+            weapon2: { name: '武器槽2', icon: '🗡️', position: 'weapon2' },
             chest: { name: '胸甲', icon: '🛡️', position: 'chest' },
-            legs: { name: '护腿', icon: '👖', position: 'legs' },
+            backpack: { name: '背包', icon: '🎒', position: 'backpack' },
             boots: { name: '靴子', icon: '👢', position: 'boots' },
-            ring: { name: '戒指', icon: '💍', position: 'ring' },
-            necklace: { name: '项链', icon: '📿', position: 'necklace' },
-            amulet: { name: '护符', icon: '🔱', position: 'amulet' }
+            legs: { name: '护腿', icon: '👖', position: 'legs' },
+            ring: { name: '戒指', icon: '💍', position: 'ring' }
         };
 
         let html = '';
@@ -946,21 +1017,25 @@ class GameView {
             const equippedItem = equipment[slotKey];
             const isEmpty = !equippedItem;
             
+            // 检查是否是双手武器的副槽位
+            const isSecondarySlot = equippedItem && equippedItem.isSecondarySlot;
+            const displayItem = isSecondarySlot ? null : equippedItem; // 副槽位不显示物品图标
+            
             html += `
-                <div class="equipment-slot ${isEmpty ? 'empty' : 'filled'}"
+                <div class="equipment-slot ${isEmpty ? 'empty' : 'filled'} ${isSecondarySlot ? 'secondary-slot' : ''}"
                      data-slot="${slotKey}"
                      data-droppable="true">
-                    ${isEmpty ?
-                        `<div class="slot-placeholder">
-                            <div class="slot-icon">${slotInfo.icon}</div>
-                            <div class="slot-name">${slotInfo.name}</div>
+                    ${isEmpty || isSecondarySlot ?
+                        `<div class="slot-placeholder ${isSecondarySlot ? 'occupied-by-two-handed' : ''}">
+                            <div class="slot-icon">${isSecondarySlot ? '⚔️' : slotInfo.icon}</div>
+                            <div class="slot-name">${isSecondarySlot ? '双手武器' : slotInfo.name}</div>
                         </div>` :
-                        `<div class="equipped-item" data-item="${equippedItem.name}" title="${equippedItem.name}: ${equippedItem.description}">
-                            <div class="item-icon">${equippedItem.icon}</div>
+                        `<div class="equipped-item" data-item="${displayItem.name}" title="${displayItem.name}: ${displayItem.description}">
+                            <div class="item-icon">${displayItem.icon}</div>
                             <div class="item-tooltip">
-                                <div class="tooltip-name" style="color: ${this.getRarityColor(equippedItem.rarity)}">${equippedItem.name}</div>
-                                <div class="tooltip-description">${equippedItem.description}</div>
-                                ${this.generateEquipmentTooltip(equippedItem)}
+                                <div class="tooltip-name" style="color: ${this.getRarityColor(displayItem.rarity)}">${displayItem.name}</div>
+                                <div class="tooltip-description">${displayItem.description}</div>
+                                ${this.generateEquipmentTooltip(displayItem)}
                             </div>
                         </div>`
                     }
@@ -1224,14 +1299,19 @@ class GameView {
                 if (equipmentData) {
                     const equipmentType = equipmentData.type;
                     const equipmentSubType = equipmentData.subType;
-                    console.log('[装备检查] 从数据库获取类型:', equipmentType, equipmentSubType);
-                    return this.canEquipToSlot({ type: equipmentType, subType: equipmentSubType }, slotType);
+                    const weaponType = equipmentData.weaponType;
+                    console.log('[装备检查] 从数据库获取类型:', equipmentType, equipmentSubType, weaponType);
+                    return this.canEquipToSlot({
+                        type: equipmentType,
+                        subType: equipmentSubType,
+                        weaponType: weaponType
+                    }, slotType);
                 }
             }
         }
         
         // 武器槽位
-        if (slotType === 'weapon') {
+        if (slotType === 'weapon1' || slotType === 'weapon2') {
             return type === 'weapon';
         }
         
@@ -1241,7 +1321,7 @@ class GameView {
         }
         
         // 饰品槽位
-        if (['ring', 'necklace', 'amulet'].includes(slotType)) {
+        if (['ring', 'amulet', 'backpack'].includes(slotType)) {
             return type === 'accessory' && subType === slotType;
         }
         
@@ -2296,6 +2376,11 @@ restoreNarrativeFromHistory(data) {
             // 正常状态，启用输入
             this.enableInput();
         }
+
+        // 更新调试面板的游戏状态
+        setTimeout(() => {
+            this.updateDebugGameState();
+        }, 300);
 
     } catch (e) {
         console.warn('[UI] restoreNarrativeFromHistory error:', e);

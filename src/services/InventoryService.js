@@ -5,7 +5,8 @@ class InventoryService {
     constructor(eventBus) {
         this.eventBus = eventBus;
         this.inventory = new Map();
-        this.maxSlots = 20;
+        this.baseMaxSlots = 20; // 基础背包容量
+        this.maxSlots = 20; // 当前背包容量
         this.setupEventListeners();
         this.initializeDefaultItems();
     }
@@ -16,10 +17,14 @@ class InventoryService {
         this.eventBus.on('inventory:use', this.useItem.bind(this), 'game');
         this.eventBus.on('inventory:show', this.showInventory.bind(this), 'game');
         this.eventBus.on('inventory:equip', this.equipItem.bind(this), 'game');
+        this.eventBus.on('equipment:equipped', this.handleEquipmentChange.bind(this), 'game');
+        this.eventBus.on('equipment:unequipped', this.handleEquipmentChange.bind(this), 'game');
     }
 
     initializeDefaultItems() {
         // 给玩家一些初始物品和装备用于测试装备系统
+
+        this.addItem('皮革背包', 1);
         
         // 消耗品
         this.addItem('治疗药水', 5);
@@ -30,14 +35,19 @@ class InventoryService {
         this.addItem('力量药水', 2);
         this.addItem('防御药水', 2);
         
-        // 武器 - 剑类（不同等级）
+        // 武器 - 剑类（单手武器）
         this.addItem('木剑', 1);
         this.addItem('铁剑', 1);
         this.addItem('精制铁剑', 1);
         this.addItem('钢剑', 1);
         this.addItem('银剑', 1);
         
-        // 武器 - 法杖类
+        // 武器 - 双手武器
+        this.addItem('木制双手剑', 1);
+        this.addItem('双手大剑', 1);
+        this.addItem('巨龙屠戮者', 1);
+        
+        // 武器 - 法杖类（单手武器）
         this.addItem('木杖', 1);
         this.addItem('法师杖', 1);
         this.addItem('奥术法杖', 1);
@@ -62,8 +72,10 @@ class InventoryService {
         this.addItem('力量戒指', 1);
         this.addItem('智慧戒指', 1);
         
-        // 饰品 - 项链
-        this.addItem('生命项链', 1);
+        // 饰品 - 背包
+        this.addItem('皮革背包', 1);
+        this.addItem('旅行者背包', 1);
+        this.addItem('魔法储物袋', 1);
         
         // 饰品 - 护符
         this.addItem('守护护符', 1);
@@ -83,6 +95,9 @@ class InventoryService {
             console.warn(`未知物品: ${itemName}`);
             return false;
         }
+
+        // 保存原始数量用于通知显示
+        const originalQuantity = quantity;
 
         // 检查是否可堆叠
         const isStackable = itemData.stackable !== false; // 默认可堆叠
@@ -123,11 +138,11 @@ class InventoryService {
         this.eventBus.emit('inventory:updated', {
             action: 'add',
             item: itemName,
-            quantity: quantity
+            quantity: originalQuantity
         }, 'game');
 
         this.eventBus.emit('ui:notification', {
-            message: `获得了 ${itemName} x${quantity}`,
+            message: `获得了 ${itemName} x${originalQuantity}`,
             type: 'success'
         }, 'game');
 
@@ -440,6 +455,63 @@ class InventoryService {
             }
         }
         return materialItems;
+    }
+
+    // 处理装备变化事件
+    handleEquipmentChange(data) {
+        this.updateInventoryCapacity();
+    }
+
+    // 更新背包容量
+    updateInventoryCapacity() {
+        const gameStateService = window.gameCore?.getService('gameStateService');
+        if (!gameStateService) return;
+
+        const player = gameStateService.getState().player;
+        const equipment = player.equipment;
+
+        // 计算背包装备提供的额外容量
+        let extraSlots = 0;
+        for (const [slot, item] of Object.entries(equipment)) {
+            if (item && item.stats && item.stats.inventorySlots) {
+                // 跳过双手武器的副槽位，避免重复计算
+                if (item.isSecondarySlot) {
+                    continue;
+                }
+                extraSlots += item.stats.inventorySlots;
+            }
+        }
+
+        const newMaxSlots = this.baseMaxSlots + extraSlots;
+        
+        // 如果容量发生变化，更新并通知
+        if (newMaxSlots !== this.maxSlots) {
+            const oldMaxSlots = this.maxSlots;
+            this.maxSlots = newMaxSlots;
+            
+            this.eventBus.emit('ui:notification', {
+                message: `背包容量变化：${oldMaxSlots} → ${newMaxSlots} 格`,
+                type: 'info'
+            }, 'game');
+
+            // 发送背包更新事件
+            this.eventBus.emit('inventory:updated', {
+                action: 'capacity_change',
+                oldCapacity: oldMaxSlots,
+                newCapacity: newMaxSlots
+            }, 'game');
+        }
+    }
+
+    // 获取当前背包容量信息
+    getCapacityInfo() {
+        return {
+            baseCapacity: this.baseMaxSlots,
+            currentCapacity: this.maxSlots,
+            extraCapacity: this.maxSlots - this.baseMaxSlots,
+            usedSlots: this.inventory.size,
+            freeSlots: this.maxSlots - this.inventory.size
+        };
     }
 }
 
