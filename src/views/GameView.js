@@ -1708,19 +1708,26 @@ class GameView {
             background:#1f2430; color:#fff; width: 720px; max-width: 96%;
             border-radius:12px; padding:20px; box-shadow:0 8px 24px rgba(0,0,0,.45);
         `;
-        const title = mode === 'manage' ? '💾 存档管理' : '📂 加载存档';
+        const title = mode === 'manage' ? '💾 存档管理' : '📂 选择要加载的存档';
         box.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-                <h3 style="margin:0;">${title}</h3>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: ${mode === 'manage' ? '#2196F3' : '#4CAF50'};">${title}</h3>
                 <div>
-                    <button class="quick-action-button" id="importBtn">📥 导入</button>
-                    ${fromStartPage ? '<button class="quick-action-button" id="backToStartBtn" style="margin-left:8px;">🔙 返回</button>' : ''}
-                    <button class="close-button" id="closeSaveMgr" style="margin-left:8px;">×</button>
+                    <button class="quick-action-button" id="importBtn" style="background: #ff9800; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-right: 8px;">📥 导入存档</button>
+                    <button class="quick-action-button" id="backToStartBtn" style="background: #666; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">🔙 返回</button>
                 </div>
             </div>
+            ${mode === 'load' ? `
+            <div style="margin-bottom: 15px; padding: 10px; background: #2a3142; border-radius: 8px; border-left: 4px solid #4CAF50;">
+                <p style="margin: 0; font-size: 14px; opacity: 0.9;">
+                    💡 <strong>提示：</strong>选择一个存档槽位来加载游戏进度。
+                </p>
+            </div>` : ''}
             <div id="slotsContainer"></div>
-            <div style="margin-top:12px; font-size:12px; opacity:.85">
-                提示：共有 6 个槽位。导出为 JSON 可分享或备份，导入可恢复进度。
+            <div style="margin-top: 15px; padding: 10px; background: #2a3142; border-radius: 8px; font-size: 12px; opacity: 0.85; border-left: 4px solid #2196F3;">
+                <p style="margin: 0;">
+                    📋 <strong>操作说明：</strong>共有 6 个存档槽位。点击"导出"可将存档保存为 JSON 文件进行备份或分享，点击"导入存档"可从文件恢复进度。
+                </p>
             </div>
         `;
         modal.appendChild(box);
@@ -1733,18 +1740,23 @@ class GameView {
 
         this._setupSaveManagerEvents(modal, mode);
 
-        // 关闭按钮
-        box.querySelector('#closeSaveMgr')?.addEventListener('click', () => {
+        // // 关闭按钮
+        // box.querySelector('#closeSaveMgr')?.addEventListener('click', () => {
+        //     modal.remove();
+        //     if (fromStartPage) {
+        //         this.showStartPage();
+        //     }
+        // });
+
+        // 返回按钮 - 始终显示，用于返回上一个界面
+        box.querySelector('#backToStartBtn')?.addEventListener('click', () => {
             modal.remove();
             if (fromStartPage) {
                 this.showStartPage();
+            } else {
+                // 如果不是从开始页面来的，返回游戏主界面
+                // 这里可以根据需要添加其他返回逻辑
             }
-        });
-
-        // 返回开始页面按钮
-        box.querySelector('#backToStartBtn')?.addEventListener('click', () => {
-            modal.remove();
-            this.showStartPage();
         });
 
         // 导入按钮
@@ -1762,33 +1774,93 @@ class GameView {
         const saveService = window.gameCore?.getService('saveService');
         const latest = saveService?.getLatestSlot?.();
         const cards = list.map((slot, i) => {
-            if (!slot) {
+            const isEmpty = !slot;
+            const statusText = isEmpty ? '空槽位' : '有存档';
+            const statusColor = isEmpty ? '#4CAF50' : '#2196F3';
+            const isLatest = latest && latest.index === i;
+            
+            if (isEmpty) {
                 return `
-                <div class="slot-card" style="background:#2a3142; border-radius:8px; padding:12px; margin:8px 0; display:flex; align-items:center; justify-content:space-between;">
-                    <div>
-                        <div style="font-weight:600;">槽位 ${i + 1}</div>
-                        <div style="opacity:.8; font-size:12px;">空槽位</div>
-                    </div>
-                    <div>
-                        <button class="quick-action-button save-btn" data-slot="${i}">保存</button>
+                <div class="slot-card" style="background: #2a3142; border-radius: 8px; padding: 15px; margin: 8px 0; border: 2px solid ${statusColor};">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; margin-bottom: 5px;">
+                                槽位 ${i + 1}
+                                <span style="font-size: 12px; color: ${statusColor}; margin-left: 8px;">● ${statusText}</span>
+                            </div>
+                            <div style="opacity: 0.85; font-size: 12px; margin-bottom: 3px;">推荐选择</div>
+                        </div>
+                        <div>
+                            <button class="quick-action-button save-btn" data-slot="${i}" style="
+                                background: ${statusColor};
+                                border: none;
+                                color: white;
+                                padding: 10px 20px;
+                                border-radius: 6px;
+                                cursor: pointer;
+                                font-weight: 600;
+                            ">保存到此槽位</button>
+                        </div>
                     </div>
                 </div>`;
             }
-            const isLatest = latest && latest.index === i;
+            
             const dt = slot.updatedAt ? new Date(slot.updatedAt).toLocaleString() : '-';
             const subtitle = `Lv.${slot.summary.level || 1}｜${slot.summary.name || '冒险者'}｜${slot.summary.location || '-'}`;
             return `
-            <div class="slot-card" style="background:#2a3142; border-radius:8px; padding:12px; margin:8px 0; display:flex; align-items:center; justify-content:space-between;">
-                <div>
-                    <div style="font-weight:600;">槽位 ${i + 1} ${isLatest ? '<span style="font-size:12px; color:#ffd54f; margin-left:6px;">最新</span>' : ''}</div>
-                    <div style="opacity:.85; font-size:12px;">${subtitle}</div>
-                    <div style="opacity:.7; font-size:12px;">更新：${dt}</div>
-                </div>
-                <div>
-                    <button class="quick-action-button load-btn" data-slot="${i}">加载</button>
-                    <button class="quick-action-button save-btn" data-slot="${i}">保存</button>
-                    <button class="quick-action-button export-btn" data-slot="${i}">导出</button>
-                    <button class="quick-action-button delete-btn" data-slot="${i}">删除</button>
+            <div class="slot-card" style="background: #2a3142; border-radius: 8px; padding: 15px; margin: 8px 0; border: 2px solid ${statusColor};">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; margin-bottom: 5px;">
+                            槽位 ${i + 1}
+                            <span style="font-size: 12px; color: ${statusColor}; margin-left: 8px;">● ${statusText}</span>
+                            ${isLatest ? '<span style="font-size: 12px; color: #ffd54f; margin-left: 6px;">最新</span>' : ''}
+                        </div>
+                        <div style="opacity: 0.85; font-size: 12px; margin-bottom: 3px;">${subtitle}</div>
+                        <div style="opacity: 0.7; font-size: 11px;">更新时间: ${dt}</div>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="quick-action-button load-btn" data-slot="${i}" style="
+                            background: #4CAF50;
+                            border: none;
+                            color: white;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-weight: 600;
+                            font-size: 12px;
+                        ">加载</button>
+                        <button class="quick-action-button save-btn" data-slot="${i}" style="
+                            background: #2196F3;
+                            border: none;
+                            color: white;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-weight: 600;
+                            font-size: 12px;
+                        ">保存</button>
+                        <button class="quick-action-button export-btn" data-slot="${i}" style="
+                            background: #ff9800;
+                            border: none;
+                            color: white;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-weight: 600;
+                            font-size: 12px;
+                        ">导出</button>
+                        <button class="quick-action-button delete-btn" data-slot="${i}" style="
+                            background: #f44336;
+                            border: none;
+                            color: white;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-weight: 600;
+                            font-size: 12px;
+                        ">删除</button>
+                    </div>
                 </div>
             </div>`;
         }).join('');
@@ -1924,7 +1996,7 @@ class GameView {
         box.innerHTML = `
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
                 <h3 style="margin: 0; color: #4CAF50;">🌱 选择新游戏存档位置</h3>
-                <button class="close-button" id="closeNewGameSlot" style="background: #f44336; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer;">×</button>
+                <button class="quick-action-button" id="backToStartFromNewGame" style="background: #666; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">🔙 返回</button>
             </div>
             <div style="margin-bottom: 15px; padding: 10px; background: #2a3142; border-radius: 8px; border-left: 4px solid #ff9800;">
                 <p style="margin: 0; font-size: 14px; opacity: 0.9;">
@@ -1932,9 +2004,6 @@ class GameView {
                 </p>
             </div>
             <div id="newGameSlotsContainer"></div>
-            <div style="margin-top: 15px; text-align: center;">
-                <button class="quick-action-button" id="cancelNewGame" style="background: #666; margin-right: 10px;">取消</button>
-            </div>
         `;
         
         modal.appendChild(box);
@@ -1948,15 +2017,8 @@ class GameView {
         container.innerHTML = this._renderNewGameSlotsHTML(list);
         this._setupNewGameSlotEvents(modal);
 
-        // 关闭按钮事件
-        box.querySelector('#closeNewGameSlot')?.addEventListener('click', () => {
-            modal.remove();
-            // 通知StartView新游戏流程已取消
-            this.eventBus.emit('start:new-game:cancelled', {}, 'game');
-            this.showStartPage(); // 返回开始界面
-        });
-        
-        box.querySelector('#cancelNewGame')?.addEventListener('click', () => {
+        // 返回按钮事件
+        box.querySelector('#backToStartFromNewGame')?.addEventListener('click', () => {
             modal.remove();
             // 通知StartView新游戏流程已取消
             this.eventBus.emit('start:new-game:cancelled', {}, 'game');
