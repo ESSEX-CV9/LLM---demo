@@ -433,6 +433,22 @@ class GameView {
         narrativeArea.appendChild(messageDiv);
         narrativeArea.scrollTop = narrativeArea.scrollHeight;
 
+        // 将战斗ID保存到历史记录中，以便存档恢复时使用
+        try {
+            const gsService = window.gameCore?.getService('gameStateService');
+            if (gsService && typeof gsService.addConversationEntry === 'function') {
+                gsService.addConversationEntry({
+                    role: 'system',
+                    content: `函数执行结果: ${data.functionName}`,
+                    result: data.result,
+                    type: 'function_result',
+                    battleId: battleId // 保存战斗ID
+                });
+            }
+        } catch (e) {
+            console.warn('[UI] 保存战斗ID到历史记录失败:', e);
+        }
+
         // 战斗准备期间禁止其他输入
         this.disableInput();
         this.setStatus('processing', '战斗待开始...');
@@ -1868,7 +1884,7 @@ restoreNarrativeFromHistory(data) {
                         if (functionName === 'start_battle' && entry.result.outcome === 'battle_ready') {
                             // 延迟处理，确保消息已添加到DOM
                             setTimeout(() => {
-                                this.restoreBattleReadyButton(entry.result);
+                                this.restoreBattleReadyButton(entry.result, entry);
                             }, 100);
                         }
                     }
@@ -1882,6 +1898,11 @@ restoreNarrativeFromHistory(data) {
                 });
             });
         }
+
+        // 在历史恢复完成后，更新所有已完成战斗的按钮状态
+        setTimeout(() => {
+            this.updateAllCompletedBattleButtons();
+        }, 200);
 
         // 检查是否需要恢复战斗状态
         if (data && data.hasPreparedBattle) {
@@ -1902,7 +1923,7 @@ restoreNarrativeFromHistory(data) {
 }
 
 // 恢复战斗准备状态的"进入战斗"按钮
-restoreBattleReadyButton(battleResult) {
+restoreBattleReadyButton(battleResult, historyEntry) {
     try {
         const narrativeArea = document.getElementById('narrativeArea');
         const messages = narrativeArea.querySelectorAll('.narrative-message.function_result');
@@ -1923,8 +1944,15 @@ restoreBattleReadyButton(battleResult) {
                 return; // 已经有按钮了
             }
             
-            // 生成战斗ID（恢复时使用负数以避免与新战斗冲突）
-            const battleId = --this.battleIdCounter;
+            // 尝试从历史条目中获取原始战斗ID，如果没有则生成新的
+            let battleId;
+            if (historyEntry && historyEntry.battleId !== undefined) {
+                battleId = historyEntry.battleId;
+            } else {
+                // 生成战斗ID（恢复时使用负数以避免与新战斗冲突）
+                battleId = --this.battleIdCounter;
+            }
+            
             targetMessage.setAttribute('data-battle-id', battleId);
             
             // 添加进入战斗按钮
@@ -1932,33 +1960,61 @@ restoreBattleReadyButton(battleResult) {
             buttonWrapper.style.marginTop = '10px';
             const startBtn = document.createElement('button');
             startBtn.className = 'primary-button battle-start-button';
-            startBtn.textContent = '进入战斗';
-            startBtn.disabled = false;
-            startBtn.style.opacity = '1';
-            startBtn.style.cursor = 'pointer';
             startBtn.setAttribute('data-battle-id', battleId);
-            startBtn.onclick = () => {
-                // 检查战斗是否已完成
-                if (this.completedBattles.has(battleId)) {
-                    this.showNotification('这场战斗已经结束了', 'warning');
-                    return;
-                }
-                
-                // 点击进入战斗
-                const battleService = window.gameCore?.getService('battleService');
-                if (battleService && typeof battleService.launchPreparedBattle === 'function') {
-                    battleService.currentBattleId = battleId;
-                    battleService.launchPreparedBattle();
-                }
-            };
+            
+            // 检查战斗是否已完成
+            const isCompleted = this.completedBattles.has(battleId);
+            if (isCompleted) {
+                startBtn.textContent = '战斗已结束';
+                startBtn.disabled = true;
+                startBtn.style.opacity = '0.5';
+                startBtn.style.cursor = 'not-allowed';
+                startBtn.style.background = '#666';
+                targetMessage.classList.add('battle-completed');
+            } else {
+                startBtn.textContent = '进入战斗';
+                startBtn.disabled = false;
+                startBtn.style.opacity = '1';
+                startBtn.style.cursor = 'pointer';
+                startBtn.onclick = () => {
+                    // 再次检查战斗是否已完成（防止竞态条件）
+                    if (this.completedBattles.has(battleId)) {
+                        this.showNotification('这场战斗已经结束了', 'warning');
+                        return;
+                    }
+                    
+                    // 点击进入战斗
+                    const battleService = window.gameCore?.getService('battleService');
+                    if (battleService && typeof battleService.launchPreparedBattle === 'function') {
+                        battleService.currentBattleId = battleId;
+                        battleService.launchPreparedBattle();
+                    }
+                };
+            }
             
             buttonWrapper.appendChild(startBtn);
             targetMessage.appendChild(buttonWrapper);
             
-            console.log('[UI] 恢复了战斗准备按钮，ID:', battleId);
+            console.log('[UI] 恢复了战斗准备按钮，ID:', battleId, '已完成:', isCompleted);
         }
     } catch (e) {
         console.warn('[UI] restoreBattleReadyButton error:', e);
+    }
+}
+
+// 更新所有已完成战斗的按钮状态
+updateAllCompletedBattleButtons() {
+    try {
+        const allBattleButtons = document.querySelectorAll('.battle-start-button');
+        allBattleButtons.forEach(button => {
+            const battleId = parseInt(button.getAttribute('data-battle-id'));
+            if (!isNaN(battleId) && this.completedBattles.has(battleId)) {
+                this.updateBattleButtonState(battleId);
+            }
+        });
+        console.log('[UI] 已更新所有已完成战斗的按钮状态');
+    } catch (e) {
+        console.warn('[UI] updateAllCompletedBattleButtons error:', e);
     }
 }
 

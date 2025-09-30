@@ -148,6 +148,23 @@ class SaveService {
       }
     }
 
+    // 保存UI战斗状态：已完成的战斗ID和战斗计数器
+    let uiState = {
+      completedBattles: [],
+      battleIdCounter: 0
+    };
+
+    // 从GameView获取UI状态
+    if (window.gameView) {
+      try {
+        uiState.completedBattles = Array.from(window.gameView.completedBattles || []);
+        uiState.battleIdCounter = window.gameView.battleIdCounter || 0;
+        console.log('[SaveService] 保存UI战斗状态:', uiState);
+      } catch (e) {
+        console.warn('[SaveService] 获取UI战斗状态失败:', e);
+      }
+    }
+
     const snapshot = {
       version: this.VERSION,
       updatedAt: Date.now(),
@@ -160,7 +177,8 @@ class SaveService {
           battle: battleData,
           flags: flagsArr
         },
-        inventory
+        inventory,
+        uiState
       }
     };
 
@@ -249,6 +267,21 @@ class SaveService {
       }
     }
 
+    // 恢复UI状态：已完成的战斗和战斗计数器
+    if (snapshot.data.uiState && window.gameView) {
+      try {
+        const uiState = snapshot.data.uiState;
+        window.gameView.completedBattles = new Set(uiState.completedBattles || []);
+        window.gameView.battleIdCounter = uiState.battleIdCounter || 0;
+        console.log('[SaveService] 恢复UI战斗状态:', {
+          completedBattles: Array.from(window.gameView.completedBattles),
+          battleIdCounter: window.gameView.battleIdCounter
+        });
+      } catch (e) {
+        console.warn('[SaveService] Failed to restore UI state:', e);
+      }
+    }
+
     // Emit updates to refresh UI
     this.eventBus.emit('state:player:updated', gs.player, 'game');
     this.eventBus.emit('state:world:updated', gs.world, 'game');
@@ -257,7 +290,8 @@ class SaveService {
     const saveLoadedData = {
       slot: this.currentSlot,
       hasPreparedBattle: s.battle?.hasPreparedBattle || false,
-      isInBattle: s.battle?.isInBattle || false
+      isInBattle: s.battle?.isInBattle || false,
+      uiState: snapshot.data.uiState || null
     };
     
     this.eventBus.emit('save:loaded', saveLoadedData, 'game');
