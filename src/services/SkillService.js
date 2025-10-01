@@ -379,26 +379,34 @@ class SkillService {
     player.mana = Math.max(0, (player.mana || 0) - finalMpCost);
     player.stamina = Math.max(0, (player.stamina || 0) - finalSpCost);
 
-    // 伤害/治疗计算 - 统一计算方式
+    // 伤害/治疗计算 - 新公式
     const baseDmg = skill.baseDamage?.[lvIdx] ?? 0;
     const baseHeal = skill.baseHeal?.[lvIdx] ?? 0;
-    const phyCoef = skill.scaling?.physicalPowerCoef?.[lvIdx] ?? 0;
-    const magCoef = skill.scaling?.magicPowerCoef?.[lvIdx] ?? 0;
+    const attackPower = player.attack || 0;
 
-    const variance = Math.random() * 0.3 + 0.85; // 统一随机系数85%-115%
+    const variance = Math.random() * 0.3 + 0.85; // 随机系数85%-115%
     
-    // 技能伤害计算：基础伤害 + 强度加成
-    const damageScaling =
-      baseDmg +
-      (phyCoef * (player.physicalPower || 0)) +
-      (magCoef * (player.magicPower || 0));
-    const finalDamage = Math.floor(damageScaling * variance);
+    // 技能伤害计算：技能基础伤害 * 0.7 + 角色攻击力 * (强度/100)
+    let finalDamage = 0;
+    if (baseDmg > 0) {
+      let powerRatio = 0;
+      if (skill.type === 'physical') {
+        powerRatio = (player.physicalPower || 0) / 100;
+      } else if (skill.type === 'magic') {
+        powerRatio = (player.magicPower || 0) / 100;
+      }
+      
+      const skillDamage = baseDmg * 0.7 + attackPower * powerRatio;
+      finalDamage = Math.floor(skillDamage * variance);
+    }
 
-    // 治疗计算：基础治疗 + 魔法强度加成
-    const healScaling =
-      baseHeal +
-      (magCoef * (player.magicPower || 0) * 0.5); // 治疗的魔法强度系数降低
-    const finalHeal = Math.floor(healScaling * variance); // 治疗也应用随机系数
+    // 治疗计算：基础治疗 * 0.7 + 攻击力 * (魔法强度/100) * 0.5
+    let finalHeal = 0;
+    if (baseHeal > 0) {
+      const magicPowerRatio = (player.magicPower || 0) / 100;
+      const healAmount = baseHeal * 0.7 + attackPower * magicPowerRatio * 0.5;
+      finalHeal = Math.floor(healAmount * variance);
+    }
 
     // 按类型应用（确保总是生成清晰的日志消息）
     if (skill.kind === 'active') {

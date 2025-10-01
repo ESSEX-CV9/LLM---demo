@@ -397,6 +397,8 @@ class ItemsDB {
                 name: '廉价铁剑',
                 type: 'weapon',
                 subType: 'sword',
+                weaponCategory: 'sword',        // 新增：武器大类
+                weaponSubCategory: 'oneHandSword', // 新增：武器小类
                 weaponType: 'one-handed',
                 description: '简陋的廉价铁剑',
                 rarity: 'common',
@@ -404,7 +406,9 @@ class ItemsDB {
                 level: 1,
                 stats: {
                     attack: 6,
-                    physicalPower: 4
+                    physicalPower: 4,
+                    weight: 4,                  // 新增：重量
+                    agility: 0                  // 新增：敏捷修正
                 },
                 requirements: { minLevel: 1 },
                 durability: { current: 50, max: 50 },
@@ -415,6 +419,8 @@ class ItemsDB {
                 name: '铁剑',
                 type: 'weapon',
                 subType: 'sword',
+                weaponCategory: 'sword',        // 新增：武器大类
+                weaponSubCategory: 'oneHandSword', // 新增：武器小类
                 weaponType: 'one-handed',
                 description: '普通的铁制剑，增加攻击力',
                 rarity: 'common',
@@ -422,7 +428,9 @@ class ItemsDB {
                 level: 2,
                 stats: {
                     attack: 12,
-                    physicalPower: 8
+                    physicalPower: 8,
+                    weight: 5,                  // 新增：重量
+                    agility: 0                  // 新增：敏捷修正
                 },
                 requirements: { minLevel: 2 },
                 durability: { current: 100, max: 100 },
@@ -495,6 +503,8 @@ class ItemsDB {
                 name: '小刀',
                 type: 'weapon',
                 subType: 'dagger',
+                weaponCategory: 'sword',        // 新增：匕首属于剑类
+                weaponSubCategory: 'dagger',    // 新增：匕首小类
                 weaponType: 'one-handed',
                 description: '简单的小刀，速度快但攻击力低',
                 rarity: 'common',
@@ -503,7 +513,8 @@ class ItemsDB {
                 stats: {
                     attack: 6,
                     physicalPower: 2,
-                    speed: 3,
+                    weight: 2,                  // 新增：轻武器
+                    agility: 3,                 // 新增：提供敏捷（原speed）
                     criticalChance: 8
                 },
                 requirements: { minLevel: 1 },
@@ -754,6 +765,8 @@ class ItemsDB {
                 name: '木杖',
                 type: 'weapon',
                 subType: 'staff',
+                weaponCategory: 'staff',        // 新增：法杖大类
+                weaponSubCategory: 'twoHandStaff', // 新增：双手法杖
                 weaponType: 'two-handed',
                 description: '简单的木制法杖',
                 rarity: 'common',
@@ -762,6 +775,8 @@ class ItemsDB {
                 stats: {
                     attack: 4,
                     magicPower: 12,
+                    weight: 3,                  // 新增：较轻
+                    agility: 0,                 // 新增：不影响敏捷
                     maxMana: 15
                 },
                 requirements: { minLevel: 1 },
@@ -950,7 +965,7 @@ class ItemsDB {
                 value: 800
             },
 
-            // 防具 - 头盔
+            // 防具 - 头盔（模板示例）
             '布帽': {
                 id: 'cloth_hood',
                 name: '布帽',
@@ -961,7 +976,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/helmet_cloth_hood.png',
                 level: 1,
                 stats: {
-                    defense: 2,
+                    physicalResistance: 1,      // 新增：物理抗性%（轻甲低）
+                    magicResistance: 2,         // 新增：魔法抗性%（布甲略高）
+                    weight: 1,                  // 新增：重量（很轻）
+                    agility: 1,                 // 新增：敏捷（轻甲加成）
                     maxHp: 3
                 },
                 requirements: { minLevel: 1 },
@@ -978,7 +996,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/helmet_leather.png',
                 level: 1,
                 stats: {
-                    defense: 4,
+                    physicalResistance: 3,      // 新增：物理抗性%（皮甲平衡）
+                    magicResistance: 1,         // 新增：魔法抗性%
+                    weight: 2,                  // 新增：重量
+                    agility: 0,                 // 新增：不影响敏捷
                     maxHp: 8
                 },
                 requirements: { minLevel: 1 },
@@ -1078,7 +1099,7 @@ class ItemsDB {
                 value: 400
             },
 
-            // 防具 - 胸甲
+            // 防具 - 胸甲（模板示例）
             '布袍': {
                 id: 'cloth_robe',
                 name: '布袍',
@@ -1089,7 +1110,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/chest_cloth_robe.png',
                 level: 1,
                 stats: {
-                    defense: 3,
+                    physicalResistance: 2,      // 新增：物理抗性%（低）
+                    magicResistance: 4,         // 新增：魔法抗性%（布袍法师装）
+                    weight: 2,                  // 新增：重量（很轻）
+                    agility: 2,                 // 新增：敏捷（轻甲高）
                     maxHp: 5,
                     maxMana: 5
                 },
@@ -1176,9 +1200,11 @@ class ItemsDB {
                 icon: './assets/icons/armors/chest_plate_armor.png',
                 level: 4,
                 stats: {
-                    defense: 25,
-                    maxHp: 40,
-                    speed: -3
+                    physicalResistance: 15,     // 新增：高物理抗性%
+                    magicResistance: 5,         // 新增：低魔法抗性%
+                    weight: 15,                 // 新增：很重
+                    agility: -3,                // 新增：降低敏捷（原speed）
+                    maxHp: 40
                 },
                 effects: [
                     { type: 'damage_reduction', value: 0.1, description: '受到伤害-10%' }

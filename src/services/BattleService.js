@@ -41,7 +41,10 @@ class BattleService {
                 maxHp: playerStats.maxHp,
                 level: playerStats.level,
                 attack: playerStats.attack,
-                defense: playerStats.defense,
+                physicalResistance: playerStats.physicalResistance ?? 0,
+                magicResistance: playerStats.magicResistance ?? 0,
+                agility: playerStats.agility ?? 8,
+                weight: playerStats.weight ?? 10,
                 // 新增资源与强度、技能同步
                 mana: playerStats.mana ?? 0,
                 maxMana: playerStats.maxMana ?? 0,
@@ -49,8 +52,9 @@ class BattleService {
                 maxStamina: playerStats.maxStamina ?? 0,
                 magicPower: playerStats.magicPower ?? 0,
                 physicalPower: playerStats.physicalPower ?? 0,
+                criticalChance: playerStats.criticalChance ?? 0,
                 skills: Array.isArray(playerStats.skills) ? JSON.parse(JSON.stringify(playerStats.skills)) : [],
-                // 动作加入“技能”
+                // 动作加入"技能"
                 actions: ['攻击', '技能', '防御', '使用物品', '逃跑']
             },
             enemies: processedEnemies,
@@ -110,7 +114,10 @@ class BattleService {
                 maxHp: playerStats.maxHp,
                 level: playerStats.level,
                 attack: playerStats.attack,
-                defense: playerStats.defense,
+                physicalResistance: playerStats.physicalResistance ?? 0,
+                magicResistance: playerStats.magicResistance ?? 0,
+                agility: playerStats.agility ?? 8,
+                weight: playerStats.weight ?? 10,
                 // 新增资源与强度、技能同步
                 mana: playerStats.mana ?? 0,
                 maxMana: playerStats.maxMana ?? 0,
@@ -118,8 +125,9 @@ class BattleService {
                 maxStamina: playerStats.maxStamina ?? 0,
                 magicPower: playerStats.magicPower ?? 0,
                 physicalPower: playerStats.physicalPower ?? 0,
+                criticalChance: playerStats.criticalChance ?? 0,
                 skills: Array.isArray(playerStats.skills) ? JSON.parse(JSON.stringify(playerStats.skills)) : [],
-                // 动作加入“技能”
+                // 动作加入"技能"
                 actions: ['攻击', '技能', '防御', '使用物品', '逃跑']
             },
             enemies: processedEnemies,
@@ -231,7 +239,8 @@ class BattleService {
                         damage = Math.floor(damage * 1.5);
                     }
                     
-                    const actualDamage = Math.max(1, damage - (targetEnemy.defense || 0));
+                    // 应用抗性减伤
+                    const actualDamage = this.applyResistance(damage, 'physical', targetEnemy);
                     targetEnemy.hp = Math.max(0, targetEnemy.hp - actualDamage);
                     
                     let criticalText = isCritical ? '暴击！' : '';
@@ -272,21 +281,22 @@ class BattleService {
                 break;
                 
             case '逃跑':
-                // 基于速度和敏捷值的逃跑判定
-                const playerSpeed = player.speed || 0;
-                const playerAgility = player.agility || playerSpeed; // 如果没有敏捷值，使用速度
+                // 基于敏捷和重量的逃跑判定
+                const playerMobility = (player.agility || 8) - ((player.weight || 10) / 2);
                 
-                // 计算所有存活敌人的平均速度
+                // 计算所有存活敌人的平均机动性
                 const aliveEnemiesForEscape = this.battleState.enemies.filter(e => e.hp > 0);
-                const avgEnemySpeed = aliveEnemiesForEscape.reduce((sum, e) => sum + (e.speed || 8), 0) / aliveEnemiesForEscape.length;
+                const avgEnemyMobility = aliveEnemiesForEscape.reduce((sum, e) => {
+                    const enemyAgility = e.agility || e.speed || 8;
+                    const enemyWeight = e.weight || 10;
+                    return sum + (enemyAgility - enemyWeight / 2);
+                }, 0) / aliveEnemiesForEscape.length;
                 
-                // 逃跑成功率计算：基础30% + (玩家速度 - 敌人平均速度) * 3%
-                // 敏捷值也会影响逃跑率：+ 敏捷值 * 2%
-                const speedDiff = playerSpeed - avgEnemySpeed;
+                // 逃跑成功率计算：基础30% + (玩家机动性 - 敌人平均机动性) * 5%
+                const mobilityDiff = playerMobility - avgEnemyMobility;
                 const baseEscapeChance = 30;
-                const speedBonus = speedDiff * 3;
-                const agilityBonus = playerAgility * 2;
-                const totalEscapeChance = Math.min(90, Math.max(10, baseEscapeChance + speedBonus + agilityBonus));
+                const mobilityBonus = mobilityDiff * 5;
+                const totalEscapeChance = Math.min(90, Math.max(10, baseEscapeChance + mobilityBonus));
                 
                 const escapeRoll = Math.random() * 100;
                 
@@ -345,9 +355,8 @@ class BattleService {
                         damage = Math.floor(damage * 1.5);
                     }
                     
-                    // 使用玩家防御力进行减伤
-                    const playerDefense = player.defense || 0;
-                    let actualDamage = Math.max(1, damage - playerDefense);
+                    // 应用抗性减伤
+                    let actualDamage = this.applyResistance(damage, 'physical', player);
 
                     // 应用装备效果（伤害减免）
                     const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
@@ -366,10 +375,12 @@ class BattleService {
                         actualDamage = Math.floor(actualDamage * 0.5);
                         player.defending = false;
                         const critText = isCritical ? '暴击！' : '';
-                        logMessage = `${enemy.type}${critText}对你造成了${actualDamage}点伤害！（防御${playerDefense}+防御姿态减伤）`;
+                        const resistInfo = `物抗${Math.floor(player.physicalResistance)}%`;
+                        logMessage = `${enemy.type}${critText}对你造成了${actualDamage}点伤害！（${resistInfo}+防御姿态减伤）`;
                     } else {
                         const critText = isCritical ? '暴击！' : '';
-                        logMessage = `${enemy.type}${critText}对你造成了${actualDamage}点伤害！（防御${playerDefense}减伤）`;
+                        const resistInfo = `物抗${Math.floor(player.physicalResistance)}%`;
+                        logMessage = `${enemy.type}${critText}对你造成了${actualDamage}点伤害！（${resistInfo}减伤）`;
                     }
                     player.hp = Math.max(0, player.hp - actualDamage);
                 } else {
@@ -381,9 +392,8 @@ class BattleService {
                         damage = Math.floor(damage * 1.5);
                     }
                     
-                    // 使用玩家防御力进行减伤
-                    const playerDefense = player.defense || 0;
-                    let actualDamage = Math.max(1, damage - playerDefense);
+                    // 应用抗性减伤
+                    let actualDamage = this.applyResistance(damage, 'magic', player);
 
                     // 应用装备效果（伤害减免）
                     const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
@@ -402,10 +412,12 @@ class BattleService {
                         actualDamage = Math.floor(actualDamage * 0.5);
                         player.defending = false;
                         const critText = isCritical ? '暴击！' : '';
-                        logMessage = `${enemy.type}使用${skillName}${critText}，对你造成了${actualDamage}点伤害！（防御${playerDefense}+防御姿态减伤）`;
+                        const resistInfo = `魔抗${Math.floor(player.magicResistance)}%`;
+                        logMessage = `${enemy.type}使用${skillName}${critText}，对你造成了${actualDamage}点伤害！（${resistInfo}+防御姿态减伤）`;
                     } else {
                         const critText = isCritical ? '暴击！' : '';
-                        logMessage = `${enemy.type}使用${skillName}${critText}，对你造成了${actualDamage}点伤害！（防御${playerDefense}减伤）`;
+                        const resistInfo = `魔抗${Math.floor(player.magicResistance)}%`;
+                        logMessage = `${enemy.type}使用${skillName}${critText}，对你造成了${actualDamage}点伤害！（${resistInfo}减伤）`;
                     }
                     player.hp = Math.max(0, player.hp - actualDamage);
                 }
@@ -559,18 +571,18 @@ class BattleService {
             // 技能伤害：已在SkillService中计算，这里不重复计算
             return skillData.damage || 0;
         } else {
-            // 普通攻击：基于攻击力和物理强度的混合计算
+            // 普通攻击：基于攻击力和物理强度
+            // 公式：攻击力 * (物理强度/100)
             const attackPower = player.attack || 0;
             const physicalPower = player.physicalPower || 0;
             
-            // 普通攻击 = 攻击力 * 0.7 + 物理强度 * 0.5
-            baseDamage = Math.floor(attackPower * 0.7 + physicalPower * 0.5);
+            baseDamage = Math.floor(attackPower * (physicalPower / 100));
         }
         
-        const variance = Math.random() * 0.3 + 0.85; // 统一随机系数85%-115%
+        const variance = Math.random() * 0.3 + 0.85; // 随机系数85%-115%
         let finalDamage = Math.floor(baseDamage * variance);
         
-        // 应用装备效果（但不在这里处理暴击，暴击在调用处处理）
+        // 应用装备效果
         const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
         if (equipmentEffectService && target) {
             const damageData = {
@@ -579,7 +591,7 @@ class BattleService {
                 damage: finalDamage,
                 damageType: type === 'attack' ? 'physical' : type,
                 targetType: target.type || '',
-                isCritical: false // 暴击在外部处理
+                isCritical: false
             };
             
             const modifiedData = equipmentEffectService.modifyDamage(damageData);
@@ -587,6 +599,22 @@ class BattleService {
         }
         
         return finalDamage;
+    }
+
+    // 应用抗性减伤
+    applyResistance(damage, damageType, defender) {
+        let resistance = 0;
+        
+        if (damageType === 'physical') {
+            resistance = Math.min(75, Math.max(0, defender.physicalResistance || 0));
+        } else if (damageType === 'magic') {
+            resistance = Math.min(75, Math.max(0, defender.magicResistance || 0));
+        }
+        
+        // 收到的伤害 * (1 - 抗性%)
+        const finalDamage = damage * (1 - resistance / 100);
+        
+        return Math.max(1, Math.floor(finalDamage)); // 至少1点伤害
     }
 
     // 检查暴击 - 完善暴击系统
@@ -603,33 +631,43 @@ class BattleService {
         return Math.random() * 100 < criticalChance;
     }
 
-    // 检查闪避 - 基于速度差值
+    // 检查闪避 - 基于敏捷和重量
     checkDodge(attacker, defender) {
-        const attackerSpeed = attacker.speed || 8;
-        const defenderSpeed = defender.speed || 8;
+        // 计算机动性 = 敏捷 - 重量/2
+        const attackerAgility = attacker.agility || attacker.speed || 8;
+        const attackerWeight = attacker.weight || 10;
+        const attackerMobility = attackerAgility - (attackerWeight / 2);
         
-        // 速度差值影响闪避率：每点速度差提供2%闪避率，最高30%
-        const speedDiff = defenderSpeed - attackerSpeed;
-        const dodgeChance = Math.min(30, Math.max(0, speedDiff * 2));
+        const defenderAgility = defender.agility || defender.speed || 8;
+        const defenderWeight = defender.weight || 10;
+        const defenderMobility = defenderAgility - (defenderWeight / 2);
+        
+        // 闪避率 = 30% + (防守方机动性 - 进攻方机动性) * 2%
+        const mobilityDiff = defenderMobility - attackerMobility;
+        const dodgeChance = 30 + mobilityDiff * 2;
+        
+        // 限制在0-90%范围内
+        const finalDodgeChance = Math.min(90, Math.max(0, dodgeChance));
         
         const roll = Math.random() * 100;
-        return roll < dodgeChance;
+        return roll < finalDodgeChance;
     }
 
-    // 敌人伤害计算 - 使用与玩家相同的计算体系
+    // 敌人伤害计算
     calculateEnemyDamage(enemy, type) {
-        // 使用与玩家相同的伤害计算逻辑
         let baseDamage = 0;
         
         if (type === 'skill') {
-            // 技能伤害：基于魔法强度和物理强度
-            baseDamage = Math.floor(enemy.attack * 0.5 + enemy.physicalPower * 0.3 + enemy.magicPower * 0.3);
+            // 技能伤害：使用魔法强度
+            const magicPower = enemy.magicPower || 0;
+            baseDamage = Math.floor(enemy.attack * (magicPower / 100));
         } else {
-            // 普通攻击：基于攻击力和物理强度
-            baseDamage = Math.floor(enemy.attack * 0.7 + enemy.physicalPower * 0.5);
+            // 普通攻击：使用物理强度
+            const physicalPower = enemy.physicalPower || enemy.attack * 0.5; // 如果没有physicalPower，给个默认值
+            baseDamage = Math.floor(enemy.attack * (physicalPower / 100));
         }
         
-        const variance = Math.random() * 0.3 + 0.85; // 统一随机系数85%-115%
+        const variance = Math.random() * 0.3 + 0.85; // 随机系数85%-115%
         return Math.floor(baseDamage * variance);
     }
 

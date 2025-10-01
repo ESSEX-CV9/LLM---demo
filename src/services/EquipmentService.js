@@ -336,18 +336,22 @@ class EquipmentService {
         const newStats = {
             ...baseStats.stats,
             // 保留技能加成的基础属性
-            baseAttack: baseStats.stats.baseAttack || 10,
-            baseDefense: baseStats.stats.baseDefense || 5,
-            speed: baseStats.stats.speed || 8,
-            baseMagicPower: baseStats.stats.baseMagicPower || 5,
-            basePhysicalPower: baseStats.stats.basePhysicalPower || 10
+            baseAttack: baseStats.stats.baseAttack || 12,
+            agility: baseStats.stats.agility || 8,
+            weight: baseStats.stats.weight || 10,
+            physicalResistance: baseStats.stats.physicalResistance || 0,
+            magicResistance: baseStats.stats.magicResistance || 0,
+            baseMagicPower: baseStats.stats.baseMagicPower || 8,
+            basePhysicalPower: baseStats.stats.basePhysicalPower || 12
         };
 
         let totalAttackBonus = 0;
-        let totalDefenseBonus = 0;
+        let totalAgilityBonus = 0;
+        let totalWeightBonus = 0;
+        let totalPhysicalResistanceBonus = 0;
+        let totalMagicResistanceBonus = 0;
         let totalMagicPowerBonus = 0;
         let totalPhysicalPowerBonus = 0;
-        let totalSpeedBonus = 0;
         let totalMaxHpBonus = 0;
         let totalMaxManaBonus = 0;
         let totalMaxStaminaBonus = 0;
@@ -364,10 +368,12 @@ class EquipmentService {
                 const stats = item.stats;
                 
                 totalAttackBonus += stats.attack || 0;
-                totalDefenseBonus += stats.defense || 0;
+                totalAgilityBonus += stats.agility || 0;
+                totalWeightBonus += stats.weight || 0;
+                totalPhysicalResistanceBonus += stats.physicalResistance || 0;
+                totalMagicResistanceBonus += stats.magicResistance || 0;
                 totalMagicPowerBonus += stats.magicPower || 0;
                 totalPhysicalPowerBonus += stats.physicalPower || 0;
-                totalSpeedBonus += stats.speed || 0;
                 totalMaxHpBonus += stats.maxHp || 0;
                 totalMaxManaBonus += stats.maxMana || 0;
                 totalMaxStaminaBonus += stats.maxStamina || 0;
@@ -383,10 +389,12 @@ class EquipmentService {
 
         // 应用装备加成
         newStats.equipmentAttackBonus = totalAttackBonus;
-        newStats.equipmentDefenseBonus = totalDefenseBonus;
+        newStats.equipmentAgilityBonus = totalAgilityBonus;
+        newStats.equipmentWeightBonus = totalWeightBonus;
+        newStats.equipmentPhysicalResistanceBonus = Math.min(75, totalPhysicalResistanceBonus); // 上限75%
+        newStats.equipmentMagicResistanceBonus = Math.min(75, totalMagicResistanceBonus); // 上限75%
         newStats.equipmentMagicPowerBonus = totalMagicPowerBonus;
         newStats.equipmentPhysicalPowerBonus = totalPhysicalPowerBonus;
-        newStats.equipmentSpeedBonus = totalSpeedBonus;
         newStats.equipmentCriticalChanceBonus = totalCriticalChanceBonus;
 
         // 计算新的最大值
@@ -432,7 +440,7 @@ class EquipmentService {
             const currentStats = currentEquipment.stats;
 
             // 计算属性变化
-            const statKeys = ['attack', 'defense', 'magicPower', 'physicalPower', 'speed', 'maxHp', 'maxMana', 'maxStamina', 'criticalChance'];
+            const statKeys = ['attack', 'agility', 'weight', 'physicalResistance', 'magicResistance', 'magicPower', 'physicalPower', 'maxHp', 'maxMana', 'maxStamina', 'criticalChance'];
             
             for (const key of statKeys) {
                 const newValue = newStats[key] || 0;
@@ -497,8 +505,11 @@ class EquipmentService {
 
         for (const [slot, item] of Object.entries(equipment)) {
             if (item && item.stats) {
+                // 跳过双手武器的副槽位
+                if (item.isSecondarySlot) continue;
+                
                 totalAttack += item.stats.attack || 0;
-                totalDefense += item.stats.defense || 0;
+                totalDefense += (item.stats.physicalResistance || 0) + (item.stats.magicResistance || 0);
                 totalMagicPower += item.stats.magicPower || 0;
                 totalPhysicalPower += item.stats.physicalPower || 0;
                 equippedCount++;

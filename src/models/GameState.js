@@ -28,18 +28,22 @@ class GameState {
                 backpack: null
             },
             stats: {
-                baseAttack: 12,        // 提高基础攻击力
-                baseDefense: 6,        // 提高基础防御力
-                speed: 8,
+                baseAttack: 12,        // 基础攻击力
+                agility: 8,            // 敏捷（原speed）
+                weight: 10,            // 基础重量
+                physicalResistance: 0, // 物理抗性% (0-100)
+                magicResistance: 0,    // 魔法抗性% (0-100)
                 // 统一强度系统：物理和魔法强度作为伤害的核心
-                baseMagicPower: 8,     // 提高基础魔法强度
-                basePhysicalPower: 12, // 提高基础物理强度
+                baseMagicPower: 8,     // 基础魔法强度
+                basePhysicalPower: 12, // 基础物理强度
                 // 装备加成属性
                 equipmentAttackBonus: 0,
-                equipmentDefenseBonus: 0,
+                equipmentAgilityBonus: 0,
+                equipmentWeightBonus: 0,
+                equipmentPhysicalResistanceBonus: 0,
+                equipmentMagicResistanceBonus: 0,
                 equipmentMagicPowerBonus: 0,
                 equipmentPhysicalPowerBonus: 0,
-                equipmentSpeedBonus: 0,
                 equipmentCriticalChanceBonus: 0
             },
             // 临时增益系统
@@ -119,13 +123,20 @@ class GameState {
         return baseAttack + levelBonus + equipmentBonus + tempBonus;
     }
 
-    // 计算玩家实际防御力（基础防御力 + 等级加成 + 装备加成 + 临时增益）
-    getPlayerDefense() {
-        const baseDefense = this.player.stats.baseDefense;
-        const levelBonus = (this.player.level - 1) * 2; // 降低等级加成：每级增加2点防御力
-        const equipmentBonus = this.player.stats.equipmentDefenseBonus || 0;
-        const tempBonus = this.getTempStatBonus('defense');
-        return baseDefense + levelBonus + equipmentBonus + tempBonus;
+    // 计算玩家物理抗性（基础 + 装备加成 + 临时增益），上限75%
+    getPlayerPhysicalResistance() {
+        const base = this.player.stats.physicalResistance || 0;
+        const equipmentBonus = this.player.stats.equipmentPhysicalResistanceBonus || 0;
+        const tempBonus = this.getTempStatBonus('physicalResistance');
+        return Math.min(75, Math.max(0, base + equipmentBonus + tempBonus));
+    }
+
+    // 计算玩家魔法抗性（基础 + 装备加成 + 临时增益），上限75%
+    getPlayerMagicResistance() {
+        const base = this.player.stats.magicResistance || 0;
+        const equipmentBonus = this.player.stats.equipmentMagicResistanceBonus || 0;
+        const tempBonus = this.getTempStatBonus('magicResistance');
+        return Math.min(75, Math.max(0, base + equipmentBonus + tempBonus));
     }
 
     // 计算玩家魔法强度（基础 + 等级 + 装备 + 临时增益）
@@ -146,12 +157,19 @@ class GameState {
         return base + levelBonus + equipmentBonus + tempBonus;
     }
 
-    // 计算玩家速度（基础 + 装备加成 + 临时增益）
-    getPlayerSpeed() {
-        const baseSpeed = this.player.stats.speed || 8;
-        const equipmentBonus = this.player.stats.equipmentSpeedBonus || 0;
-        const tempBonus = this.getTempStatBonus('speed');
-        return baseSpeed + equipmentBonus + tempBonus;
+    // 计算玩家敏捷（基础 + 装备加成 + 临时增益）
+    getPlayerAgility() {
+        const baseAgility = this.player.stats.agility || 8;
+        const equipmentBonus = this.player.stats.equipmentAgilityBonus || 0;
+        const tempBonus = this.getTempStatBonus('agility');
+        return baseAgility + equipmentBonus + tempBonus;
+    }
+
+    // 计算玩家重量（基础 + 装备加成）
+    getPlayerWeight() {
+        const baseWeight = this.player.stats.weight || 10;
+        const equipmentBonus = this.player.stats.equipmentWeightBonus || 0;
+        return Math.max(0, baseWeight + equipmentBonus);
     }
 
     // 获取基础属性值（不包含临时增益）
@@ -162,11 +180,16 @@ class GameState {
         return baseAttack + levelBonus + equipmentBonus;
     }
 
-    getBasePlayerDefense() {
-        const baseDefense = this.player.stats.baseDefense;
-        const levelBonus = (this.player.level - 1) * 2; // 与上面保持一致
-        const equipmentBonus = this.player.stats.equipmentDefenseBonus || 0;
-        return baseDefense + levelBonus + equipmentBonus;
+    getBasePlayerPhysicalResistance() {
+        const base = this.player.stats.physicalResistance || 0;
+        const equipmentBonus = this.player.stats.equipmentPhysicalResistanceBonus || 0;
+        return Math.min(75, Math.max(0, base + equipmentBonus));
+    }
+
+    getBasePlayerMagicResistance() {
+        const base = this.player.stats.magicResistance || 0;
+        const equipmentBonus = this.player.stats.equipmentMagicResistanceBonus || 0;
+        return Math.min(75, Math.max(0, base + equipmentBonus));
     }
 
     getBasePlayerMagicPower() {
@@ -183,10 +206,16 @@ class GameState {
         return base + levelBonus + equipmentBonus;
     }
 
-    getBasePlayerSpeed() {
-        const baseSpeed = this.player.stats.speed || 8;
-        const equipmentBonus = this.player.stats.equipmentSpeedBonus || 0;
-        return baseSpeed + equipmentBonus;
+    getBasePlayerAgility() {
+        const baseAgility = this.player.stats.agility || 8;
+        const equipmentBonus = this.player.stats.equipmentAgilityBonus || 0;
+        return baseAgility + equipmentBonus;
+    }
+
+    getBasePlayerWeight() {
+        const baseWeight = this.player.stats.weight || 10;
+        const equipmentBonus = this.player.stats.equipmentWeightBonus || 0;
+        return Math.max(0, baseWeight + equipmentBonus);
     }
 
     getBasePlayerCriticalChance() {
@@ -281,10 +310,12 @@ class GameState {
         return {
             ...this.player,
             attack: this.getPlayerAttack(),
-            defense: this.getPlayerDefense(),
+            physicalResistance: this.getPlayerPhysicalResistance(),
+            magicResistance: this.getPlayerMagicResistance(),
             magicPower: this.getPlayerMagicPower(),
             physicalPower: this.getPlayerPhysicalPower(),
-            speed: this.getPlayerSpeed(),
+            agility: this.getPlayerAgility(),
+            weight: this.getPlayerWeight(),
             criticalChance: this.getPlayerCriticalChance(),
             // 添加临时增益信息
             tempBuffs: this.getAllTempBuffs(),
@@ -311,10 +342,12 @@ class GameState {
             totalValue,
             equipmentBonuses: {
                 attack: this.player.stats.equipmentAttackBonus || 0,
-                defense: this.player.stats.equipmentDefenseBonus || 0,
+                physicalResistance: this.player.stats.equipmentPhysicalResistanceBonus || 0,
+                magicResistance: this.player.stats.equipmentMagicResistanceBonus || 0,
                 magicPower: this.player.stats.equipmentMagicPowerBonus || 0,
                 physicalPower: this.player.stats.equipmentPhysicalPowerBonus || 0,
-                speed: this.player.stats.equipmentSpeedBonus || 0,
+                agility: this.player.stats.equipmentAgilityBonus || 0,
+                weight: this.player.stats.equipmentWeightBonus || 0,
                 criticalChance: this.player.stats.equipmentCriticalChanceBonus || 0
             }
         };

@@ -14,13 +14,12 @@ const Skills = [
     id: 'slash',
     name: '基础斩击',
     kind: 'active',
-    type: 'physical',
-    target: 'enemy',
+    type: 'physical',    // 明确：物理攻击
+    target: 'single',     // 明确：单体目标
     maxLevel: 5,
-    cost: { mp: [0,0,0,0,0], sp: [4,5,6,7,8] }, // 降低耐力消耗
+    cost: { mp: [0,0,0,0,0], sp: [4,5,6,7,8] },
     cooldown: [0,0,0,0,0],
-    baseDamage: [12,16,20,24,28], // 提高基础伤害
-    scaling: { physicalPowerCoef: [0.7,0.75,0.8,0.85,0.9] }, // 提高物理强度系数
+    baseDamage: [12,16,20,24,28],
     requirements: { minLevel: 1, requires: [] },
     tags: ['单体','物理']
   },
@@ -28,13 +27,12 @@ const Skills = [
     id: 'heavy_strike',
     name: '重击',
     kind: 'active',
-    type: 'physical',
-    target: 'enemy',
+    type: 'physical',    // 明确：物理攻击
+    target: 'single',     // 明确：单体目标
     maxLevel: 5,
-    cost: { mp: [0,0,0,0,0], sp: [10,11,12,13,14] }, // 降低耐力消耗
+    cost: { mp: [0,0,0,0,0], sp: [10,11,12,13,14] },
     cooldown: [2,2,2,2,2],
-    baseDamage: [25,32,39,46,53], // 提高基础伤害
-    scaling: { physicalPowerCoef: [1.0,1.1,1.2,1.3,1.4] }, // 提高物理强度系数
+    baseDamage: [25,32,39,46,53],
     requirements: { minLevel: 2, requires: [{ id: 'slash', level: 2 }] },
     tags: ['单体','物理','爆发']
   },
@@ -42,14 +40,12 @@ const Skills = [
     id: 'flurry',
     name: '连击',
     kind: 'active',
-    type: 'physical',
-    target: 'enemy',
+    type: 'physical',    // 明确：物理攻击
+    target: 'single',     // 明确：单体目标
     maxLevel: 5,
-    cost: { mp: [0,0,0,0,0], sp: [8,9,10,11,12] }, // 降低耐力消耗
+    cost: { mp: [0,0,0,0,0], sp: [8,9,10,11,12] },
     cooldown: [3,3,3,3,3],
-    // 连击的两段伤害，服务层可实现两次结算
-    baseDamage: [15,19,23,27,31], // 提高基础伤害
-    scaling: { physicalPowerCoef: [0.5,0.55,0.6,0.65,0.7] }, // 提高物理强度系数
+    baseDamage: [15,19,23,27,31],
     requirements: { minLevel: 3, requires: [{ id: 'slash', level: 3 }] },
     tags: ['单体','物理','多段']
   },
@@ -57,13 +53,12 @@ const Skills = [
     id: 'fireball',
     name: '火球术',
     kind: 'active',
-    type: 'magic',
-    target: 'enemy',
+    type: 'magic',       // 明确：魔法攻击
+    target: 'single',     // 明确：单体目标
     maxLevel: 5,
-    cost: { mp: [6,7,8,9,10], sp: [0,0,0,0,0] }, // 降低法力消耗
+    cost: { mp: [6,7,8,9,10], sp: [0,0,0,0,0] },
     cooldown: [1,1,1,1,1],
-    baseDamage: [22,28,34,40,46], // 提高基础伤害
-    scaling: { magicPowerCoef: [0.9,0.95,1.0,1.05,1.1] }, // 提高魔法强度系数
+    baseDamage: [22,28,34,40,46],
     requirements: { minLevel: 2, requires: [] },
     tags: ['单体','魔法','灼烧?']
   },
@@ -71,13 +66,12 @@ const Skills = [
     id: 'ice_arrow',
     name: '寒冰箭',
     kind: 'active',
-    type: 'magic',
-    target: 'enemy',
+    type: 'magic',       // 明确：魔法攻击
+    target: 'single',     // 明确：单体目标
     maxLevel: 5,
-    cost: { mp: [6,7,8,9,10], sp: [0,0,0,0,0] }, // 降低法力消耗
+    cost: { mp: [6,7,8,9,10], sp: [0,0,0,0,0] },
     cooldown: [2,2,2,2,2],
-    baseDamage: [18,24,30,36,42], // 提高基础伤害
-    scaling: { magicPowerCoef: [0.8,0.85,0.9,0.95,1.0] }, // 提高魔法强度系数
+    baseDamage: [18,24,30,36,42],
     effect: { kind: 'special', data: { slow: { duration: 1 } } },
     requirements: { minLevel: 3, requires: [{ id: 'fireball', level: 2 }] },
     tags: ['单体','魔法','减速']
@@ -86,13 +80,12 @@ const Skills = [
     id: 'heal',
     name: '治疗术',
     kind: 'active',
-    type: 'support',
-    target: 'self',
+    type: 'support',     // 明确：支援类型
+    target: 'self',      // 明确：自身目标
     maxLevel: 5,
-    cost: { mp: [8,9,10,11,12], sp: [0,0,0,0,0] }, // 降低法力消耗
+    cost: { mp: [8,9,10,11,12], sp: [0,0,0,0,0] },
     cooldown: [2,2,2,2,2],
-    baseHeal: [25,33,41,49,57], // 提高基础治疗量
-    scaling: { magicPowerCoef: [0.7,0.75,0.8,0.85,0.9] }, // 提高魔法强度系数
+    baseHeal: [25,33,41,49,57],
     requirements: { minLevel: 2, requires: [] },
     tags: ['治疗','自我']
   },
@@ -100,10 +93,10 @@ const Skills = [
     id: 'defend_stance',
     name: '守备姿态',
     kind: 'active',
-    type: 'support',
-    target: 'self',
+    type: 'support',     // 明确：支援类型
+    target: 'self',      // 明确：自身目标
     maxLevel: 3,
-    cost: { mp: [0,0,0], sp: [3,3,3] }, // 降低耐力消耗
+    cost: { mp: [0,0,0], sp: [3,3,3] },
     cooldown: [2,2,2],
     effect: { kind: 'buff', data: { defendNext: true } },
     requirements: { minLevel: 1, requires: [] },
@@ -113,12 +106,12 @@ const Skills = [
     id: 'meditate',
     name: '冥想',
     kind: 'active',
-    type: 'support',
-    target: 'self',
+    type: 'support',     // 明确：支援类型
+    target: 'self',      // 明确：自身目标
     maxLevel: 5,
     cost: { mp: [0,0,0,0,0], sp: [0,0,0,0,0] },
     cooldown: [3,3,3,3,3],
-    effect: { kind: 'restore', data: { mana: [12,15,18,21,24] } }, // 提高法力回复量
+    effect: { kind: 'restore', data: { mana: [12,15,18,21,24] } },
     requirements: { minLevel: 2, requires: [] },
     tags: ['回蓝','自我']
   },
@@ -126,12 +119,12 @@ const Skills = [
     id: 'passive_physical_training',
     name: '体能训练',
     kind: 'passive',
-    type: 'passive',
-    target: 'self',
+    type: 'passive',     // 明确：被动技能
+    target: 'self',      // 明确：自身
     maxLevel: 5,
     cost: { mp: [0,0,0,0,0], sp: [0,0,0,0,0] },
     cooldown: [0,0,0,0,0],
-    effect: { kind: 'passive', data: { maxStamina: [8,16,24,32,40], physicalPower: [3,6,9,12,15] } }, // 提高被动加成
+    effect: { kind: 'passive', data: { maxStamina: [8,16,24,32,40], physicalPower: [3,6,9,12,15] } },
     requirements: { minLevel: 1, requires: [] },
     tags: ['被动','物理']
   },
@@ -139,12 +132,12 @@ const Skills = [
     id: 'passive_arcane_lore',
     name: '奥术学识',
     kind: 'passive',
-    type: 'passive',
-    target: 'self',
+    type: 'passive',     // 明确：被动技能
+    target: 'self',      // 明确：自身
     maxLevel: 5,
     cost: { mp: [0,0,0,0,0], sp: [0,0,0,0,0] },
     cooldown: [0,0,0,0,0],
-    effect: { kind: 'passive', data: { maxMana: [8,16,24,32,40], magicPower: [3,6,9,12,15] } }, // 提高被动加成
+    effect: { kind: 'passive', data: { maxMana: [8,16,24,32,40], magicPower: [3,6,9,12,15] } },
     requirements: { minLevel: 1, requires: [] },
     tags: ['被动','魔法']
   }

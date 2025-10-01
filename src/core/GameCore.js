@@ -11,6 +11,7 @@ import InventoryService from '../services/InventoryService.js';
 import SkillService from '../services/SkillService.js';
 import EquipmentService from '../services/EquipmentService.js';
 import EquipmentEffectService from '../services/EquipmentEffectService.js';
+import WeaponService from '../services/WeaponService.js';
 import EnemyTemplates from '../data/EnemyTemplates.js';
 import itemsDB from '../data/Items.js';
 import SaveService from '../services/SaveService.js';
@@ -62,6 +63,7 @@ class GameCore {
         this.serviceLocator.register('skillService', new SkillService(this.eventBus));
         this.serviceLocator.register('equipmentService', new EquipmentService(this.eventBus));
         this.serviceLocator.register('equipmentEffectService', new EquipmentEffectService(this.eventBus));
+        this.serviceLocator.register('weaponService', new WeaponService(this.eventBus));
         this.serviceLocator.register('enemyTemplates', new EnemyTemplates());
         this.serviceLocator.register('itemsDB', itemsDB);
         this.serviceLocator.register('saveService', new SaveService(this.eventBus, this.serviceLocator));
