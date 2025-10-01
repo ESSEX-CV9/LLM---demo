@@ -229,6 +229,18 @@
     font-weight: bold;
 }
 
+/* 临时增益属性样式 */
+.stat-with-buff {
+    color: #ffd700; /* 金色表示有临时增益 */
+    font-weight: bold;
+}
+
+.base-stat {
+    color: #ffffff; /* 白色表示基础属性 */
+    font-weight: normal;
+    opacity: 0.8;
+}
+
 .equipment-count {
     text-align: center;
     margin-top: 10px;

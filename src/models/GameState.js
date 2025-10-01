@@ -40,7 +40,9 @@ class GameState {
                 equipmentPhysicalPowerBonus: 0,
                 equipmentSpeedBonus: 0,
                 equipmentCriticalChanceBonus: 0
-            }
+            },
+            // 临时增益系统
+            tempBuffs: []
         };
         
         this.world = {
@@ -107,49 +109,170 @@ class GameState {
         this.world.availableItems = this.world.availableItems.filter(item => item.id !== itemId);
     }
 
-    // 计算玩家实际攻击力（基础攻击力 + 等级加成 + 装备加成）
+    // 计算玩家实际攻击力（基础攻击力 + 等级加成 + 装备加成 + 临时增益）
     getPlayerAttack() {
         const baseAttack = this.player.stats.baseAttack;
         const levelBonus = (this.player.level - 1) * 5; // 每级增加5点攻击力
         const equipmentBonus = this.player.stats.equipmentAttackBonus || 0;
-        return baseAttack + levelBonus + equipmentBonus;
+        const tempBonus = this.getTempStatBonus('attack');
+        return baseAttack + levelBonus + equipmentBonus + tempBonus;
     }
 
-    // 计算玩家实际防御力（基础防御力 + 等级加成 + 装备加成）
+    // 计算玩家实际防御力（基础防御力 + 等级加成 + 装备加成 + 临时增益）
     getPlayerDefense() {
         const baseDefense = this.player.stats.baseDefense;
         const levelBonus = (this.player.level - 1) * 3; // 每级增加3点防御力
         const equipmentBonus = this.player.stats.equipmentDefenseBonus || 0;
-        return baseDefense + levelBonus + equipmentBonus;
+        const tempBonus = this.getTempStatBonus('defense');
+        return baseDefense + levelBonus + equipmentBonus + tempBonus;
     }
 
-    // 计算玩家魔法强度（基础 + 等级 + 装备）
+    // 计算玩家魔法强度（基础 + 等级 + 装备 + 临时增益）
     getPlayerMagicPower() {
         const base = this.player.stats.baseMagicPower || 0;
         const levelBonus = (this.player.level - 1) * 3; // 每级+3魔强
         const equipmentBonus = this.player.stats.equipmentMagicPowerBonus || 0;
-        return base + levelBonus + equipmentBonus;
+        const tempBonus = this.getTempStatBonus('magicPower');
+        return base + levelBonus + equipmentBonus + tempBonus;
     }
 
-    // 计算玩家物理强度（基础 + 等级 + 装备）
+    // 计算玩家物理强度（基础 + 等级 + 装备 + 临时增益）
     getPlayerPhysicalPower() {
         const base = this.player.stats.basePhysicalPower || 0;
         const levelBonus = (this.player.level - 1) * 4; // 每级+4物强
         const equipmentBonus = this.player.stats.equipmentPhysicalPowerBonus || 0;
+        const tempBonus = this.getTempStatBonus('physicalPower');
+        return base + levelBonus + equipmentBonus + tempBonus;
+    }
+
+    // 计算玩家速度（基础 + 装备加成 + 临时增益）
+    getPlayerSpeed() {
+        const baseSpeed = this.player.stats.speed || 8;
+        const equipmentBonus = this.player.stats.equipmentSpeedBonus || 0;
+        const tempBonus = this.getTempStatBonus('speed');
+        return baseSpeed + equipmentBonus + tempBonus;
+    }
+
+    // 获取基础属性值（不包含临时增益）
+    getBasePlayerAttack() {
+        const baseAttack = this.player.stats.baseAttack;
+        const levelBonus = (this.player.level - 1) * 5;
+        const equipmentBonus = this.player.stats.equipmentAttackBonus || 0;
+        return baseAttack + levelBonus + equipmentBonus;
+    }
+
+    getBasePlayerDefense() {
+        const baseDefense = this.player.stats.baseDefense;
+        const levelBonus = (this.player.level - 1) * 3;
+        const equipmentBonus = this.player.stats.equipmentDefenseBonus || 0;
+        return baseDefense + levelBonus + equipmentBonus;
+    }
+
+    getBasePlayerMagicPower() {
+        const base = this.player.stats.baseMagicPower || 0;
+        const levelBonus = (this.player.level - 1) * 3;
+        const equipmentBonus = this.player.stats.equipmentMagicPowerBonus || 0;
         return base + levelBonus + equipmentBonus;
     }
 
-    // 计算玩家速度（基础 + 装备加成）
-    getPlayerSpeed() {
+    getBasePlayerPhysicalPower() {
+        const base = this.player.stats.basePhysicalPower || 0;
+        const levelBonus = (this.player.level - 1) * 4;
+        const equipmentBonus = this.player.stats.equipmentPhysicalPowerBonus || 0;
+        return base + levelBonus + equipmentBonus;
+    }
+
+    getBasePlayerSpeed() {
         const baseSpeed = this.player.stats.speed || 8;
         const equipmentBonus = this.player.stats.equipmentSpeedBonus || 0;
         return baseSpeed + equipmentBonus;
     }
 
-    // 计算玩家暴击率（装备加成）
-    getPlayerCriticalChance() {
+    getBasePlayerCriticalChance() {
         const equipmentBonus = this.player.stats.equipmentCriticalChanceBonus || 0;
         return equipmentBonus;
+    }
+
+    // 计算玩家暴击率（装备加成 + 临时增益）
+    getPlayerCriticalChance() {
+        const equipmentBonus = this.player.stats.equipmentCriticalChanceBonus || 0;
+        const tempBonus = this.getTempStatBonus('criticalChance');
+        return equipmentBonus + tempBonus;
+    }
+
+    // 添加临时增益
+    addTempBuff(buff) {
+        // 确保 tempBuffs 数组存在
+        if (!this.player.tempBuffs || !Array.isArray(this.player.tempBuffs)) {
+            this.player.tempBuffs = [];
+        }
+        
+        const tempBuff = {
+            id: Date.now() + Math.random(), // 唯一ID
+            name: buff.name,
+            stats: buff.stats || {},
+            duration: buff.duration || 1,
+            remainingTurns: buff.duration || 1,
+            timestamp: Date.now()
+        };
+        this.player.tempBuffs.push(tempBuff);
+        return tempBuff.id;
+    }
+
+    // 移除临时增益
+    removeTempBuff(buffId) {
+        if (!this.player.tempBuffs || !Array.isArray(this.player.tempBuffs)) {
+            return false;
+        }
+        
+        const index = this.player.tempBuffs.findIndex(buff => buff.id === buffId);
+        if (index !== -1) {
+            this.player.tempBuffs.splice(index, 1);
+            return true;
+        }
+        return false;
+    }
+
+    // 减少临时增益持续时间
+    decreaseTempBuffDuration() {
+        if (!this.player.tempBuffs || !Array.isArray(this.player.tempBuffs)) {
+            return 0;
+        }
+        
+        const expiredBuffs = [];
+        this.player.tempBuffs.forEach(buff => {
+            buff.remainingTurns--;
+            if (buff.remainingTurns <= 0) {
+                expiredBuffs.push(buff.id);
+            }
+        });
+        
+        // 移除过期的增益
+        expiredBuffs.forEach(buffId => this.removeTempBuff(buffId));
+        return expiredBuffs.length;
+    }
+
+    // 获取指定属性的临时增益总和
+    getTempStatBonus(statName) {
+        if (!this.player.tempBuffs || !Array.isArray(this.player.tempBuffs)) {
+            return 0;
+        }
+        return this.player.tempBuffs.reduce((total, buff) => {
+            return total + (buff.stats[statName] || 0);
+        }, 0);
+    }
+
+    // 获取所有临时增益
+    getAllTempBuffs() {
+        if (!this.player.tempBuffs || !Array.isArray(this.player.tempBuffs)) {
+            return [];
+        }
+        return [...this.player.tempBuffs];
+    }
+
+    // 清除所有临时增益
+    clearAllTempBuffs() {
+        this.player.tempBuffs = [];
     }
 
     // 获取玩家完整属性（包含计算后的攻防与魔法/物理强度）
@@ -161,7 +284,10 @@ class GameState {
             magicPower: this.getPlayerMagicPower(),
             physicalPower: this.getPlayerPhysicalPower(),
             speed: this.getPlayerSpeed(),
-            criticalChance: this.getPlayerCriticalChance()
+            criticalChance: this.getPlayerCriticalChance(),
+            // 添加临时增益信息
+            tempBuffs: this.getAllTempBuffs(),
+            hasTempBuffs: (this.player.tempBuffs && Array.isArray(this.player.tempBuffs)) ? this.player.tempBuffs.length > 0 : false
         };
     }
 

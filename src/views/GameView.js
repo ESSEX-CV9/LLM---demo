@@ -1053,32 +1053,51 @@ class GameView {
         const stats = gameState?.getPlayerStats() || player;
         const equipmentSummary = gameState?.getEquipmentSummary() || {};
         
+        // 获取基础属性值（不包含临时增益）
+        const baseStats = {
+            attack: gameState?.getBasePlayerAttack() || stats.attack || 0,
+            defense: gameState?.getBasePlayerDefense() || stats.defense || 0,
+            magicPower: gameState?.getBasePlayerMagicPower() || stats.magicPower || 0,
+            physicalPower: gameState?.getBasePlayerPhysicalPower() || stats.physicalPower || 0,
+            speed: gameState?.getBasePlayerSpeed() || stats.speed || 0,
+            criticalChance: gameState?.getBasePlayerCriticalChance() || stats.criticalChance || 0
+        };
+        
+        // 格式化属性显示：如果有临时增益则显示为 总值(基础值)，否则只显示总值
+        const formatStat = (totalValue, baseValue, suffix = '') => {
+            if (totalValue !== baseValue) {
+                return `<span class="stat-with-buff">${totalValue}<span class="base-stat">(${baseValue})</span></span>${suffix}`;
+            } else {
+                return `${totalValue}${suffix}`;
+            }
+        };
+        
         return `
             <div class="stats-summary">
                 <h5>属性总览</h5>
                 <div class="stat-row">
                     <span>攻击力:</span>
-                    <span>${stats.attack || 0}</span>
+                    <span>${formatStat(stats.attack || 0, baseStats.attack)}</span>
                 </div>
                 <div class="stat-row">
                     <span>防御力:</span>
-                    <span>${stats.defense || 0}</span>
+                    <span>${formatStat(stats.defense || 0, baseStats.defense)}</span>
                 </div>
                 <div class="stat-row">
                     <span>魔法强度:</span>
-                    <span>${stats.magicPower || 0}</span>
+                    <span>${formatStat(stats.magicPower || 0, baseStats.magicPower)}</span>
                 </div>
                 <div class="stat-row">
                     <span>物理强度:</span>
-                    <span>${stats.physicalPower || 0}</span>
+                    <span>${formatStat(stats.physicalPower || 0, baseStats.physicalPower)}</span>
                 </div>
                 <div class="stat-row">
                     <span>速度:</span>
-                    <span>${stats.speed || 0}</span>
+                    <span>${formatStat(stats.speed || 0, baseStats.speed)}</span>
                 </div>
                 <div class="stat-row">
                     <span>暴击率:</span>
-                    <span>${stats.criticalChance || 0}%</span>
+                    <span>${formatStat(stats.criticalChance || 0, baseStats.criticalChance, '%')}</span>
                 </div>
                 <div class="equipment-count">
                     已装备: ${equipmentSummary.equippedCount || 0}/${equipmentSummary.totalSlots || 8}

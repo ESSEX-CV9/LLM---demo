@@ -287,9 +287,30 @@ class InventoryService {
                 break;
 
             case 'temp_buff':
-                // 临时增益效果（这里简化处理，实际可以实现更复杂的buff系统）
+                // 临时增益效果
+                const buffData = {
+                    name: item.name,
+                    stats: effect.stats,
+                    duration: effect.duration
+                };
+                
+                const buffId = gameStateService.getState().addTempBuff(buffData);
                 this.removeItem(itemName, 1);
-                message = `使用${item.name}获得了临时增益效果`;
+                
+                // 构建增益描述
+                const buffDescription = Object.entries(effect.stats).map(([key, value]) => {
+                    const statNames = {
+                        attack: '攻击力',
+                        defense: '防御力',
+                        magicPower: '魔法强度',
+                        physicalPower: '物理强度',
+                        speed: '速度',
+                        criticalChance: '暴击率'
+                    };
+                    return `${statNames[key] || key}+${value}`;
+                }).join(', ');
+                
+                message = `使用${item.name}获得了临时增益：${buffDescription}（持续${effect.duration}回合）`;
                 result = true;
                 break;
 
