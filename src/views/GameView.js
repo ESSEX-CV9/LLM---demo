@@ -605,7 +605,7 @@ class GameView {
                     }
                 }, 500);
             }
-        }, 3000);
+        }, 2000);
     }
 
 
@@ -676,43 +676,90 @@ class GameView {
         } else {
             message = input ?? '';
         }
-        
-        const notification = document.createElement('div');
-        notification.className = `notification ${level}`;
-        notification.textContent = message;
-        
-        // 计算当前通知的位置，避免重叠
-        const existingNotifications = document.querySelectorAll('.notification');
-        let topOffset = 20; // 初始距离顶部20px
-        existingNotifications.forEach((existing, index) => {
-            topOffset += 60; // 每个通知高度约50px + 10px间距
-        });
-        
-        notification.style.cssText = `
-            position: fixed;
-            top: ${topOffset}px;
-            right: 20px;
-            background: ${level === 'error' ? '#ff4444' : level === 'warning' ? '#ffaa00' : level === 'success' ? '#2e7d32' : '#4488ff'};
-            color: white;
-            padding: 12px 16px;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            z-index: 10000;
-            animation: slideInRight 0.3s ease-out;
-            max-width: 300px;
-            word-wrap: break-word;
-        `;
-        
-        document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.style.animation = 'slideInRight 0.3s ease-out reverse';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
+
+        // 初始化通知队列与活动列表（最多并发显示3条）
+        if (!this._notifQueue) this._notifQueue = [];
+        if (!this._notifActive) this._notifActive = [];
+        if (typeof this._notifMax !== 'number') this._notifMax = 3;
+
+        // 定义辅助方法（首调用时挂载到实例，保持最小侵入）
+        if (!this._repositionActive) {
+            this._repositionActive = () => {
+                this._notifActive.forEach((entry, index) => {
+                    const topOffset = 20 + 60 * index; // 每条通知垂直间距
+                    entry.el.style.top = `${topOffset}px`;
+                    entry.el.style.right = '20px';
+                });
+            };
+        }
+
+        if (!this._drainNotifications) {
+            this._drainNotifications = () => {
+                while (this._notifActive.length < this._notifMax && this._notifQueue.length > 0) {
+                    const next = this._notifQueue.shift();
+                    this._createNotification(next.message, next.level);
                 }
-            }, 300);
-        }, 3000);
+            };
+        }
+
+        if (!this._createNotification) {
+            this._createNotification = (msg, lvl) => {
+                const notification = document.createElement('div');
+                notification.className = `notification ${lvl}`;
+                notification.textContent = msg;
+
+                // 计算位置基于当前活跃数量
+                const index = this._notifActive.length;
+                const topOffset = 20 + 60 * index;
+
+                notification.style.cssText = `
+                    position: fixed;
+                    top: ${topOffset}px;
+                    right: 20px;
+                    background: ${lvl === 'error' ? '#ff4444' : lvl === 'warning' ? '#ffaa00' : lvl === 'success' ? '#2e7d32' : '#4488ff'};
+                    color: white;
+                    padding: 12px 16px;
+                    border-radius: 6px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                    z-index: 1000002; /* 提升至装备界面之上 */
+                    animation: slideInRight 0.3s ease-out;
+                    max-width: 300px;
+                    word-wrap: break-word;
+                `;
+
+                document.body.appendChild(notification);
+                this._notifActive.push({ el: notification });
+
+                // 自动移除并回填队列
+                const backlog = (this._notifQueue?.length || 0) + (this._notifActive?.length || 0);
+                const baseDuration = 3000;
+                const duration = backlog > 10 ? Math.floor(baseDuration / 2) : baseDuration;
+                setTimeout(() => {
+                    notification.style.animation = 'slideInRight 0.3s ease-out reverse';
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                        // 从活跃列表移除
+                        const idx = this._notifActive.findIndex(n => n.el === notification);
+                        if (idx >= 0) {
+                            this._notifActive.splice(idx, 1);
+                        }
+                        // 重新排列剩余通知
+                        this._repositionActive();
+                        // 显示队列中的下一条
+                        this._drainNotifications();
+                    }, 300);
+                }, duration);
+            };
+        }
+
+        // 如果当前活跃通知未达上限，直接显示；否则进入队列滚动显示
+        if (this._notifActive.length < this._notifMax) {
+            this._createNotification(message, level);
+        } else {
+            this._notifQueue.push({ message, level });
+        }
     }
 
     updateDebugLog(message, type = 'info') {
