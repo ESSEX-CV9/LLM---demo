@@ -207,15 +207,23 @@ class BattleService {
 
     async executePlayerAction(action, target, item, skillId) {
         const player = this.battleState.player;
-        const enemies = this.battleState.enemies.filter(e => e.hp > 0);
         
         let logMessage = '';
         let damage = 0;
 
         switch (action) {
             case '攻击':
-                if (target !== undefined && enemies[target]) {
-                    damage = this.calculatePlayerDamage(player, 'attack', enemies[target]);
+                // 直接使用 battleState.enemies 和 target 索引，不要过滤后再访问
+                if (target !== undefined && this.battleState.enemies[target]) {
+                    const targetEnemy = this.battleState.enemies[target];
+                    
+                    // 检查目标是否还活着
+                    if (targetEnemy.hp <= 0) {
+                        logMessage = '目标已被击败！';
+                        break;
+                    }
+                    
+                    damage = this.calculatePlayerDamage(player, 'attack', targetEnemy);
                     
                     // 添加暴击检查
                     const isCritical = this.checkCriticalHit();
@@ -223,14 +231,14 @@ class BattleService {
                         damage = Math.floor(damage * 1.5);
                     }
                     
-                    const actualDamage = Math.max(1, damage - (enemies[target].defense || 0));
-                    enemies[target].hp = Math.max(0, enemies[target].hp - actualDamage);
+                    const actualDamage = Math.max(1, damage - (targetEnemy.defense || 0));
+                    targetEnemy.hp = Math.max(0, targetEnemy.hp - actualDamage);
                     
                     let criticalText = isCritical ? '暴击！' : '';
-                    logMessage = `你${criticalText}对${enemies[target].type}造成了${actualDamage}点伤害！`;
+                    logMessage = `你${criticalText}对${targetEnemy.type}造成了${actualDamage}点伤害！`;
                     
-                    if (enemies[target].hp <= 0) {
-                        logMessage += ` ${enemies[target].type}被击败了！`;
+                    if (targetEnemy.hp <= 0) {
+                        logMessage += ` ${targetEnemy.type}被击败了！`;
                     }
                 }
                 break;
@@ -264,11 +272,34 @@ class BattleService {
                 break;
                 
             case '逃跑':
-                const escapeChance = Math.random();
-                if (escapeChance > 0.3) {
+                // 基于速度和敏捷值的逃跑判定
+                const playerSpeed = player.speed || 0;
+                const playerAgility = player.agility || playerSpeed; // 如果没有敏捷值，使用速度
+                
+                // 计算所有存活敌人的平均速度
+                const aliveEnemiesForEscape = this.battleState.enemies.filter(e => e.hp > 0);
+                const avgEnemySpeed = aliveEnemiesForEscape.reduce((sum, e) => sum + (e.speed || 8), 0) / aliveEnemiesForEscape.length;
+                
+                // 逃跑成功率计算：基础30% + (玩家速度 - 敌人平均速度) * 3%
+                // 敏捷值也会影响逃跑率：+ 敏捷值 * 2%
+                const speedDiff = playerSpeed - avgEnemySpeed;
+                const baseEscapeChance = 30;
+                const speedBonus = speedDiff * 3;
+                const agilityBonus = playerAgility * 2;
+                const totalEscapeChance = Math.min(90, Math.max(10, baseEscapeChance + speedBonus + agilityBonus));
+                
+                const escapeRoll = Math.random() * 100;
+                
+                if (escapeRoll < totalEscapeChance) {
+                    logMessage = `你成功逃脱了！（逃跑成功率：${Math.floor(totalEscapeChance)}%）`;
+                    this.battleState.battleLog.push({
+                        type: 'player',
+                        message: logMessage,
+                        round: this.battleState.round
+                    });
                     return await this.endBattle('escape');
                 } else {
-                    logMessage = '逃跑失败！敌人阻止了你的逃跑！';
+                    logMessage = `逃跑失败！敌人阻止了你的逃跑！（逃跑成功率：${Math.floor(totalEscapeChance)}%）`;
                 }
                 break;
         }
@@ -445,21 +476,76 @@ class BattleService {
 
         let result = { success: false, message: '无法使用该物品' };
 
-        switch (item.type) {
-            case 'healing':
-                const healAmount = item.effect.value;
-                const oldHp = this.battleState.player.hp;
-                this.battleState.player.hp = Math.min(
-                    this.battleState.player.maxHp, 
-                    this.battleState.player.hp + healAmount
-                );
-                const actualHeal = this.battleState.player.hp - oldHp;
-                inventoryService.removeItem(itemName, 1);
-                result = { 
-                    success: true, 
-                    message: `使用${item.name}恢复了${actualHeal}点生命值！` 
-                };
-                break;
+        // 消耗品类型处理
+        if (item.type === 'consumable' && item.effect) {
+            const effect = item.effect;
+            
+            switch (effect.type) {
+                case 'heal':
+                    const healAmount = effect.value;
+                    const oldHp = this.battleState.player.hp;
+                    this.battleState.player.hp = Math.min(
+                        this.battleState.player.maxHp,
+                        this.battleState.player.hp + healAmount
+                    );
+                    const actualHeal = this.battleState.player.hp - oldHp;
+                    inventoryService.removeItem(itemName, 1);
+                    result = {
+                        success: true,
+                        message: `使用${item.name}恢复了${actualHeal}点生命值！`
+                    };
+                    break;
+                    
+                case 'restore_mana':
+                    const manaAmount = effect.value;
+                    const oldMana = this.battleState.player.mana || 0;
+                    this.battleState.player.mana = Math.min(
+                        this.battleState.player.maxMana || 0,
+                        oldMana + manaAmount
+                    );
+                    const actualMana = this.battleState.player.mana - oldMana;
+                    inventoryService.removeItem(itemName, 1);
+                    result = {
+                        success: true,
+                        message: `使用${item.name}恢复了${actualMana}点法力值！`
+                    };
+                    break;
+                    
+                case 'restore_stamina':
+                    const staminaAmount = effect.value;
+                    const oldStamina = this.battleState.player.stamina || 0;
+                    this.battleState.player.stamina = Math.min(
+                        this.battleState.player.maxStamina || 0,
+                        oldStamina + staminaAmount
+                    );
+                    const actualStamina = this.battleState.player.stamina - oldStamina;
+                    inventoryService.removeItem(itemName, 1);
+                    result = {
+                        success: true,
+                        message: `使用${item.name}恢复了${actualStamina}点耐力值！`
+                    };
+                    break;
+                    
+                case 'temp_buff':
+                    // 临时增益效果处理
+                    if (effect.stats) {
+                        // 应用增益效果到玩家
+                        Object.entries(effect.stats).forEach(([stat, value]) => {
+                            if (this.battleState.player[stat] !== undefined) {
+                                this.battleState.player[stat] += value;
+                            }
+                        });
+                        inventoryService.removeItem(itemName, 1);
+                        result = {
+                            success: true,
+                            message: `使用${item.name}获得了临时增益效果！`
+                        };
+                    }
+                    break;
+                    
+                default:
+                    result = { success: false, message: `无法使用该物品效果` };
+            }
         }
 
         return result;

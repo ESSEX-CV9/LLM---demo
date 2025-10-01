@@ -783,248 +783,480 @@ body {
     100% { transform: scale(1); }
 }
 
-/* 战斗界面样式 */
+/* ========================================
+   战斗界面样式 - 横版布局
+   ======================================== */
+
 .battle-modal {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 10000;
     animation: fadeIn 0.3s ease-out;
+    backdrop-filter: blur(4px);
 }
 
-.battle-content {
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-    border-radius: 15px;
-    padding: 20px;
-    max-width: 800px;
-    width: 90%;
-    max-height: 90%;
-    overflow-y: auto;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.battle-header {
-    text-align: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.battle-header h3 {
-    color: #e74c3c;
-    font-size: 24px;
-    margin: 0;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-.battle-participants {
+/* 横版战斗内容容器 */
+.battle-content-landscape {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-radius: 16px;
+    padding: 0;
+    width: 95%;
+    max-width: 1200px;
+    height: 85vh;
+    max-height: 700px;
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
-    gap: 20px;
+    flex-direction: column;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
 }
 
-.player-section, .enemies-section {
+/* 战斗头部 */
+.battle-header-landscape {
+    text-align: center;
+    padding: 16px 24px;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.battle-header-landscape h3 {
+    color: #ff6b6b;
+    font-size: 20px;
+    margin: 0;
+    font-weight: 600;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+    letter-spacing: 1px;
+}
+
+/* 战斗主体区域 - 横版三栏布局 */
+.battle-main-landscape {
     flex: 1;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 15px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    min-height: 0;
+    overflow: hidden;
 }
 
-.player-section h4, .enemy h4 {
-    margin: 0 0 10px 0;
-    color: #3498db;
-    font-size: 16px;
+/* 敌人区域（左侧） */
+.battle-enemies-area {
+    flex: 0 0 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.enemy {
-    margin-bottom: 15px;
-    padding: 10px;
-    background: rgba(231, 76, 60, 0.2);
-    border-radius: 8px;
-    border: 1px solid rgba(231, 76, 60, 0.3);
+.enemies-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.enemy-unit {
+    background: rgba(231, 76, 60, 0.15);
+    border: 2px solid rgba(231, 76, 60, 0.4);
+    border-radius: 12px;
+    padding: 12px;
     transition: all 0.3s ease;
 }
 
-.enemy.defeated {
-    opacity: 0.5;
-    background: rgba(127, 140, 141, 0.2);
+.enemy-unit.defeated {
+    opacity: 0.4;
+    background: rgba(127, 140, 141, 0.15);
     border-color: rgba(127, 140, 141, 0.3);
+    filter: grayscale(100%);
 }
 
-.enemy h4 {
-    color: #e74c3c;
+.enemy-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ff6b6b;
+    margin-bottom: 8px;
+    text-align: center;
 }
 
-.hp-bar {
-    position: relative;
+.enemy-sprite {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.sprite-placeholder {
+    width: 80px;
+    height: 80px;
     background: rgba(0, 0, 0, 0.3);
-    height: 20px;
-    border-radius: 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sprite-emoji {
+    font-size: 48px;
+}
+
+.enemy-bars, .player-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* 状态条样式 */
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bar-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    min-width: 24px;
+}
+
+.bar-container {
+    flex: 1;
+    position: relative;
+    background: rgba(0, 0, 0, 0.4);
+    height: 16px;
+    border-radius: 8px;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.hp-fill {
+.bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, #e74c3c, #c0392b);
-    transition: width 0.5s ease;
-    border-radius: 10px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 8px;
 }
 
-.player-section .hp-fill {
-    background: linear-gradient(90deg, #27ae60, #2ecc71);
+/* HP条颜色 */
+.hp-fill {
+    background: linear-gradient(90deg, #e74c3c 0%, #c0392b 100%);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2);
 }
 
-.enemy-hp {
-    background: linear-gradient(90deg, #e74c3c, #c0392b);
+.player-hp {
+    background: linear-gradient(90deg, #27ae60 0%, #2ecc71 100%);
 }
 
-.hp-text {
+/* MP条颜色 */
+.mp-fill {
+    background: linear-gradient(90deg, #1e88e5 0%, #42a5f5 100%);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2);
+}
+
+/* SP条颜色 */
+.sp-fill {
+    background: linear-gradient(90deg, #fb8c00 0%, #ffa726 100%);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2);
+}
+
+.bar-text {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     color: white;
-    font-weight: bold;
-    font-size: 12px;
+    font-weight: 700;
+    font-size: 10px;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    letter-spacing: 0.5px;
 }
 
-.battle-log {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 15px;
-    /* 固定高度，避免高度扩张 */
-    height: 150px;
-    min-height: 150px;
-    max-height: 150px;
-    /* 允许内容滚动但隐藏滚动条 */
-    overflow-y: auto;
-    /* 隐藏滚动条（Firefox） */
-    scrollbar-width: none;
-    /* 隐藏滚动条（IE/Edge 旧版） */
-    -ms-overflow-style: none;
-    margin-bottom: 20px;
-    font-family: 'Courier New', monospace;
+/* 增益效果显示 */
+.buffs-display {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
 }
-/* 隐藏滚动条（Chrome/Safari/WebKit） */
-.battle-log::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-    display: none;
+
+.buff-icon {
+    width: 24px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: help;
+}
+
+/* 中间战斗信息区域 */
+.battle-center-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.battle-log-landscape {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 12px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+}
+
+.battle-log-landscape::-webkit-scrollbar {
+    width: 6px;
+}
+
+.battle-log-landscape::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.battle-log-landscape::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
 }
 
 .log-entry {
     margin-bottom: 8px;
-    padding: 5px;
-    border-radius: 4px;
+    padding: 6px 8px;
+    border-radius: 6px;
     animation: slideInLeft 0.3s ease-out;
+    line-height: 1.4;
 }
 
 .log-entry.player {
     background: rgba(52, 152, 219, 0.2);
     border-left: 3px solid #3498db;
-    color: #3498db;
+    color: #5dade2;
 }
 
 .log-entry.enemy {
     background: rgba(231, 76, 60, 0.2);
     border-left: 3px solid #e74c3c;
-    color: #e74c3c;
+    color: #ec7063;
 }
 
-.battle-actions {
+/* 玩家区域（右侧） */
+.battle-player-area {
+    flex: 0 0 280px;
+    display: flex;
+    flex-direction: column;
+}
+
+.player-unit {
+    background: rgba(52, 152, 219, 0.15);
+    border: 2px solid rgba(52, 152, 219, 0.4);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.player-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #5dade2;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.player-sprite {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+/* 底部操作区域 */
+.battle-bottom-area {
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 2px solid rgba(255, 255, 255, 0.1);
+    padding: 16px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+/* 玩家属性简览 */
+.battle-player-stats {
+    flex: 0 0 200px;
+}
+
+.stats-overview {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.stat-item {
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    padding: 15px;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
 }
 
-.action-buttons {
+.stat-label {
+    font-size: 14px;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: #fff;
+}
+
+/* 战斗操作按钮 */
+.battle-actions-landscape {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.action-buttons-landscape {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin-bottom: 15px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
 }
 
 .battle-action-btn {
-    padding: 12px 20px;
+    padding: 12px 8px;
     border: none;
     border-radius: 8px;
-    font-size: 14px;
-    font-weight: bold;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn-icon {
+    font-size: 20px;
+}
+
+.btn-text {
+    font-size: 11px;
 }
 
 .attack-btn {
-    background: linear-gradient(45deg, #e74c3c, #c0392b);
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+}
+
+.skill-btn {
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
     color: white;
 }
 
 .defend-btn {
-    background: linear-gradient(45deg, #3498db, #2980b9);
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
     color: white;
 }
 
 .item-btn {
-    background: linear-gradient(45deg, #f39c12, #e67e22);
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
     color: white;
 }
 
 .escape-btn {
-    background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
     color: white;
 }
 
 .battle-action-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .battle-action-btn:active {
     transform: translateY(0);
 }
 
-.target-selection {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    padding: 15px;
+/* 目标选择和技能选择 */
+.target-selection-landscape,
+.skills-selection-landscape {
+    background: rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 12px;
 }
 
-.target-selection h4 {
-    margin: 0 0 10px 0;
+.target-selection-landscape h4,
+.skills-selection-landscape h4 {
+    margin: 0 0 8px 0;
     color: #f39c12;
+    font-size: 12px;
+}
+
+.target-buttons,
+.skills-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .target-btn {
-    display: block;
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 8px;
+    padding: 8px 12px;
     background: rgba(231, 76, 60, 0.3);
     border: 1px solid rgba(231, 76, 60, 0.5);
     border-radius: 6px;
     color: white;
     cursor: pointer;
     transition: all 0.3s ease;
+    font-size: 11px;
 }
 
 .target-btn:hover {
     background: rgba(231, 76, 60, 0.5);
-    transform: translateX(5px);
+    transform: translateY(-1px);
+}
+
+.skill-btn-landscape {
+    padding: 8px 12px;
+    background: rgba(155, 89, 182, 0.3);
+    border: 1px solid rgba(155, 89, 182, 0.5);
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.skill-btn-landscape:hover {
+    background: rgba(155, 89, 182, 0.5);
+    transform: translateY(-1px);
+}
+
+.skill-cost {
+    font-size: 9px;
+    opacity: 0.8;
+}
+
+.no-skills {
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    font-size: 11px;
 }
 
 .waiting-message {
@@ -1032,7 +1264,193 @@ body {
     color: #f39c12;
     font-style: italic;
     padding: 20px;
-    font-size: 16px;
+    font-size: 14px;
+}
+
+/* 战斗背包界面 */
+.battle-inventory-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.battle-inventory-modal {
+    background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+    border-radius: 16px;
+    padding: 20px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.battle-inventory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.battle-inventory-header h3 {
+    color: white;
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.battle-inventory-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.battle-inventory-tabs .tab-button {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 12px;
+}
+
+.battle-inventory-tabs .tab-button.active {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.battle-inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.battle-inventory-slot {
+    aspect-ratio: 1;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 8px;
+}
+
+.battle-inventory-slot:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
+}
+
+.battle-inventory-slot.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.battle-inventory-slot .item-icon {
+    font-size: 32px;
+    margin-bottom: 4px;
+}
+
+.battle-inventory-slot .item-name {
+    font-size: 10px;
+    color: white;
+    text-align: center;
+    word-wrap: break-word;
+    max-width: 100%;
+}
+
+.battle-inventory-slot .item-quantity {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 10px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.battle-inventory-footer {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 11px;
+    font-style: italic;
+}
+
+.no-items-message {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 40px;
+    font-size: 14px;
+}
+
+/* 响应式设计 - 小于765px时调整布局 */
+@media (max-width: 765px) {
+    .battle-content-landscape {
+        height: 90vh;
+        max-height: none;
+    }
+    
+    .battle-main-landscape {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    
+    .battle-enemies-area,
+    .battle-player-area {
+        flex: 0 0 auto;
+    }
+    
+    .enemies-container {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+    
+    .action-buttons-landscape {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .battle-bottom-area {
+        flex-direction: column;
+    }
+    
+    .battle-player-stats {
+        flex: 0 0 auto;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .battle-header-landscape h3 {
+        font-size: 16px;
+    }
+    
+    .action-buttons-landscape {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .battle-inventory-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 /* 背包界面样式 */

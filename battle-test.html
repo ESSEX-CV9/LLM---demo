@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>战斗系统测试</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .battle-area {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            gap: 20px;
+        }
+
+        .character-panel {
+            flex: 1;
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .player-panel {
+            border-color: #4299e1;
+        }
+
+        .enemy-panel {
+            border-color: #f56565;
+        }
+
+        .character-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .player-panel .character-name {
+            color: #2b6cb0;
+        }
+
+        .enemy-panel .character-name {
+            color: #c53030;
+        }
+
+        .health-bar {
+            width: 100%;
+            height: 20px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            transition: width 0.5s ease;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            background: #edf2f7;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 0 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-attack {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+        }
+
+        .btn-skill {
+            background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%);
+        }
+
+        .btn-defend {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .battle-log {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            line-height: 1.5;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-player {
+            color: #63b3ed;
+        }
+
+        .log-enemy {
+            color: #fc8181;
+        }
+
+        .log-system {
+            color: #68d391;
+            font-style: italic;
+        }
+
+        .log-damage {
+            color: #fbb6ce;
+            font-weight: bold;
+        }
+
+        .log-critical {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .log-dodge {
+            color: #90cdf4;
+            font-weight: bold;
+        }
+
+        .status-panel {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4a5568;
+        }
+
+        .status-label {
+            font-size: 0.8em;
+            color: #718096;
+            margin-top: 5px;
+        }
+
+        .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .victory {
+            color: #38a169;
+            font-weight: bold;
+        }
+
+        .defeat {
+            color: #e53e3e;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗡️ 战斗系统数值测试 ⚔️</h1>
+        
+        <div class="battle-area">
+            <!-- 玩家面板 -->
+            <div class="character-panel player-panel">
+                <div class="character-name" id="player-name">冒险者</div>
+                <div class="health-bar">
+                    <div class="health-fill" id="player-health-fill" style="width: 100%"></div>
+                </div>
+                <div id="player-health-text">100/100 HP</div>
+                <div class="stats">
+                    <div class="stat-item">攻击力: <span id="player-attack">15</span></div>
+                    <div class="stat-item">防御力: <span id="player-defense">8</span></div>
+                    <div class="stat-item">物理强度: <span id="player-physical">15</span></div>
+                    <div class="stat-item">魔法强度: <span id="player-magic">10</span></div>
+                    <div class="stat-item">速度: <span id="player-speed">8</span></div>
+                    <div class="stat-item">暴击率: <span id="player-crit">0</span>%</div>
+                </div>
+            </div>
+
+            <!-- 敌人面板 -->
+            <div class="character-panel enemy-panel">
+                <div class="character-name" id="enemy-name">哥布林</div>
+                <div class="health-bar">
+                    <div class="health-fill" id="enemy-health-fill" style="width: 100%"></div>
+                </div>
+                <div id="enemy-health-text">50/50 HP</div>
+                <div class="stats">
+                    <div class="stat-item">攻击力: <span id="enemy-attack">12</span></div>
+                    <div class="stat-item">防御力: <span id="enemy-defense">5</span></div>
+                    <div class="stat-item">物理强度: <span id="enemy-physical">8</span></div>
+                    <div class="stat-item">魔法强度: <span id="enemy-magic">3</span></div>
+                    <div class="stat-item">速度: <span id="enemy-speed">7</span></div>
+                    <div class="stat-item">暴击率: <span id="enemy-crit">5</span>%</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-panel">
+            <div class="status-item">
+                <div class="status-value" id="round-counter">1</div>
+                <div class="status-label">回合</div>
+            </div>
+            <div class="status-item">
+                <div class="status-value" id="turn-indicator">玩家回合</div>
+                <div class="status-label">当前回合</div>
+            </div>
+            <div class="status-item">
+                <div class="status-value" id="battle-status">进行中</div>
+                <div class="status-label">战斗状态</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-attack" onclick="playerAttack()">普通攻击</button>
+            <button class="btn btn-skill" onclick="playerSkill()">技能攻击</button>
+            <button class="btn btn-defend" onclick="playerDefend()">防御</button>
+            <button class="btn" onclick="resetBattle()">重新开始</button>
+            <button class="btn" onclick="switchEnemy()">切换敌人</button>
+        </div>
+
+        <div class="battle-log" id="battle-log">
+            <div class="log-entry log-system">战斗开始！点击攻击按钮开始战斗...</div>
+        </div>
+    </div>
+
+    <script>
+        // 战斗系统测试类
+        class BattleSystemTest {
+            constructor() {
+                this.player = {
+                    name: "冒险者",
+                    level: 2,
+                    hp: 100,
+                    maxHp: 100,
+                    mana: 50,
+                    maxMana: 50,
+                    stamina: 50,
+                    maxStamina: 50,
+                    stats: {
+                        baseAttack: 12,
+                        baseDefense: 6,
+                        speed: 8,
+                        baseMagicPower: 8,
+                        basePhysicalPower: 12,
+                        equipmentAttackBonus: 0,
+                        equipmentDefenseBonus: 0,
+                        equipmentMagicPowerBonus: 0,
+                        equipmentPhysicalPowerBonus: 0,
+                        equipmentSpeedBonus: 0,
+                        equipmentCriticalChanceBonus: 0
+                    },
+                    tempBuffs: [],
+                    defending: false
+                };
+
+                this.enemies = [
+                    {
+                        name: "小史莱姆",
+                        type: "小史莱姆",
+                        level: 1,
+                        hp: 30,
+                        maxHp: 30,
+                        attack: 9,  // 6 + 3 (level bonus)
+                        defense: 4, // 2 + 2 (level bonus)
+                        physicalPower: 4,
+                        magicPower: 2,
+                        speed: 5,
+                        criticalChance: 2
+                    },
+                    {
+                        name: "哥布林战士",
+                        type: "哥布林战士",
+                        level: 2,
+                        hp: 70,
+                        maxHp: 70,
+                        attack: 17, // 14 + 3 (level bonus)
+                        defense: 10, // 8 + 2 (level bonus)
+                        physicalPower: 12,
+                        magicPower: 3,
+                        speed: 9,
+                        criticalChance: 6
+                    },
+                    {
+                        name: "野狼",
+                        type: "野狼",
+                        level: 2,
+                        hp: 60,
+                        maxHp: 60,
+                        attack: 15, // 12 + 3 (level bonus)
+                        defense: 7,  // 5 + 2 (level bonus)
+                        physicalPower: 10,
+                        magicPower: 2,
+                        speed: 12,
+                        criticalChance: 8
+                    },
+                    {
+                        name: "骷髅兵",
+                        type: "骷髅兵",
+                        level: 3,
+                        hp: 90,
+                        maxHp: 90,
+                        attack: 22, // 16 + 6 (level bonus)
+                        defense: 16, // 12 + 4 (level bonus)
+                        physicalPower: 14,
+                        magicPower: 8,
+                        speed: 8,
+                        criticalChance: 4
+                    }
+                ];
+
+                this.currentEnemyIndex = 0;
+                this.currentEnemy = { ...this.enemies[0] };
+                this.round = 1;
+                this.isPlayerTurn = true;
+                this.battleActive = true;
+
+                this.updateDisplay();
+                this.log("战斗系统测试初始化完成", "system");
+            }
+
+            // 计算玩家属性
+            calculatePlayerStats() {
+                const levelBonus = (this.player.level - 1);
+                return {
+                    attack: this.player.stats.baseAttack + levelBonus * 3 + this.player.stats.equipmentAttackBonus,
+                    defense: this.player.stats.baseDefense + levelBonus * 2 + this.player.stats.equipmentDefenseBonus,
+                    physicalPower: this.player.stats.basePhysicalPower + levelBonus * 3 + this.player.stats.equipmentPhysicalPowerBonus,
+                    magicPower: this.player.stats.baseMagicPower + levelBonus * 2 + this.player.stats.equipmentMagicPowerBonus,
+                    speed: this.player.stats.speed + this.player.stats.equipmentSpeedBonus,
+                    criticalChance: this.player.stats.equipmentCriticalChanceBonus
+                };
+            }
+
+            // 计算伤害
+            calculateDamage(attacker, target, type = 'attack') {
+                let baseDamage = 0;
+                
+                if (type === 'attack') {
+                    if (attacker === this.player) {
+                        const stats = this.calculatePlayerStats();
+                        baseDamage = Math.floor(stats.attack * 0.7 + stats.physicalPower * 0.5);
+                    } else {
+                        baseDamage = Math.floor(attacker.attack * 0.7 + attacker.physicalPower * 0.5);
+                    }
+                } else if (type === 'skill') {
+                    if (attacker === this.player) {
+                        const stats = this.calculatePlayerStats();
+                        baseDamage = Math.floor(stats.attack * 0.5 + stats.physicalPower * 0.3 + stats.magicPower * 0.3);
+                    } else {
+                        baseDamage = Math.floor(attacker.attack * 0.5 + attacker.physicalPower * 0.3 + attacker.magicPower * 0.3);
+                    }
+                }
+
+                // 随机系数 85%-115%
+                const variance = Math.random() * 0.3 + 0.85;
+                let finalDamage = Math.floor(baseDamage * variance);
+
+                // 防御减伤
+                const defense = target === this.player ? this.calculatePlayerStats().defense : target.defense;
+                finalDamage = Math.max(1, finalDamage - defense);
+
+                return finalDamage;
+            }
+
+            // 检查闪避
+            checkDodge(attacker, defender) {
+                const attackerSpeed = attacker === this.player ? this.calculatePlayerStats().speed : attacker.speed;
+                const defenderSpeed = defender === this.player ? this.calculatePlayerStats().speed : defender.speed;
+                
+                const speedDiff = defenderSpeed - attackerSpeed;
+                const dodgeChance = Math.min(30, Math.max(0, speedDiff * 2));
+                
+                return Math.random() * 100 < dodgeChance;
+            }
+
+            // 检查暴击
+            checkCritical(attacker) {
+                const criticalChance = attacker === this.player ? this.calculatePlayerStats().criticalChance : attacker.criticalChance;
+                return Math.random() * 100 < criticalChance;
+            }
+
+            // 玩家攻击
+            playerAttack() {
+                if (!this.battleActive || !this.isPlayerTurn) return;
+
+                const dodged = this.checkDodge(this.player, this.currentEnemy);
+                if (dodged) {
+                    this.log(`${this.currentEnemy.name}敏捷地闪避了你的攻击！`, "dodge");
+                } else {
+                    let damage = this.calculateDamage(this.player, this.currentEnemy, 'attack');
+                    const isCritical = this.checkCritical(this.player);
+                    
+                    if (isCritical) {
+                        damage = Math.floor(damage * 1.5);
+                        this.log(`暴击！你对${this.currentEnemy.name}造成了${damage}点伤害！`, "critical");
+                    } else {
+                        this.log(`你对${this.currentEnemy.name}造成了${damage}点伤害！`, "damage");
+                    }
+
+                    this.currentEnemy.hp = Math.max(0, this.currentEnemy.hp - damage);
+                }
+
+                this.checkBattleEnd() || this.enemyTurn();
+            }
+
+            // 玩家技能攻击
+            playerSkill() {
+                if (!this.battleActive || !this.isPlayerTurn) return;
+
+                if (this.player.mana < 8) {
+                    this.log("法力不足，无法使用技能！", "system");
+                    return;
+                }
+
+                this.player.mana -= 8;
+
+                const dodged = this.checkDodge(this.player, this.currentEnemy);
+                if (dodged) {
+                    this.log(`${this.currentEnemy.name}敏捷地闪避了你的技能攻击！`, "dodge");
+                } else {
+                    let damage = this.calculateDamage(this.player, this.currentEnemy, 'skill');
+                    const isCritical = this.checkCritical(this.player);
+                    
+                    if (isCritical) {
+                        damage = Math.floor(damage * 1.5);
+                        this.log(`暴击！你使用技能攻击对${this.currentEnemy.name}造成了${damage}点伤害！`, "critical");
+                    } else {
+                        this.log(`你使用技能攻击对${this.currentEnemy.name}造成了${damage}点伤害！`, "damage");
+                    }
+
+                    this.currentEnemy.hp = Math.max(0, this.currentEnemy.hp - damage);
+                }
+
+                this.checkBattleEnd() || this.enemyTurn();
+            }
+
+            // 玩家防御
+            playerDefend() {
+                if (!this.battleActive || !this.isPlayerTurn) return;
+
+                this.player.defending = true;
+                this.log("你采取了防御姿态，下次受到的伤害将减少50%！", "player");
+                this.enemyTurn();
+            }
+
+            // 敌人回合
+            enemyTurn() {
+                if (!this.battleActive) return;
+
+                this.isPlayerTurn = false;
+                this.updateDisplay();
+
+                setTimeout(() => {
+                    const action = Math.random() > 0.7 ? 'skill' : 'attack';
+                    
+                    const dodged = this.checkDodge(this.currentEnemy, this.player);
+                    if (dodged) {
+                        this.log(`你敏捷地闪避了${this.currentEnemy.name}的攻击！`, "dodge");
+                    } else {
+                        let damage = this.calculateDamage(this.currentEnemy, this.player, action);
+                        const isCritical = this.checkCritical(this.currentEnemy);
+                        
+                        if (isCritical) {
+                            damage = Math.floor(damage * 1.5);
+                        }
+
+                        if (this.player.defending) {
+                            damage = Math.floor(damage * 0.5);
+                            this.player.defending = false;
+                            const actionText = action === 'skill' ? '技能攻击' : '攻击';
+                            const critText = isCritical ? '暴击！' : '';
+                            this.log(`${this.currentEnemy.name}${actionText}${critText}，但被你的防御姿态减轻，只造成了${damage}点伤害！`, "damage");
+                        } else {
+                            const actionText = action === 'skill' ? '技能攻击' : '攻击';
+                            const critText = isCritical ? '暴击！' : '';
+                            this.log(`${this.currentEnemy.name}${actionText}${critText}对你造成了${damage}点伤害！`, "damage");
+                        }
+
+                        this.player.hp = Math.max(0, this.player.hp - damage);
+                    }
+
+                    // 回合结束回复
+                    this.player.mana = Math.min(this.player.maxMana, this.player.mana + 5);
+                    this.player.stamina = Math.min(this.player.maxStamina, this.player.stamina + 5);
+
+                    if (this.checkBattleEnd()) return;
+
+                    this.round++;
+                    this.isPlayerTurn = true;
+                    this.updateDisplay();
+                }, 1500);
+            }
+
+            // 检查战斗结束
+            checkBattleEnd() {
+                if (this.player.hp <= 0) {
+                    this.battleActive = false;
+                    this.log("你被击败了！", "defeat");
+                    document.getElementById('battle-status').textContent = "败北";
+                    document.getElementById('battle-status').className = "status-value defeat";
+                    return true;
+                } else if (this.currentEnemy.hp <= 0) {
+                    this.battleActive = false;
+                    this.log(`你击败了${this.currentEnemy.name}！`, "victory");
+                    document.getElementById('battle-status').textContent = "胜利";
+                    document.getElementById('battle-status').className = "status-value victory";
+                    return true;
+                }
+                return false;
+            }
+
+            // 切换敌人
+            switchEnemy() {
+                this.currentEnemyIndex = (this.currentEnemyIndex + 1) % this.enemies.length;
+                this.resetBattle();
+            }
+
+            // 重置战斗
+            resetBattle() {
+                this.player.hp = this.player.maxHp;
+                this.player.mana = this.player.maxMana;
+                this.player.stamina = this.player.maxStamina;
+                this.player.defending = false;
+                
+                this.currentEnemy = { ...this.enemies[this.currentEnemyIndex] };
+                this.round = 1;
+                this.isPlayerTurn = true;
+                this.battleActive = true;
+                
+                document.getElementById('battle-log').innerHTML = '';
+                this.log(`新的战斗开始！对手：${this.currentEnemy.name}`, "system");
+                this.updateDisplay();
+            }
+
+            // 记录日志
+            log(message, type = 'system') {
+                const logElement = document.getElementById('battle-log');
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+                entry.textContent = `[回合${this.round}] ${message}`;
+                logElement.appendChild(entry);
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+
+            // 更新显示
+            updateDisplay() {
+                const playerStats = this.calculatePlayerStats();
+
+                // 玩家信息
+                document.getElementById('player-name').textContent = this.player.name;
+                document.getElementById('player-health-text').textContent = `${this.player.hp}/${this.player.maxHp} HP`;
+                document.getElementById('player-health-fill').style.width = `${(this.player.hp / this.player.maxHp) * 100}%`;
+                
+                document.getElementById('player-attack').textContent = playerStats.attack;
+                document.getElementById('player-defense').textContent = playerStats.defense;
+                document.getElementById('player-physical').textContent = playerStats.physicalPower;
+                document.getElementById('player-magic').textContent = playerStats.magicPower;
+                document.getElementById('player-speed').textContent = playerStats.speed;
+                document.getElementById('player-crit').textContent = playerStats.criticalChance;
+
+                // 敌人信息
+                document.getElementById('enemy-name').textContent = this.currentEnemy.name;
+                document.getElementById('enemy-health-text').textContent = `${this.currentEnemy.hp}/${this.currentEnemy.maxHp} HP`;
+                document.getElementById('enemy-health-fill').style.width = `${(this.currentEnemy.hp / this.currentEnemy.maxHp) * 100}%`;
+                
+                document.getElementById('enemy-attack').textContent = this.currentEnemy.attack;
+                document.getElementById('enemy-defense').textContent = this.currentEnemy.defense;
+                document.getElementById('enemy-physical').textContent = this.currentEnemy.physicalPower;
+                document.getElementById('enemy-magic').textContent = this.currentEnemy.magicPower;
+                document.getElementById('enemy-speed').textContent = this.currentEnemy.speed;
+                document.getElementById('enemy-crit').textContent = this.currentEnemy.criticalChance;
+
+                // 状态信息
+                document.getElementById('round-counter').textContent = this.round;
+                document.getElementById('turn-indicator').textContent = this.isPlayerTurn ? '玩家回合' : '敌人回合';
+                
+                if (this.battleActive) {
+                    document.getElementById('battle-status').textContent = "进行中";
+                    document.getElementById('battle-status').className = "status-value";
+                }
+
+                // 按钮状态
+                const buttons = document.querySelectorAll('.btn-attack, .btn-skill, .btn-defend');
+                buttons.forEach(btn => {
+                    if (this.battleActive && this.isPlayerTurn) {
+                        btn.classList.remove('disabled');
+                        btn.disabled = false;
+                    } else {
+                        btn.classList.add('disabled');
+                        btn.disabled = true;
+                    }
+                });
+            }
+        }
+
+        // 全局变量
+        let battleTest;
+
+        // 页面加载完成后初始化
+        window.onload = function() {
+            battleTest = new BattleSystemTest();
+        };
+
+        // 全局函数
+        function playerAttack() {
+            battleTest.playerAttack();
+        }
+
+        function playerSkill() {
+            battleTest.playerSkill();
+        }
+
+        function playerDefend() {
+            battleTest.playerDefend();
+        }
+
+        function resetBattle() {
+            battleTest.resetBattle();
+        }
+
+        function switchEnemy() {
+            battleTest.switchEnemy();
+        }
+    </script>
+</body>
+</html>
