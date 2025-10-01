@@ -1,3 +1,7 @@
+import BattleView from './BattleView.js';
+import InventoryView from './InventoryView.js';
+import SaveManagerView from './SaveManagerView.js';
+
 // views/GameView.js
 class GameView {
     constructor(eventBus) {
@@ -6,6 +10,13 @@ class GameView {
         this.loadingMessageElement = null; // 加载消息元素
         this.completedBattles = new Set(); // 跟踪已完成的战斗ID
         this.battleIdCounter = 0; // 战斗ID计数器
+
+        // 解耦视图：实例化战斗与背包视图（最小侵入）
+        this.battleView = new BattleView(this.eventBus, this);
+        this.inventoryView = new InventoryView(this.eventBus, this);
+        // 解耦视图：实例化存档视图（最小侵入）
+        this.saveManagerView = new SaveManagerView(this.eventBus, this);
+        
         this.setupEventListeners();
         this.initializeUI();
     }
@@ -789,59 +800,11 @@ class GameView {
         }
     }
 
-    // 显示背包界面弹窗
+    // 显示背包界面弹窗（委托到 InventoryView）
     showInventoryInterface(data) {
-        const { items, maxSlots, usedSlots } = data;
-        
-        // 获取玩家装备信息
-        const gameStateService = window.gameCore?.getService('gameStateService');
-        const player = gameStateService?.getState()?.player;
-        const equipment = player?.equipment || {};
-        
-        // 创建背包界面
-        const inventoryModal = document.createElement('div');
-        inventoryModal.className = 'inventory-modal';
-        inventoryModal.innerHTML = `
-            <div class="inventory-content">
-                <div class="inventory-header">
-                    <h3>🎒 背包与装备</h3>
-                    <button class="close-button" onclick="this.closest('.inventory-modal').remove()">×</button>
-                </div>
-                <div class="inventory-main">
-                    <div class="equipment-panel">
-                        <h4>⚔️ 装备</h4>
-                        <div class="equipment-slots">
-                            ${this.generateEquipmentSlots(equipment)}
-                        </div>
-                        <div class="equipment-stats">
-                            ${this.generateEquipmentStats(player)}
-                        </div>
-                    </div>
-                    <div class="inventory-panel">
-                        <h4>🎒 背包 (${usedSlots}/${maxSlots})</h4>
-                        <div class="inventory-tabs">
-                            <button class="tab-button active" data-tab="all">全部</button>
-                            <button class="tab-button" data-tab="equipment">装备</button>
-                            <button class="tab-button" data-tab="consumable">消耗品</button>
-                            <button class="tab-button" data-tab="material">材料</button>
-                        </div>
-                        <div class="inventory-grid" id="inventoryGrid">
-                            ${this.generateInventoryGrid(items, maxSlots)}
-                        </div>
-                    </div>
-                </div>
-                <div class="inventory-footer">
-                    <p>左键使用/装备物品，右键查看详情，拖拽到装备槽位可直接装备</p>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(inventoryModal);
-        
-        // 添加点击事件
-        this.setupInventoryEvents(inventoryModal);
-        this.setupEquipmentEvents(inventoryModal);
-        this.setupInventoryTabs(inventoryModal);
+        if (this.inventoryView) {
+            this.inventoryView.show(data);
+        }
     }
 
     generateInventoryGrid(items, maxSlots) {
@@ -1400,46 +1363,10 @@ class GameView {
         }
     }
 
+    // 刷新背包界面（委托到 InventoryView）
     refreshInventoryInterface() {
-        const modal = document.querySelector('.inventory-modal');
-        if (modal) {
-            // 不移除整个模态框，只刷新内容
-            const inventoryService = window.gameCore?.getService('inventoryService');
-            const gameStateService = window.gameCore?.getService('gameStateService');
-            
-            if (inventoryService && gameStateService) {
-                const stats = inventoryService.getInventoryStats();
-                const player = gameStateService.getState().player;
-                const equipment = player?.equipment || {};
-                
-                // 更新装备面板
-                const equipmentPanel = modal.querySelector('.equipment-slots');
-                if (equipmentPanel) {
-                    equipmentPanel.innerHTML = this.generateEquipmentSlots(equipment);
-                }
-                
-                // 更新装备统计
-                const equipmentStats = modal.querySelector('.equipment-stats');
-                if (equipmentStats) {
-                    equipmentStats.innerHTML = this.generateEquipmentStats(player);
-                }
-                
-                // 更新背包标题
-                const inventoryTitle = modal.querySelector('.inventory-panel h4');
-                if (inventoryTitle) {
-                    inventoryTitle.textContent = `🎒 背包 (${stats.usedSlots}/${stats.maxSlots})`;
-                }
-                
-                // 更新背包网格
-                const inventoryGrid = modal.querySelector('#inventoryGrid');
-                if (inventoryGrid) {
-                    inventoryGrid.innerHTML = this.generateInventoryGrid(inventoryService.getAllItems(), stats.maxSlots);
-                }
-                
-                // 重新设置事件监听器
-                this.setupInventoryEvents(modal);
-                this.setupEquipmentEvents(modal);
-            }
+        if (this.inventoryView) {
+            this.inventoryView.refresh();
         }
     }
 
@@ -1471,83 +1398,18 @@ class GameView {
         }
     }
 
+    // 更新背包界面（委托到 InventoryView）
     updateInventoryDisplay(data) {
-        // 如果背包界面打开，更新显示
-        const inventoryModal = document.querySelector('.inventory-modal');
-        if (inventoryModal) {
-            const inventoryService = window.gameCore?.getService('inventoryService');
-            if (inventoryService) {
-                const stats = inventoryService.getInventoryStats();
-                const header = inventoryModal.querySelector('.inventory-header h3');
-                if (header) {
-                    header.textContent = `🎒 背包 (${stats.usedSlots}/${stats.maxSlots})`;
-                }
-                
-                const grid = inventoryModal.querySelector('#inventoryGrid');
-                if (grid) {
-                    grid.innerHTML = this.generateInventoryGrid(inventoryService.getAllItems(), stats.maxSlots);
-                    this.setupInventoryEvents(inventoryModal);
-                }
-            }
+        if (this.inventoryView) {
+            this.inventoryView.update(data);
         }
     }
 
-    // 显示战斗界面
+    // 显示战斗界面（委托到 BattleView）
     showBattleInterface(battleState) {
-        // 禁用游戏输入
-        this.disableInput();
-        
-        // 创建战斗界面
-        const battleModal = document.createElement('div');
-        battleModal.className = 'battle-modal';
-        battleModal.innerHTML = `
-            <div class="battle-content">
-                <div class="battle-header">
-                    <h3>⚔️ 战斗 - 第${battleState.round}回合</h3>
-                </div>
-                <div class="battle-main">
-                    <div class="battle-participants">
-                        <div class="player-section">
-                            <h4>🛡️ ${battleState.player.name || '冒险者'}</h4>
-                            <div class="hp-bar">
-                                <div class="hp-fill" style="width: ${(battleState.player.hp / battleState.player.maxHp) * 100}%"></div>
-                                <span class="hp-text">${battleState.player.hp}/${battleState.player.maxHp}</span>
-                            </div>
-                            <div class="hp-bar mp-bar">
-                                <div class="hp-fill mp-fill" style="width: ${((battleState.player.mana || 0) / (battleState.player.maxMana || 1)) * 100}%"></div>
-                                <span class="hp-text">${battleState.player.mana || 0}/${battleState.player.maxMana || 0} MP</span>
-                            </div>
-                            <div class="hp-bar sp-bar">
-                                <div class="hp-fill sp-fill" style="width: ${((battleState.player.stamina || 0) / (battleState.player.maxStamina || 1)) * 100}%"></div>
-                                <span class="hp-text">${battleState.player.stamina || 0}/${battleState.player.maxStamina || 0} SP</span>
-                            </div>
-                        </div>
-                        <div class="enemies-section">
-                            ${battleState.enemies.map((enemy, index) => `
-                                <div class="enemy ${enemy.hp <= 0 ? 'defeated' : ''}" data-index="${index}">
-                                    <h4>👹 ${enemy.type}</h4>
-                                    <div class="hp-bar">
-                                        <div class="hp-fill enemy-hp" style="width: ${(enemy.hp / enemy.maxHp) * 100}%"></div>
-                                        <span class="hp-text">${enemy.hp}/${enemy.maxHp}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    <div class="battle-log" id="battleLog">
-                        ${battleState.battleLog.map(log => `
-                            <div class="log-entry ${log.type}">${log.message}</div>
-                        `).join('')}
-                    </div>
-                    <div class="battle-actions" id="battleActions">
-                        ${this.generateBattleActions(battleState)}
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.body.appendChild(battleModal);
-        this.setupBattleEvents(battleModal, battleState);
+        if (this.battleView) {
+            this.battleView.show(battleState);
+        }
     }
 
     generateBattleActions(battleState) {
@@ -1651,83 +1513,18 @@ class GameView {
         }
     }
 
+    // 更新战斗界面（委托到 BattleView）
     updateBattleInterface(battleState) {
-        const battleModal = document.querySelector('.battle-modal');
-        if (!battleModal) return;
-        
-        // 更新回合数
-        const header = battleModal.querySelector('.battle-header h3');
-        if (header) {
-            header.textContent = `⚔️ 战斗 - 第${battleState.round}回合`;
-        }
-        
-        // 更新HP条
-        const playerHpFill = battleModal.querySelector('.player-section .hp-fill');
-        const playerHpText = battleModal.querySelector('.player-section .hp-text');
-        if (playerHpFill && playerHpText) {
-            const hpPercent = (battleState.player.hp / battleState.player.maxHp) * 100;
-            playerHpFill.style.width = hpPercent + '%';
-            playerHpText.textContent = `${battleState.player.hp}/${battleState.player.maxHp}`;
-        }
-        // 更新MP/SP
-        const playerMpFill = battleModal.querySelector('.player-section .mp-fill');
-        const playerSpFill = battleModal.querySelector('.player-section .sp-fill');
-        const mpTextEl = battleModal.querySelector('.player-section .mp-bar .hp-text');
-        const spTextEl = battleModal.querySelector('.player-section .sp-bar .hp-text');
-        if (playerMpFill && mpTextEl) {
-            const mpPercent = ((battleState.player.mana || 0) / (battleState.player.maxMana || 1)) * 100;
-            playerMpFill.style.width = mpPercent + '%';
-            mpTextEl.textContent = `${battleState.player.mana || 0}/${battleState.player.maxMana || 0} MP`;
-        }
-        if (playerSpFill && spTextEl) {
-            const spPercent = ((battleState.player.stamina || 0) / (battleState.player.maxStamina || 1)) * 100;
-            playerSpFill.style.width = spPercent + '%';
-            spTextEl.textContent = `${battleState.player.stamina || 0}/${battleState.player.maxStamina || 0} SP`;
-        }
-        
-        // 更新敌人HP
-        battleState.enemies.forEach((enemy, index) => {
-            const enemyDiv = battleModal.querySelector(`.enemy[data-index="${index}"]`);
-            if (enemyDiv) {
-                const hpFill = enemyDiv.querySelector('.hp-fill');
-                const hpText = enemyDiv.querySelector('.hp-text');
-                if (hpFill && hpText) {
-                    const hpPercent = (enemy.hp / enemy.maxHp) * 100;
-                    hpFill.style.width = hpPercent + '%';
-                    hpText.textContent = `${enemy.hp}/${enemy.maxHp}`;
-                }
-                
-                if (enemy.hp <= 0) {
-                    enemyDiv.classList.add('defeated');
-                }
-            }
-        });
-        
-        // 更新战斗日志
-        const battleLog = battleModal.querySelector('#battleLog');
-        if (battleLog) {
-            battleLog.innerHTML = battleState.battleLog.map(log => `
-                <div class="log-entry ${log.type}">${log.message}</div>
-            `).join('');
-            battleLog.scrollTop = battleLog.scrollHeight;
-        }
-        
-        // 更新行动按钮
-        const battleActions = battleModal.querySelector('#battleActions');
-        if (battleActions) {
-            battleActions.innerHTML = this.generateBattleActions(battleState);
-            this.setupBattleEvents(battleModal, battleState);
+        if (this.battleView) {
+            this.battleView.update(battleState);
         }
     }
 
+    // 隐藏战斗界面（委托到 BattleView）
     hideBattleInterface() {
-        const battleModal = document.querySelector('.battle-modal');
-        if (battleModal) {
-            battleModal.remove();
+        if (this.battleView) {
+            this.battleView.hide();
         }
-        
-        // 重新启用游戏输入
-        this.enableInput();
     }
 
     // 显示新的开始页面
@@ -1804,89 +1601,11 @@ class GameView {
         }
     }
 
-    // 存档管理器（加载/保存/导入/导出/删除）
+    // 存档管理器（委托到 SaveManagerView）
     openSaveManager(mode = 'load') {
-        // 如果来自开始页面，记录需要返回
-        const fromStartPage = !!this.startView || !!document.getElementById('fallback-start');
-        
-        // 隐藏开始页面
-        this.hideStartPage();
-
-        const existing = document.querySelector('.save-manager-modal');
-        if (existing) existing.remove();
-
-        const modal = document.createElement('div');
-        modal.className = 'save-manager-modal';
-        modal.style.cssText = `
-            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 9999;
-        `;
-        const box = document.createElement('div');
-        box.style.cssText = `
-            background:#1f2430; color:#fff; width: 720px; max-width: 96%;
-            border-radius:12px; padding:20px; box-shadow:0 8px 24px rgba(0,0,0,.45);
-        `;
-        const title = mode === 'manage' ? '💾 存档管理' : '📂 选择要加载的存档';
-        box.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: ${mode === 'manage' ? '#2196F3' : '#4CAF50'};">${title}</h3>
-                <div>
-                    <button class="quick-action-button" id="importBtn" style="background: #ff9800; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-right: 8px;">📥 导入存档</button>
-                    <button class="quick-action-button" id="backToStartBtn" style="background: #666; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">🔙 返回</button>
-                </div>
-            </div>
-            ${mode === 'load' ? `
-            <div style="margin-bottom: 15px; padding: 10px; background: #2a3142; border-radius: 8px; border-left: 4px solid #4CAF50;">
-                <p style="margin: 0; font-size: 14px; opacity: 0.9;">
-                    💡 <strong>提示：</strong>选择一个存档槽位来加载游戏进度。
-                </p>
-            </div>` : ''}
-            <div id="slotsContainer"></div>
-            <div style="margin-top: 15px; padding: 10px; background: #2a3142; border-radius: 8px; font-size: 12px; opacity: 0.85; border-left: 4px solid #2196F3;">
-                <p style="margin: 0;">
-                    📋 <strong>操作说明：</strong>共有 6 个存档槽位。点击"导出"可将存档保存为 JSON 文件进行备份或分享，点击"导入存档"可从文件恢复进度。
-                </p>
-            </div>
-        `;
-        modal.appendChild(box);
-        document.body.appendChild(modal);
-
-        const container = box.querySelector('#slotsContainer');
-        const saveService = window.gameCore?.getService('saveService');
-        const list = saveService?.listSaves?.() || new Array(6).fill(null);
-        container.innerHTML = this._renderSlotsHTML(list, mode);
-
-        this._setupSaveManagerEvents(modal, mode);
-
-        // // 关闭按钮
-        // box.querySelector('#closeSaveMgr')?.addEventListener('click', () => {
-        //     modal.remove();
-        //     if (fromStartPage) {
-        //         this.showStartPage();
-        //     }
-        // });
-
-        // 返回按钮 - 始终显示，用于返回上一个界面
-        box.querySelector('#backToStartBtn')?.addEventListener('click', () => {
-            modal.remove();
-            if (fromStartPage) {
-                this.showStartPage();
-            } else {
-                // 如果不是从开始页面来的，返回游戏主界面
-                // 这里可以根据需要添加其他返回逻辑
-            }
-        });
-
-        // 导入按钮
-        box.querySelector('#importBtn')?.addEventListener('click', () => {
-            this._promptImport(false /*autoLoad*/, () => {
-                // 刷新列表
-                const updated = saveService?.listSaves?.() || new Array(6).fill(null);
-                container.innerHTML = this._renderSlotsHTML(updated, mode);
-                this._setupSaveManagerEvents(modal, mode);
-            });
-        });
+        if (this.saveManagerView) {
+            this.saveManagerView.openSaveManager(mode);
+        }
     }
 
     _renderSlotsHTML(list, mode) {
@@ -2093,66 +1812,11 @@ class GameView {
         }
     }
 
-    // 显示新游戏存档位置选择对话框
+    // 显示新游戏存档位置选择对话框（委托到 SaveManagerView）
     showNewGameSlotSelection() {
-        const existing = document.querySelector('.new-game-slot-modal');
-        if (existing) existing.remove();
-
-        const modal = document.createElement('div');
-        modal.className = 'new-game-slot-modal';
-        modal.style.cssText = `
-            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 10001;
-        `;
-        
-        const box = document.createElement('div');
-        box.style.cssText = `
-            background: #1f2430; color: #fff; width: 600px; max-width: 96%;
-            border-radius: 12px; padding: 20px; box-shadow: 0 8px 24px rgba(0,0,0,.6);
-        `;
-        
-        box.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #4CAF50;">🌱 选择新游戏存档位置</h3>
-                <button class="quick-action-button" id="backToStartFromNewGame" style="background: #666; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;">🔙 返回</button>
-            </div>
-            <div style="margin-bottom: 15px; padding: 10px; background: #2a3142; border-radius: 8px; border-left: 4px solid #ff9800;">
-                <p style="margin: 0; font-size: 14px; opacity: 0.9;">
-                    ⚠️ <strong>重要提示：</strong>选择存档槽位后将开始新游戏，该槽位的现有存档将被覆盖！
-                </p>
-            </div>
-            <div id="newGameSlotsContainer"></div>
-        `;
-        
-        modal.appendChild(box);
-        document.body.appendChild(modal);
-
-        // 渲染存档槽位
-        const container = box.querySelector('#newGameSlotsContainer');
-        const saveService = window.gameCore?.getService('saveService');
-        const list = saveService?.listSaves?.() || new Array(6).fill(null);
-        
-        container.innerHTML = this._renderNewGameSlotsHTML(list);
-        this._setupNewGameSlotEvents(modal);
-
-        // 返回按钮事件
-        box.querySelector('#backToStartFromNewGame')?.addEventListener('click', () => {
-            modal.remove();
-            // 通知StartView新游戏流程已取消
-            this.eventBus.emit('start:new-game:cancelled', {}, 'game');
-            this.showStartPage(); // 返回开始界面
-        });
-
-        // 点击背景关闭
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-                // 通知StartView新游戏流程已取消
-                this.eventBus.emit('start:new-game:cancelled', {}, 'game');
-                this.showStartPage(); // 返回开始界面
-            }
-        });
+        if (this.saveManagerView) {
+            this.saveManagerView.showNewGameSlotSelection();
+        }
     }
 
     // 渲染新游戏存档槽位HTML
@@ -2229,42 +1893,10 @@ class GameView {
         });
     }
 
-    // 在指定槽位开始新游戏
+    // 在指定槽位开始新游戏（委托到 SaveManagerView）
     startNewGameInSlot(slotIndex) {
-        const saveService = window.gameCore?.getService('saveService');
-        if (saveService) {
-            // 开始新游戏
-            const result = saveService.startNewGame();
-            if (result.success) {
-                // 立即保存到指定槽位
-                saveService.saveToSlot(slotIndex, { label: '新游戏' });
-                
-                // 隐藏开始页面
-                this.hideStartPage();
-                
-                // 显示成功通知
-                this.showNotification(`🌱 新游戏已在槽位 ${slotIndex + 1} 开始！`, 'success');
-                
-                // 发送新游戏开始事件（确保StartView能够接收到）
-                this.eventBus.emit('start:new-game', { slot: slotIndex }, 'game');
-                
-                // 确保游戏界面可见
-                const gameContainer = document.querySelector('.game-container');
-                if (gameContainer) {
-                    gameContainer.classList.remove('hidden');
-                    gameContainer.style.display = 'block';
-                }
-                
-                // 聚焦到输入框
-                const actionInput = document.getElementById('actionInput');
-                if (actionInput) {
-                    actionInput.focus();
-                }
-            } else {
-                this.showNotification('新游戏启动失败', 'error');
-                // 如果新游戏启动失败，重新显示开始页面
-                this.showStartPage();
-            }
+        if (this.saveManagerView) {
+            this.saveManagerView.startNewGameInSlot(slotIndex);
         }
     }
 
