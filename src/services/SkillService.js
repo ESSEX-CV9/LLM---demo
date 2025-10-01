@@ -190,12 +190,96 @@ class SkillService {
     updates.stats = stats;
   }
 
-   // 战斗中：可用技能列表（过滤冷却/资源，应用装备效果的消耗修正）
+  // 技能装备管理：最多装备4个技能
+  equipSkill(skillId, slotIndex = null) {
+    const gs = this.getGameStateService();
+    const player = gs.getState().player;
+    const skill = (player.skills || []).find(s => s.id === skillId);
+    
+    if (!skill) {
+      return { success: false, message: '未学习此技能' };
+    }
+    
+    const equippedSkills = (player.skills || []).filter(s => s.equipped);
+    
+    // 如果已装备，则卸下
+    if (skill.equipped) {
+      return this.unequipSkill(skillId);
+    }
+    
+    // 检查是否已达上限
+    if (equippedSkills.length >= 4 && slotIndex === null) {
+      return { success: false, message: '技能槽已满，请先卸下其他技能' };
+    }
+    
+    // 如果指定了槽位且该槽位有技能，先卸下
+    if (slotIndex !== null && slotIndex >= 0 && slotIndex < 4) {
+      const skillInSlot = equippedSkills[slotIndex];
+      if (skillInSlot) {
+        this.unequipSkill(skillInSlot.id);
+      }
+    }
+    
+    // 装备技能
+    const newSkills = (player.skills || []).map(s =>
+      s.id === skillId ? { ...s, equipped: true } : s
+    );
+    
+    gs.updatePlayerStats({ skills: newSkills });
+    this.eventBus.emit('skills:updated', gs.getState().player, 'game');
+    
+    const skillData = SkillsDB.getSkillById(skillId);
+    return { success: true, message: `已装备技能【${skillData?.name || skillId}】` };
+  }
+
+  unequipSkill(skillId) {
+    const gs = this.getGameStateService();
+    const player = gs.getState().player;
+    const skill = (player.skills || []).find(s => s.id === skillId);
+    
+    if (!skill) {
+      return { success: false, message: '未学习此技能' };
+    }
+    
+    if (!skill.equipped) {
+      return { success: false, message: '该技能未装备' };
+    }
+    
+    // 卸下技能
+    const newSkills = (player.skills || []).map(s =>
+      s.id === skillId ? { ...s, equipped: false } : s
+    );
+    
+    gs.updatePlayerStats({ skills: newSkills });
+    this.eventBus.emit('skills:updated', gs.getState().player, 'game');
+    
+    const skillData = SkillsDB.getSkillById(skillId);
+    return { success: true, message: `已卸下技能【${skillData?.name || skillId}】` };
+  }
+
+  getEquippedSkills(player = null) {
+    if (!player) {
+      player = this.getPlayer();
+    }
+    const equipped = (player.skills || [])
+      .filter(s => s.equipped)
+      .map(ps => {
+        const skill = SkillsDB.getSkillById(ps.id);
+        return skill ? { ...ps, skillData: skill } : null;
+      })
+      .filter(Boolean);
+    
+    // 确保最多返回4个，并按装备顺序排序
+    return equipped.slice(0, 4);
+  }
+
+   // 战斗中：可用技能列表（只返回已装备的技能，过滤冷却/资源）
   getUsableSkills(battleState) {
     const player = battleState.player;
     const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
   
     return (player.skills || [])
+      .filter(ps => ps.equipped) // 只返回已装备的技能
       .map(ps => {
         const skill = SkillsDB.getSkillById(ps.id);
         return skill ? { skill, level: ps.level, cooldownLeft: ps.cooldownLeft || 0 } : null;

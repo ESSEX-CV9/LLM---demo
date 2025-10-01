@@ -59,6 +59,173 @@
   font-size: 12px;
 }
 
+/* 新布局：技能槽在左侧 */
+.skills-body-with-slots {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .skills-body-with-slots {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 技能装备区域 */
+.skills-equipment-area {
+  background: rgba(255,255,255,0.05);
+  border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 12px;
+  padding: 16px;
+  position: sticky;
+  top: 16px;
+}
+
+.skills-equipment-area h4 {
+  margin: 0 0 12px 0;
+  color: #ffd54f;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* 技能槽容器 */
+.skill-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* 单个技能槽 */
+.skill-slot {
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 8px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.skill-slot.empty {
+  border-style: dashed;
+  border-color: rgba(255,255,255,0.3);
+}
+
+.skill-slot.empty:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(76,175,80,0.5);
+}
+
+.skill-slot.filled {
+  background: linear-gradient(135deg, rgba(76,175,80,0.2), rgba(76,175,80,0.1));
+  border-color: rgba(76,175,80,0.6);
+}
+
+.skill-slot.filled:hover {
+  background: linear-gradient(135deg, rgba(76,175,80,0.3), rgba(76,175,80,0.15));
+  border-color: rgba(76,175,80,0.8);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(76,175,80,0.3);
+}
+
+.skill-slot.drag-over {
+  background: rgba(76,175,80,0.3);
+  border-color: #4CAF50;
+  box-shadow: 0 0 12px rgba(76,175,80,0.5);
+}
+
+/* 技能槽内容 */
+.skill-slot-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.skill-slot-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.skill-slot-level {
+  font-size: 11px;
+  color: #ffd54f;
+}
+
+.skill-slot-icon {
+  font-size: 18px;
+  margin-left: 8px;
+}
+
+.skill-slot-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background: rgba(244,67,54,0.8);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.skill-slot.filled:hover .skill-slot-remove {
+  opacity: 1;
+}
+
+/* 空槽位占位符 */
+.skill-slot-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.slot-number {
+  font-size: 18px;
+  font-weight: bold;
+  color: rgba(255,255,255,0.4);
+}
+
+.slot-hint {
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  text-align: center;
+}
+
+/* 技能槽提示 */
+.skill-slot-hint {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+  line-height: 1.4;
+  padding: 8px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* 技能列表区域 */
+.skills-list-area {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .skills-body {
   display: grid;
   grid-template-columns: 1fr;
@@ -91,6 +258,37 @@
 
 .skill-card.owned {
   border-color: rgba(76,175,80,0.4);
+  cursor: pointer;
+  user-select: none;
+}
+
+.skill-card.owned:hover {
+  border-color: rgba(76,175,80,0.6);
+  background: rgba(255,255,255,0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.skill-card.owned.equipped {
+  border-color: rgba(76,175,80,0.8);
+  background: linear-gradient(135deg, rgba(76,175,80,0.15), rgba(76,175,80,0.08));
+  box-shadow: 0 0 12px rgba(76,175,80,0.3);
+}
+
+.skill-card.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.equipped-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(76,175,80,0.8);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: bold;
+  color: white;
+  margin-left: 8px;
 }
 
 .skill-card.learnable {
@@ -202,4 +400,132 @@
 
 .req.ok {
   color: #a5d6a7;
+}
+
+/* ===== 战斗界面新布局样式 ===== */
+
+.battle-actions-new-layout {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  width: 100%;
+  padding: 8px;
+}
+
+/* 技能槽行（左侧） */
+.battle-skills-row {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .battle-skills-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 通用操作区域（右侧） */
+.battle-general-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 160px;
+}
+
+.general-row {
+  display: flex;
+  gap: 8px;
+}
+
+.general-row button {
+  flex: 1;
+}
+
+/* 战斗技能槽按钮 */
+.battle-skill-slot-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: linear-gradient(135deg, rgba(76,175,80,0.2), rgba(76,175,80,0.1));
+  border: 2px solid rgba(76,175,80,0.6);
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  min-height: 72px;
+}
+
+.battle-skill-slot-btn:hover:not(.disabled):not(.empty) {
+  background: linear-gradient(135deg, rgba(76,175,80,0.35), rgba(76,175,80,0.2));
+  border-color: rgba(76,175,80,0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76,175,80,0.4);
+}
+
+.battle-skill-slot-btn:active:not(.disabled):not(.empty) {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(76,175,80,0.3);
+}
+
+.battle-skill-slot-btn.empty {
+  background: rgba(255,255,255,0.05);
+  border: 2px dashed rgba(255,255,255,0.2);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.battle-skill-slot-btn.disabled {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.2);
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.skill-slot-icon {
+  font-size: 24px;
+}
+
+.skill-slot-name {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.cooldown-text {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(244,67,54,0.9);
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .battle-actions-new-layout {
+    flex-direction: column;
+  }
+  
+  .battle-skills-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .battle-general-actions {
+    flex-direction: row;
+    min-width: auto;
+  }
+  
+  .general-row {
+    flex: 1;
+    flex-direction: column;
+  }
 }

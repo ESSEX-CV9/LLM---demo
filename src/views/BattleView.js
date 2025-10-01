@@ -247,7 +247,7 @@ class BattleView {
         return '';
     }
 
-    // 生成战斗操作按钮
+    // 生成战斗操作按钮 - 新布局：技能按钮在左，通用操作在右
     generateBattleActions(battleState) {
         if (battleState.turn !== 'player') {
             return '<div class="waiting-message">等待敌人行动...</div>';
@@ -255,30 +255,80 @@ class BattleView {
 
         const aliveEnemies = battleState.enemies.filter(e => e.hp > 0);
         const skillService = window.gameCore?.getService('skillService');
-        const usableSkills = skillService ? skillService.getUsableSkills(battleState) : [];
+        const equippedSkills = skillService ? skillService.getEquippedSkills(battleState.player) : [];
+
+        // 生成4个技能槽按钮
+        const skillButtons = [];
+        for (let i = 0; i < 4; i++) {
+            const skillData = equippedSkills[i];
+            if (skillData && skillData.skillData) {
+                const skill = skillData.skillData;
+                const level = skillData.level || 1;
+                const cooldownLeft = skillData.cooldownLeft || 0;
+                const lvIdx = level - 1;
+                
+                // 获取消耗
+                const mpCost = skill.cost?.mp?.[lvIdx] ?? 0;
+                const spCost = skill.cost?.sp?.[lvIdx] ?? 0;
+                
+                // 检查是否可用
+                const canUse = cooldownLeft === 0 &&
+                              (battleState.player.mana || 0) >= mpCost &&
+                              (battleState.player.stamina || 0) >= spCost;
+                
+                const disabledClass = canUse ? '' : 'disabled';
+                const cooldownText = cooldownLeft > 0 ? `<span class="cooldown-text">冷却${cooldownLeft}</span>` : '';
+                
+                skillButtons.push(`
+                    <button class="battle-skill-slot-btn ${disabledClass}"
+                            data-skill="${skill.id}"
+                            data-level="${level}"
+                            ${!canUse ? 'disabled' : ''}>
+                        <span class="skill-slot-icon">✨</span>
+                        <span class="skill-slot-name">${skill.name}</span>
+                        ${cooldownText}
+                    </button>
+                `);
+            } else {
+                skillButtons.push(`
+                    <button class="battle-skill-slot-btn empty" disabled>
+                        <span class="skill-slot-icon">—</span>
+                        <span class="skill-slot-name">空</span>
+                    </button>
+                `);
+            }
+        }
 
         return `
-            <div class="action-buttons-landscape">
-                <button class="battle-action-btn attack-btn" data-action="攻击">
-                    <span class="btn-icon">⚔️</span>
-                    <span class="btn-text">攻击</span>
-                </button>
-                <button class="battle-action-btn skill-btn" data-action="技能">
-                    <span class="btn-icon">✨</span>
-                    <span class="btn-text">技能</span>
-                </button>
-                <button class="battle-action-btn defend-btn" data-action="防御">
-                    <span class="btn-icon">🛡️</span>
-                    <span class="btn-text">防御</span>
-                </button>
-                <button class="battle-action-btn item-btn" data-action="使用物品">
-                    <span class="btn-icon">🧪</span>
-                    <span class="btn-text">物品</span>
-                </button>
-                <button class="battle-action-btn escape-btn" data-action="逃跑">
-                    <span class="btn-icon">🏃</span>
-                    <span class="btn-text">逃跑</span>
-                </button>
+            <div class="battle-actions-new-layout">
+                <!-- 左侧：4个技能槽 -->
+                <div class="battle-skills-row">
+                    ${skillButtons.join('')}
+                </div>
+                
+                <!-- 右侧：通用操作按钮 -->
+                <div class="battle-general-actions">
+                    <div class="general-row">
+                        <button class="battle-action-btn attack-btn" data-action="攻击">
+                            <span class="btn-icon">⚔️</span>
+                            <span class="btn-text">攻击</span>
+                        </button>
+                        <button class="battle-action-btn item-btn" data-action="使用物品">
+                            <span class="btn-icon">🧪</span>
+                            <span class="btn-text">物品</span>
+                        </button>
+                    </div>
+                    <div class="general-row">
+                        <button class="battle-action-btn defend-btn" data-action="防御">
+                            <span class="btn-icon">🛡️</span>
+                            <span class="btn-text">防御</span>
+                        </button>
+                        <button class="battle-action-btn escape-btn" data-action="逃跑">
+                            <span class="btn-icon">🏃</span>
+                            <span class="btn-text">逃跑</span>
+                        </button>
+                    </div>
+                </div>
             </div>
             
             ${aliveEnemies.length > 1 ? `
@@ -292,18 +342,6 @@ class BattleView {
                     `).join('')}
                 </div>
             </div>` : '' }
-            
-            <div class="skills-selection-landscape hidden" id="skillsSelection">
-                <h4>选择技能：</h4>
-                <div class="skills-buttons">
-                    ${usableSkills.length > 0 ? usableSkills.map(({ skill, level }) => `
-                        <button class="skill-btn-landscape" data-skill="${skill.id}" data-level="${level}">
-                            ${skill.name} Lv.${level}
-                            ${skill.cost ? `<span class="skill-cost">${skill.cost.mana ? `MP:${skill.cost.mana}` : ''} ${skill.cost.stamina ? `SP:${skill.cost.stamina}` : ''}</span>` : ''}
-                        </button>
-                    `).join('') : '<div class="no-skills">暂无可用技能（资源不足或冷却中）</div>'}
-                </div>
-            </div>
         `;
     }
 
@@ -320,9 +358,6 @@ class BattleView {
                 const action = btn.dataset.action;
 
                 if (action === '攻击') {
-                    // 隐藏其他选择面板
-                    if (skillsSelection) skillsSelection.classList.add('hidden');
-                    
                     // 1v1直接攻击，无需选择目标
                     if (singleTargetIndex !== null) {
                         this.executeBattleAction('攻击', singleTargetIndex);
@@ -330,12 +365,6 @@ class BattleView {
                         // 多目标时显示目标选择
                         if (targetSelection) targetSelection.classList.toggle('hidden');
                     }
-                } else if (action === '技能') {
-                    // 隐藏目标选择面板
-                    if (targetSelection) targetSelection.classList.add('hidden');
-                    
-                    // 打开技能选择列表
-                    if (skillsSelection) skillsSelection.classList.toggle('hidden');
                 } else if (action === '使用物品') {
                     // 直接弹出背包界面
                     this.openInventoryForBattle(battleState);
@@ -356,9 +385,9 @@ class BattleView {
             });
         });
 
-        // 技能选择事件
-        const skillButtons = modal.querySelectorAll('.skill-btn-landscape');
-        skillButtons.forEach(btn => {
+        // 技能槽按钮事件
+        const skillSlotButtons = modal.querySelectorAll('.battle-skill-slot-btn:not(.empty):not(.disabled)');
+        skillSlotButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 const skillId = btn.dataset.skill;
                 if (singleTargetIndex !== null) {
@@ -368,7 +397,6 @@ class BattleView {
                     const fallbackIndex = aliveEnemies.length > 0 ? battleState.enemies.indexOf(aliveEnemies[0]) : 0;
                     this.executeBattleAction('技能', fallbackIndex, null, skillId);
                 }
-                if (skillsSelection) skillsSelection.classList.add('hidden');
             });
         });
     }
