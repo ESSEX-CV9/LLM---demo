@@ -46,12 +46,7 @@ class BattleView {
                 
                 <!-- 底部操作区域 -->
                 <div class="battle-bottom-area">
-                    <!-- 玩家属性简览 -->
-                    <div class="battle-player-stats">
-                        ${this.generatePlayerStatsOverview(battleState)}
-                    </div>
-                    
-                    <!-- 战斗操作按钮 -->
+                    <!-- 战斗操作按钮（占满宽度） -->
                     <div class="battle-actions-landscape" id="battleActions">
                         ${this.generateBattleActions(battleState)}
                     </div>
@@ -63,25 +58,23 @@ class BattleView {
         this.setupBattleEvents(battleModal, battleState);
     }
 
-    // 生成敌人显示（支持最多3个敌人）
+    // 生成敌人显示（支持最多3个敌人）- 横向矮长方形布局
     generateEnemiesDisplay(battleState) {
         const enemies = battleState.enemies.slice(0, 3); // 最多显示3个
         return `
             <div class="enemies-container">
                 ${enemies.map((enemy, index) => `
                     <div class="enemy-unit ${enemy.hp <= 0 ? 'defeated' : ''}" data-index="${index}">
-                        <!-- 敌人名称 -->
-                        <div class="enemy-name">👹 ${enemy.type}</div>
-                        
-                        <!-- 敌人图片/贴图占位 -->
-                        <div class="enemy-sprite">
-                            <div class="sprite-placeholder">
+                        <!-- 左侧：头像和名称 -->
+                        <div class="enemy-left-section">
+                            <div class="enemy-sprite-compact">
                                 <span class="sprite-emoji">👹</span>
                             </div>
+                            <div class="enemy-name-compact">👹 ${enemy.type}</div>
                         </div>
                         
-                        <!-- 敌人状态条 -->
-                        <div class="enemy-bars">
+                        <!-- 右侧：状态条（垂直排列） -->
+                        <div class="enemy-bars-horizontal">
                             <!-- HP条 -->
                             <div class="status-bar hp-bar">
                                 <div class="bar-label">HP</div>
@@ -112,11 +105,6 @@ class BattleView {
                                 </div>
                             </div>
                             ` : ''}
-                        </div>
-                        
-                        <!-- 增益效果显示 -->
-                        <div class="buffs-display">
-                            ${this.generateBuffsDisplay(enemy.buffs || [])}
                         </div>
                     </div>
                 `).join('')}
@@ -169,9 +157,75 @@ class BattleView {
                     </div>
                 </div>
                 
-                <!-- 增益效果显示 -->
-                <div class="buffs-display">
-                    ${this.generateBuffsDisplay(player.buffs || [])}
+                <!-- 玩家属性详情（类似背包格式） -->
+                <div class="player-stats-detail">
+                    ${this.generatePlayerStatsDetail(player)}
+                </div>
+            </div>
+        `;
+    }
+
+    // 生成玩家属性详情（类似背包的格式，带临时增益）
+    generatePlayerStatsDetail(player) {
+        const gameState = window.gameCore?.getService('gameStateService')?.getState();
+        const stats = gameState?.getPlayerStats() || player;
+        
+        // 获取基础属性值（不包含临时增益）
+        const baseStats = {
+            attack: gameState?.getBasePlayerAttack() || stats.attack || 0,
+            defense: gameState?.getBasePlayerDefense() || stats.defense || 0,
+            magicPower: gameState?.getBasePlayerMagicPower() || stats.magicPower || 0,
+            physicalPower: gameState?.getBasePlayerPhysicalPower() || stats.physicalPower || 0,
+            speed: gameState?.getBasePlayerSpeed() || stats.speed || 0,
+            criticalChance: gameState?.getBasePlayerCriticalChance() || stats.criticalChance || 0
+        };
+        
+        // 格式化属性显示：如果有临时增益则高亮显示差值
+        const formatStat = (label, emoji, totalValue, baseValue) => {
+            const hasBuff = totalValue !== baseValue;
+            const diff = totalValue - baseValue;
+            return `
+                <div class="stat-row-detail ${hasBuff ? 'has-buff' : ''}" ${hasBuff ? `data-buff-info="${label} +${diff}"` : ''}>
+                    <span class="stat-emoji">${emoji}</span>
+                    <span class="stat-label-detail">${label}:</span>
+                    <span class="stat-value-detail">
+                        ${totalValue}${hasBuff ? ` <span class="buff-indicator">(+${diff})</span>` : ''}
+                    </span>
+                </div>
+            `;
+        };
+        
+        return `
+            <div class="stats-detail-container">
+                <div class="stats-detail-title">角色属性</div>
+                ${formatStat('攻击力', '⚔️', stats.attack || 0, baseStats.attack)}
+                ${formatStat('防御力', '🛡️', stats.defense || 0, baseStats.defense)}
+                ${formatStat('魔法强度', '🔮', stats.magicPower || 0, baseStats.magicPower)}
+                ${formatStat('物理强度', '💪', stats.physicalPower || 0, baseStats.physicalPower)}
+                ${formatStat('速度', '⚡', stats.speed || 0, baseStats.speed)}
+                ${formatStat('暴击率', '💥', stats.criticalChance || 0, baseStats.criticalChance)}
+            </div>
+            ${this.generateActiveBuffsDisplay(player.buffs || [])}
+        `;
+    }
+
+    // 生成活跃增益效果显示（详细版，带持续时间）
+    generateActiveBuffsDisplay(buffs) {
+        if (!buffs || buffs.length === 0) return '';
+        
+        return `
+            <div class="active-buffs-container">
+                <div class="buffs-title">活跃增益</div>
+                <div class="buffs-list">
+                    ${buffs.map(buff => `
+                        <div class="buff-item-detail" title="${buff.description || buff.name}">
+                            <span class="buff-icon-detail">${buff.icon || '✨'}</span>
+                            <div class="buff-info">
+                                <div class="buff-name-detail">${buff.name}</div>
+                                ${buff.duration ? `<div class="buff-duration">剩余: ${buff.duration}回合</div>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
                 </div>
             </div>
         `;
@@ -187,33 +241,10 @@ class BattleView {
         `).join('');
     }
 
-    // 生成玩家属性简览
+    // 生成玩家属性简览（已移到玩家卡片内，此函数保留用于兼容）
     generatePlayerStatsOverview(battleState) {
-        const player = battleState.player;
-        return `
-            <div class="stats-overview">
-                <div class="stat-item">
-                    <span class="stat-label">⚔️</span>
-                    <span class="stat-value">${player.attack || 0}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">🛡️</span>
-                    <span class="stat-value">${player.defense || 0}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">🔮</span>
-                    <span class="stat-value">${player.magicPower || 0}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">💪</span>
-                    <span class="stat-value">${player.physicalPower || 0}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">⚡</span>
-                    <span class="stat-value">${player.speed || 0}</span>
-                </div>
-            </div>
-        `;
+        // 此函数不再使用，属性已移到玩家卡片下方
+        return '';
     }
 
     // 生成战斗操作按钮
