@@ -6,33 +6,34 @@ class GameState {
             level: 1,
             hp: 100,
             maxHp: 100,
-            // 新增资源：法力与耐力
-            mana: 50,
-            maxMana: 50,
-            stamina: 50,
-            maxStamina: 50,
+            // 调整资源：提高初始法力与耐力
+            mana: 80,
+            maxMana: 80,
+            stamina: 80,
+            maxStamina: 80,
             // 成长与技能
             experience: 0,
             skillPoints: 4,
             skills: [],
             inventory: [],
             equipment: {
-                weapon: null,
+                weapon1: null,  // 修正装备槽位名称
+                weapon2: null,
                 helmet: null,
                 chest: null,
                 legs: null,
                 boots: null,
                 ring: null,
-                necklace: null,
-                amulet: null
+                amulet: null,
+                backpack: null
             },
             stats: {
-                baseAttack: 10,
-                baseDefense: 5,
+                baseAttack: 12,        // 提高基础攻击力
+                baseDefense: 6,        // 提高基础防御力
                 speed: 8,
-                // 新增派生基础：魔法/物理强度
-                baseMagicPower: 5,
-                basePhysicalPower: 10,
+                // 统一强度系统：物理和魔法强度作为伤害的核心
+                baseMagicPower: 8,     // 提高基础魔法强度
+                basePhysicalPower: 12, // 提高基础物理强度
                 // 装备加成属性
                 equipmentAttackBonus: 0,
                 equipmentDefenseBonus: 0,
@@ -112,7 +113,7 @@ class GameState {
     // 计算玩家实际攻击力（基础攻击力 + 等级加成 + 装备加成 + 临时增益）
     getPlayerAttack() {
         const baseAttack = this.player.stats.baseAttack;
-        const levelBonus = (this.player.level - 1) * 5; // 每级增加5点攻击力
+        const levelBonus = (this.player.level - 1) * 3; // 降低等级加成：每级增加3点攻击力
         const equipmentBonus = this.player.stats.equipmentAttackBonus || 0;
         const tempBonus = this.getTempStatBonus('attack');
         return baseAttack + levelBonus + equipmentBonus + tempBonus;
@@ -121,7 +122,7 @@ class GameState {
     // 计算玩家实际防御力（基础防御力 + 等级加成 + 装备加成 + 临时增益）
     getPlayerDefense() {
         const baseDefense = this.player.stats.baseDefense;
-        const levelBonus = (this.player.level - 1) * 3; // 每级增加3点防御力
+        const levelBonus = (this.player.level - 1) * 2; // 降低等级加成：每级增加2点防御力
         const equipmentBonus = this.player.stats.equipmentDefenseBonus || 0;
         const tempBonus = this.getTempStatBonus('defense');
         return baseDefense + levelBonus + equipmentBonus + tempBonus;
@@ -130,7 +131,7 @@ class GameState {
     // 计算玩家魔法强度（基础 + 等级 + 装备 + 临时增益）
     getPlayerMagicPower() {
         const base = this.player.stats.baseMagicPower || 0;
-        const levelBonus = (this.player.level - 1) * 3; // 每级+3魔强
+        const levelBonus = (this.player.level - 1) * 2; // 降低等级加成：每级+2魔强
         const equipmentBonus = this.player.stats.equipmentMagicPowerBonus || 0;
         const tempBonus = this.getTempStatBonus('magicPower');
         return base + levelBonus + equipmentBonus + tempBonus;
@@ -139,7 +140,7 @@ class GameState {
     // 计算玩家物理强度（基础 + 等级 + 装备 + 临时增益）
     getPlayerPhysicalPower() {
         const base = this.player.stats.basePhysicalPower || 0;
-        const levelBonus = (this.player.level - 1) * 4; // 每级+4物强
+        const levelBonus = (this.player.level - 1) * 3; // 降低等级加成：每级+3物强
         const equipmentBonus = this.player.stats.equipmentPhysicalPowerBonus || 0;
         const tempBonus = this.getTempStatBonus('physicalPower');
         return base + levelBonus + equipmentBonus + tempBonus;
@@ -156,28 +157,28 @@ class GameState {
     // 获取基础属性值（不包含临时增益）
     getBasePlayerAttack() {
         const baseAttack = this.player.stats.baseAttack;
-        const levelBonus = (this.player.level - 1) * 5;
+        const levelBonus = (this.player.level - 1) * 3; // 与上面保持一致
         const equipmentBonus = this.player.stats.equipmentAttackBonus || 0;
         return baseAttack + levelBonus + equipmentBonus;
     }
 
     getBasePlayerDefense() {
         const baseDefense = this.player.stats.baseDefense;
-        const levelBonus = (this.player.level - 1) * 3;
+        const levelBonus = (this.player.level - 1) * 2; // 与上面保持一致
         const equipmentBonus = this.player.stats.equipmentDefenseBonus || 0;
         return baseDefense + levelBonus + equipmentBonus;
     }
 
     getBasePlayerMagicPower() {
         const base = this.player.stats.baseMagicPower || 0;
-        const levelBonus = (this.player.level - 1) * 3;
+        const levelBonus = (this.player.level - 1) * 2; // 与上面保持一致
         const equipmentBonus = this.player.stats.equipmentMagicPowerBonus || 0;
         return base + levelBonus + equipmentBonus;
     }
 
     getBasePlayerPhysicalPower() {
         const base = this.player.stats.basePhysicalPower || 0;
-        const levelBonus = (this.player.level - 1) * 4;
+        const levelBonus = (this.player.level - 1) * 3; // 与上面保持一致
         const equipmentBonus = this.player.stats.equipmentPhysicalPowerBonus || 0;
         return base + levelBonus + equipmentBonus;
     }

@@ -403,8 +403,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/sword1.png',
                 level: 1,
                 stats: {
-                    attack: 8,
-                    physicalPower: 3
+                    attack: 6,
+                    physicalPower: 4
                 },
                 requirements: { minLevel: 1 },
                 durability: { current: 50, max: 50 },
@@ -421,8 +421,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/sword2.png',
                 level: 2,
                 stats: {
-                    attack: 15,
-                    physicalPower: 6
+                    attack: 12,
+                    physicalPower: 8
                 },
                 requirements: { minLevel: 2 },
                 durability: { current: 100, max: 100 },
@@ -439,8 +439,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/sword3.png',
                 level: 3,
                 stats: {
-                    attack: 22,
-                    physicalPower: 9,
+                    attack: 18,
+                    physicalPower: 12,
                     criticalChance: 5
                 },
                 requirements: { minLevel: 3 },
@@ -458,8 +458,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/sword4.png',
                 level: 4,
                 stats: {
-                    attack: 30,
-                    physicalPower: 12,
+                    attack: 24,
+                    physicalPower: 16,
                     speed: 2
                 },
                 requirements: { minLevel: 4 },
@@ -477,8 +477,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/sword5.png',
                 level: 5,
                 stats: {
-                    attack: 38,
-                    physicalPower: 15,
+                    attack: 30,
+                    physicalPower: 20,
                     criticalChance: 8
                 },
                 effects: [
@@ -521,8 +521,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/dagger1.png',
                 level: 2,
                 stats: {
-                    attack: 12,
-                    physicalPower: 4,
+                    attack: 10,
+                    physicalPower: 6,
                     speed: 4,
                     criticalChance: 12
                 },
@@ -541,8 +541,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/dagger2.png',
                 level: 3,
                 stats: {
-                    attack: 18,
-                    physicalPower: 6,
+                    attack: 15,
+                    physicalPower: 9,
                     speed: 5,
                     criticalChance: 18
                 },
@@ -561,8 +561,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/dagger3.png',
                 level: 4,
                 stats: {
-                    attack: 24,
-                    physicalPower: 8,
+                    attack: 20,
+                    physicalPower: 12,
                     speed: 6,
                     criticalChance: 20
                 },
@@ -584,8 +584,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/dagger4.png',
                 level: 5,
                 stats: {
-                    attack: 30,
-                    physicalPower: 10,
+                    attack: 25,
+                    physicalPower: 15,
                     speed: 7,
                     criticalChance: 25
                 },
@@ -628,8 +628,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/axe2.png',
                 level: 3,
                 stats: {
-                    attack: 28,
-                    physicalPower: 12,
+                    attack: 22,
+                    physicalPower: 16,
                     criticalChance: 8,
                     speed: -2
                 },
@@ -648,8 +648,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/axe3.png',
                 level: 4,
                 stats: {
-                    attack: 42,
-                    physicalPower: 18,
+                    attack: 32,
+                    physicalPower: 24,
                     criticalChance: 12,
                     speed: -3
                 },
@@ -668,8 +668,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/axe4.png',
                 level: 6,
                 stats: {
-                    attack: 55,
-                    physicalPower: 25,
+                    attack: 42,
+                    physicalPower: 32,
                     criticalChance: 15,
                     speed: -2
                 },
@@ -712,8 +712,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/hammer1.png',
                 level: 3,
                 stats: {
-                    attack: 26,
-                    physicalPower: 14,
+                    attack: 20,
+                    physicalPower: 18,
                     speed: -2
                 },
                 effects: [
@@ -734,8 +734,8 @@ class ItemsDB {
                 icon: './assets/icons/weapons/hammer2.png',
                 level: 7,
                 stats: {
-                    attack: 60,
-                    physicalPower: 28,
+                    attack: 45,
+                    physicalPower: 36,
                     criticalChance: 18,
                     speed: -1
                 },
@@ -760,9 +760,9 @@ class ItemsDB {
                 icon: './assets/icons/weapons/staff1.png',
                 level: 1,
                 stats: {
-                    attack: 5,
-                    magicPower: 8,
-                    maxMana: 10
+                    attack: 4,
+                    magicPower: 12,
+                    maxMana: 15
                 },
                 requirements: { minLevel: 1 },
                 durability: { current: 60, max: 60 },
@@ -779,9 +779,9 @@ class ItemsDB {
                 icon: './assets/icons/weapons/staff2.png',
                 level: 3,
                 stats: {
-                    attack: 12,
-                    magicPower: 20,
-                    maxMana: 25
+                    attack: 8,
+                    magicPower: 24,
+                    maxMana: 30
                 },
                 effects: [
                     { type: 'spell_cost_reduction', value: 0.1, description: '法术消耗-10%' }
@@ -801,9 +801,9 @@ class ItemsDB {
                 icon: './assets/icons/weapons/staff3.png',
                 level: 5,
                 stats: {
-                    attack: 18,
-                    magicPower: 35,
-                    maxMana: 40,
+                    attack: 12,
+                    magicPower: 40,
+                    maxMana: 50,
                     criticalChance: 10
                 },
                 effects: [
@@ -827,9 +827,9 @@ class ItemsDB {
                 icon: './assets/icons/weapons/wand1.png',
                 level: 2,
                 stats: {
-                    attack: 8,
-                    magicPower: 12,
-                    maxMana: 15,
+                    attack: 6,
+                    magicPower: 16,
+                    maxMana: 20,
                     speed: 2
                 },
                 requirements: { minLevel: 2 },
@@ -847,9 +847,9 @@ class ItemsDB {
                 icon: './assets/icons/weapons/wand2.png',
                 level: 4,
                 stats: {
-                    attack: 15,
-                    magicPower: 25,
-                    maxMana: 30,
+                    attack: 10,
+                    magicPower: 30,
+                    maxMana: 35,
                     speed: 3,
                     criticalChance: 8
                 },

@@ -17,10 +17,10 @@ const Skills = [
     type: 'physical',
     target: 'enemy',
     maxLevel: 5,
-    cost: { mp: [0,0,0,0,0], sp: [5,6,7,8,9] },
+    cost: { mp: [0,0,0,0,0], sp: [4,5,6,7,8] }, // 降低耐力消耗
     cooldown: [0,0,0,0,0],
-    baseDamage: [10,14,18,22,26],
-    scaling: { physicalPowerCoef: [0.6,0.65,0.7,0.75,0.8] },
+    baseDamage: [12,16,20,24,28], // 提高基础伤害
+    scaling: { physicalPowerCoef: [0.7,0.75,0.8,0.85,0.9] }, // 提高物理强度系数
     requirements: { minLevel: 1, requires: [] },
     tags: ['单体','物理']
   },
@@ -31,10 +31,10 @@ const Skills = [
     type: 'physical',
     target: 'enemy',
     maxLevel: 5,
-    cost: { mp: [0,0,0,0,0], sp: [12,13,14,15,16] },
+    cost: { mp: [0,0,0,0,0], sp: [10,11,12,13,14] }, // 降低耐力消耗
     cooldown: [2,2,2,2,2],
-    baseDamage: [22,28,34,40,46],
-    scaling: { physicalPowerCoef: [0.9,0.95,1.0,1.05,1.1] },
+    baseDamage: [25,32,39,46,53], // 提高基础伤害
+    scaling: { physicalPowerCoef: [1.0,1.1,1.2,1.3,1.4] }, // 提高物理强度系数
     requirements: { minLevel: 2, requires: [{ id: 'slash', level: 2 }] },
     tags: ['单体','物理','爆发']
   },
@@ -45,11 +45,11 @@ const Skills = [
     type: 'physical',
     target: 'enemy',
     maxLevel: 5,
-    cost: { mp: [0,0,0,0,0], sp: [10,11,12,13,14] },
+    cost: { mp: [0,0,0,0,0], sp: [8,9,10,11,12] }, // 降低耐力消耗
     cooldown: [3,3,3,3,3],
     // 连击的两段伤害，服务层可实现两次结算
-    baseDamage: [12,16,20,24,28],
-    scaling: { physicalPowerCoef: [0.45,0.5,0.55,0.6,0.65] },
+    baseDamage: [15,19,23,27,31], // 提高基础伤害
+    scaling: { physicalPowerCoef: [0.5,0.55,0.6,0.65,0.7] }, // 提高物理强度系数
     requirements: { minLevel: 3, requires: [{ id: 'slash', level: 3 }] },
     tags: ['单体','物理','多段']
   },
@@ -60,10 +60,10 @@ const Skills = [
     type: 'magic',
     target: 'enemy',
     maxLevel: 5,
-    cost: { mp: [8,9,10,11,12], sp: [0,0,0,0,0] },
+    cost: { mp: [6,7,8,9,10], sp: [0,0,0,0,0] }, // 降低法力消耗
     cooldown: [1,1,1,1,1],
-    baseDamage: [20,26,32,38,44],
-    scaling: { magicPowerCoef: [0.8,0.85,0.9,0.95,1.0] },
+    baseDamage: [22,28,34,40,46], // 提高基础伤害
+    scaling: { magicPowerCoef: [0.9,0.95,1.0,1.05,1.1] }, // 提高魔法强度系数
     requirements: { minLevel: 2, requires: [] },
     tags: ['单体','魔法','灼烧?']
   },
@@ -74,10 +74,10 @@ const Skills = [
     type: 'magic',
     target: 'enemy',
     maxLevel: 5,
-    cost: { mp: [8,9,10,11,12], sp: [0,0,0,0,0] },
+    cost: { mp: [6,7,8,9,10], sp: [0,0,0,0,0] }, // 降低法力消耗
     cooldown: [2,2,2,2,2],
-    baseDamage: [16,22,28,34,40],
-    scaling: { magicPowerCoef: [0.7,0.75,0.8,0.85,0.9] },
+    baseDamage: [18,24,30,36,42], // 提高基础伤害
+    scaling: { magicPowerCoef: [0.8,0.85,0.9,0.95,1.0] }, // 提高魔法强度系数
     effect: { kind: 'special', data: { slow: { duration: 1 } } },
     requirements: { minLevel: 3, requires: [{ id: 'fireball', level: 2 }] },
     tags: ['单体','魔法','减速']
@@ -89,10 +89,10 @@ const Skills = [
     type: 'support',
     target: 'self',
     maxLevel: 5,
-    cost: { mp: [10,11,12,13,14], sp: [0,0,0,0,0] },
+    cost: { mp: [8,9,10,11,12], sp: [0,0,0,0,0] }, // 降低法力消耗
     cooldown: [2,2,2,2,2],
-    baseHeal: [20,28,36,44,52],
-    scaling: { magicPowerCoef: [0.6,0.65,0.7,0.75,0.8] },
+    baseHeal: [25,33,41,49,57], // 提高基础治疗量
+    scaling: { magicPowerCoef: [0.7,0.75,0.8,0.85,0.9] }, // 提高魔法强度系数
     requirements: { minLevel: 2, requires: [] },
     tags: ['治疗','自我']
   },
@@ -103,7 +103,7 @@ const Skills = [
     type: 'support',
     target: 'self',
     maxLevel: 3,
-    cost: { mp: [0,0,0], sp: [5,5,5] },
+    cost: { mp: [0,0,0], sp: [3,3,3] }, // 降低耐力消耗
     cooldown: [2,2,2],
     effect: { kind: 'buff', data: { defendNext: true } },
     requirements: { minLevel: 1, requires: [] },
@@ -118,7 +118,7 @@ const Skills = [
     maxLevel: 5,
     cost: { mp: [0,0,0,0,0], sp: [0,0,0,0,0] },
     cooldown: [3,3,3,3,3],
-    effect: { kind: 'restore', data: { mana: [8,10,12,14,16] } },
+    effect: { kind: 'restore', data: { mana: [12,15,18,21,24] } }, // 提高法力回复量
     requirements: { minLevel: 2, requires: [] },
     tags: ['回蓝','自我']
   },
@@ -131,7 +131,7 @@ const Skills = [
     maxLevel: 5,
     cost: { mp: [0,0,0,0,0], sp: [0,0,0,0,0] },
     cooldown: [0,0,0,0,0],
-    effect: { kind: 'passive', data: { maxStamina: [5,10,15,20,25], physicalPower: [2,4,6,8,10] } },
+    effect: { kind: 'passive', data: { maxStamina: [8,16,24,32,40], physicalPower: [3,6,9,12,15] } }, // 提高被动加成
     requirements: { minLevel: 1, requires: [] },
     tags: ['被动','物理']
   },
@@ -144,7 +144,7 @@ const Skills = [
     maxLevel: 5,
     cost: { mp: [0,0,0,0,0], sp: [0,0,0,0,0] },
     cooldown: [0,0,0,0,0],
-    effect: { kind: 'passive', data: { maxMana: [5,10,15,20,25], magicPower: [2,4,6,8,10] } },
+    effect: { kind: 'passive', data: { maxMana: [8,16,24,32,40], magicPower: [3,6,9,12,15] } }, // 提高被动加成
     requirements: { minLevel: 1, requires: [] },
     tags: ['被动','魔法']
   }

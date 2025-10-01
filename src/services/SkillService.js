@@ -295,23 +295,26 @@ class SkillService {
     player.mana = Math.max(0, (player.mana || 0) - finalMpCost);
     player.stamina = Math.max(0, (player.stamina || 0) - finalSpCost);
 
-    // 伤害/治疗计算
+    // 伤害/治疗计算 - 统一计算方式
     const baseDmg = skill.baseDamage?.[lvIdx] ?? 0;
     const baseHeal = skill.baseHeal?.[lvIdx] ?? 0;
     const phyCoef = skill.scaling?.physicalPowerCoef?.[lvIdx] ?? 0;
     const magCoef = skill.scaling?.magicPowerCoef?.[lvIdx] ?? 0;
 
-    const variance = Math.random() * 0.3 + 0.85; // 85%-115%
+    const variance = Math.random() * 0.3 + 0.85; // 统一随机系数85%-115%
+    
+    // 技能伤害计算：基础伤害 + 强度加成
     const damageScaling =
       baseDmg +
-      (phyCoef ? (player.physicalPower || 0) * phyCoef : 0) +
-      (magCoef ? (player.magicPower || 0) * magCoef : 0);
+      (phyCoef * (player.physicalPower || 0)) +
+      (magCoef * (player.magicPower || 0));
     const finalDamage = Math.floor(damageScaling * variance);
 
+    // 治疗计算：基础治疗 + 魔法强度加成
     const healScaling =
       baseHeal +
-      (magCoef ? (player.magicPower || 0) * magCoef : 0);
-    const finalHeal = Math.floor(healScaling);
+      (magCoef * (player.magicPower || 0) * 0.5); // 治疗的魔法强度系数降低
+    const finalHeal = Math.floor(healScaling * variance); // 治疗也应用随机系数
 
     // 按类型应用（确保总是生成清晰的日志消息）
     if (skill.kind === 'active') {
@@ -324,13 +327,51 @@ class SkillService {
         totalHeal = player.hp - oldHp;
         details.push(`恢复了${totalHeal}点生命值`);
       } else if (skill.type !== 'support') {
-        // 伤害技能
+        // 伤害技能 - 应用闪避和暴击机制
         const enemy = battleState.enemies[targetIndex];
-        const actualDamage = Math.max(1, finalDamage - (enemy.defense || 0));
-        enemy.hp = Math.max(0, enemy.hp - actualDamage);
-        totalDamage = actualDamage;
-        details.push(`对${enemy.type}造成了${actualDamage}点伤害`);
-        if (enemy.hp <= 0) details.push(`${enemy.type}被击败了`);
+        
+        // 检查敌人是否闪避（获取战斗服务来使用闪避检查）
+        const battleService = this.getBattleService();
+        const dodged = battleService && battleService.checkDodge ?
+          battleService.checkDodge(player, enemy) : false;
+        
+        if (dodged) {
+          details.push(`${enemy.type}敏捷地闪避了你的${skill.name}！`);
+        } else {
+          let skillDamage = finalDamage;
+          
+          // 检查玩家技能暴击
+          const isCritical = battleService && battleService.checkCriticalHit ?
+            battleService.checkCriticalHit('player') : false;
+          
+          if (isCritical) {
+            skillDamage = Math.floor(skillDamage * 1.5);
+          }
+          
+          // 应用装备效果
+          const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+          if (equipmentEffectService) {
+            const damageData = {
+              attacker: 'player',
+              target: 'enemy',
+              damage: skillDamage,
+              damageType: skill.type, // 'physical' 或 'magic'
+              targetType: enemy.type || '',
+              isCritical: isCritical
+            };
+            
+            const modifiedData = equipmentEffectService.modifyDamage(damageData);
+            skillDamage = modifiedData.modifiedDamage || skillDamage;
+          }
+          
+          const actualDamage = Math.max(1, skillDamage - (enemy.defense || 0));
+          enemy.hp = Math.max(0, enemy.hp - actualDamage);
+          totalDamage = actualDamage;
+          
+          const critText = isCritical ? '暴击！' : '';
+          details.push(`${critText}对${enemy.type}造成了${actualDamage}点伤害`);
+          if (enemy.hp <= 0) details.push(`${enemy.type}被击败了`);
+        }
       }
 
       // 特殊效果

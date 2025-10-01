@@ -1,4 +1,5 @@
-// data/EnemyTemplates.js - 敌人模板系统
+
+// data/EnemyTemplates.js - 敌人模板系统（使用与玩家相同的数据结构）
 class EnemyTemplates {
     constructor() {
         this.templates = this.initializeTemplates();
@@ -9,34 +10,86 @@ class EnemyTemplates {
             // 1级敌人 - 新手友好
             1: [
                 {
-                    type: "小史莱姆",
+                    // 基础信息
+                    name: "小史莱姆",
+                    type: "小史莱姆", // 保持兼容性
                     level: 1,
-                    baseHp: 30,
-                    baseDamage: 8,
-                    defense: 2,
-                    speed: 5,
+                    
+                    // 使用与玩家相同的属性结构
+                    hp: 30,
+                    maxHp: 30,
+                    mana: 10,
+                    maxMana: 10,
+                    stamina: 20,
+                    maxStamina: 20,
+                    
+                    // 基础属性 - 使用与玩家相同的stats结构
+                    stats: {
+                        baseAttack: 6,
+                        baseDefense: 2,
+                        speed: 5,
+                        baseMagicPower: 2,
+                        basePhysicalPower: 4,
+                        // 装备加成属性（敌人通常为0，但保持结构一致）
+                        equipmentAttackBonus: 0,
+                        equipmentDefenseBonus: 0,
+                        equipmentMagicPowerBonus: 0,
+                        equipmentPhysicalPowerBonus: 0,
+                        equipmentSpeedBonus: 0,
+                        equipmentCriticalChanceBonus: 2
+                    },
+                    
+                    // 技能和装备（保持与玩家结构一致）
+                    skills: [],
+                    equipment: {},
+                    tempBuffs: [],
+                    
+                    // 敌人特有属性
                     description: "软软的绿色史莱姆，看起来很无害",
-                    skills: ["弹跳攻击"],
+                    aiSkills: ["弹跳攻击"],
                     dropTable: [
                         { item: "史莱姆胶", chance: 0.7 },
                         { item: "铜币", chance: 0.8 },
-                        { item: "治疗药水", chance: 0.3 }
+                        { item: "小瓶治疗药水", chance: 0.3 }
                     ],
                     experienceReward: 15
                 },
                 {
+                    name: "幼年哥布林",
                     type: "幼年哥布林",
                     level: 1,
-                    baseHp: 35,
-                    baseDamage: 10,
-                    defense: 3,
-                    speed: 7,
+                    
+                    hp: 35,
+                    maxHp: 35,
+                    mana: 15,
+                    maxMana: 15,
+                    stamina: 25,
+                    maxStamina: 25,
+                    
+                    stats: {
+                        baseAttack: 8,
+                        baseDefense: 3,
+                        speed: 7,
+                        baseMagicPower: 1,
+                        basePhysicalPower: 6,
+                        equipmentAttackBonus: 0,
+                        equipmentDefenseBonus: 0,
+                        equipmentMagicPowerBonus: 0,
+                        equipmentPhysicalPowerBonus: 0,
+                        equipmentSpeedBonus: 0,
+                        equipmentCriticalChanceBonus: 5
+                    },
+                    
+                    skills: [],
+                    equipment: {},
+                    tempBuffs: [],
+                    
                     description: "刚成年的哥布林，拿着破旧的木棒",
-                    skills: ["木棒挥击"],
+                    aiSkills: ["木棒挥击"],
                     dropTable: [
-                        { item: "破旧木棒", chance: 0.4 },
+                        { item: "廉价铁剑", chance: 0.4 },
                         { item: "铜币", chance: 0.9 },
-                        { item: "面包", chance: 0.5 }
+                        { item: "小瓶治疗药水", chance: 0.5 }
                     ],
                     experienceReward: 20
                 }
@@ -45,36 +98,81 @@ class EnemyTemplates {
             // 2级敌人 - 稍有挑战
             2: [
                 {
+                    name: "野狼",
                     type: "野狼",
                     level: 2,
-                    baseHp: 60,
-                    baseDamage: 15,
-                    defense: 5,
-                    speed: 12,
+                    
+                    hp: 60,
+                    maxHp: 60,
+                    mana: 20,
+                    maxMana: 20,
+                    stamina: 40,
+                    maxStamina: 40,
+                    
+                    stats: {
+                        baseAttack: 12,
+                        baseDefense: 5,
+                        speed: 12,
+                        baseMagicPower: 2,
+                        basePhysicalPower: 10,
+                        equipmentAttackBonus: 0,
+                        equipmentDefenseBonus: 0,
+                        equipmentMagicPowerBonus: 0,
+                        equipmentPhysicalPowerBonus: 0,
+                        equipmentSpeedBonus: 0,
+                        equipmentCriticalChanceBonus: 8
+                    },
+                    
+                    skills: [],
+                    equipment: {},
+                    tempBuffs: [],
+                    
                     description: "饥饿的野狼，眼中闪烁着凶光",
-                    skills: ["撕咬", "狼嚎"],
+                    aiSkills: ["撕咬", "狼嚎"],
                     dropTable: [
-                        { item: "狼牙", chance: 0.6 },
-                        { item: "狼皮", chance: 0.4 },
-                        { item: "治疗药水", chance: 0.4 },
+                        { item: "皮革", chance: 0.6 },
+                        { item: "小瓶治疗药水", chance: 0.4 },
                         { item: "铜币", chance: 0.8 }
                     ],
                     experienceReward: 35
                 },
                 {
+                    name: "哥布林战士",
                     type: "哥布林战士",
                     level: 2,
-                    baseHp: 70,
-                    baseDamage: 18,
-                    defense: 8,
-                    speed: 9,
+                    
+                    hp: 70,
+                    maxHp: 70,
+                    mana: 25,
+                    maxMana: 25,
+                    stamina: 35,
+                    maxStamina: 35,
+                    
+                    stats: {
+                        baseAttack: 14,
+                        baseDefense: 8,
+                        speed: 9,
+                        baseMagicPower: 3,
+                        basePhysicalPower: 12,
+                        equipmentAttackBonus: 0,
+                        equipmentDefenseBonus: 0,
+                        equipmentMagicPowerBonus: 0,
+                        equipmentPhysicalPowerBonus: 0,
+                        equipmentSpeedBonus: 0,
+                        equipmentCriticalChanceBonus: 6
+                    },
+                    
+                    skills: [],
+                    equipment: {},
+                    tempBuffs: [],
+                    
                     description: "装备简陋武器的哥布林战士",
-                    skills: ["冲锋", "连击"],
+                    aiSkills: ["冲锋", "连击"],
                     dropTable: [
                         { item: "铁剑", chance: 0.3 },
                         { item: "皮甲", chance: 0.2 },
                         { item: "铜币", chance: 0.9 },
-                        { item: "治疗药水", chance: 0.5 }
+                        { item: "小瓶治疗药水", chance: 0.5 }
                     ],
                     experienceReward: 40
                 }
@@ -83,35 +181,80 @@ class EnemyTemplates {
             // 3级敌人 - 中等难度
             3: [
                 {
+                    name: "骷髅兵",
                     type: "骷髅兵",
                     level: 3,
-                    baseHp: 90,
-                    baseDamage: 22,
-                    defense: 12,
-                    speed: 8,
+                    
+                    hp: 90,
+                    maxHp: 90,
+                    mana: 30,
+                    maxMana: 30,
+                    stamina: 40,
+                    maxStamina: 40,
+                    
+                    stats: {
+                        baseAttack: 16,
+                        baseDefense: 12,
+                        speed: 8,
+                        baseMagicPower: 8,
+                        basePhysicalPower: 14,
+                        equipmentAttackBonus: 0,
+                        equipmentDefenseBonus: 0,
+                        equipmentMagicPowerBonus: 0,
+                        equipmentPhysicalPowerBonus: 0,
+                        equipmentSpeedBonus: 0,
+                        equipmentCriticalChanceBonus: 4
+                    },
+                    
+                    skills: [],
+                    equipment: {},
+                    tempBuffs: [],
+                    
                     description: "被黑暗魔法复活的骷髅战士",
-                    skills: ["骨刺攻击", "死亡凝视"],
+                    aiSkills: ["骨刺攻击", "死亡凝视"],
                     dropTable: [
-                        { item: "骨头", chance: 0.8 },
-                        { item: "魔法卷轴", chance: 0.2 },
-                        { item: "高级治疗药水", chance: 0.3 },
+                        { item: "铁矿石", chance: 0.8 },
+                        { item: "魔法水晶", chance: 0.2 },
+                        { item: "中瓶治疗药水", chance: 0.3 },
                         { item: "银币", chance: 0.6 }
                     ],
                     experienceReward: 60
                 },
                 {
+                    name: "森林巨熊",
                     type: "森林巨熊",
                     level: 3,
-                    baseHp: 120,
-                    baseDamage: 28,
-                    defense: 15,
-                    speed: 6,
+                    
+                    hp: 120,
+                    maxHp: 120,
+                    mana: 25,
+                    maxMana: 25,
+                    stamina: 60,
+                    maxStamina: 60,
+                    
+                    stats: {
+                        baseAttack: 20,
+                        baseDefense: 15,
+                        speed: 6,
+                        baseMagicPower: 4,
+                        basePhysicalPower: 20,
+                        equipmentAttackBonus: 0,
+                        equipmentDefenseBonus: 0,
+                        equipmentMagicPowerBonus: 0,
+                        equipmentPhysicalPowerBonus: 0,
+                        equipmentSpeedBonus: 0,
+                        equipmentCriticalChanceBonus: 10
+                    },
+                    
+                    skills: [],
+                    equipment: {},
+                    tempBuffs: [],
+                    
                     description: "体型庞大的森林守护者，力量惊人",
-                    skills: ["熊掌重击", "咆哮"],
+                    aiSkills: ["熊掌重击", "咆哮"],
                     dropTable: [
-                        { item: "熊皮", chance: 0.7 },
-                        { item: "熊胆", chance: 0.4 },
-                        { item: "高级治疗药水", chance: 0.5 },
+                        { item: "皮革", chance: 0.7 },
+                        { item: "中瓶治疗药水", chance: 0.5 },
                         { item: "银币", chance: 0.7 }
                     ],
                     experienceReward: 75
@@ -121,35 +264,81 @@ class EnemyTemplates {
             // 4级敌人 - 较高难度
             4: [
                 {
+                    name: "哥布林萨满",
                     type: "哥布林萨满",
                     level: 4,
-                    baseHp: 100,
-                    baseDamage: 25,
-                    defense: 10,
-                    speed: 11,
+                    
+                    hp: 100,
+                    maxHp: 100,
+                    mana: 60,
+                    maxMana: 60,
+                    stamina: 40,
+                    maxStamina: 40,
+                    
+                    stats: {
+                        baseAttack: 14,
+                        baseDefense: 10,
+                        speed: 11,
+                        baseMagicPower: 20,
+                        basePhysicalPower: 8,
+                        equipmentAttackBonus: 0,
+                        equipmentDefenseBonus: 0,
+                        equipmentMagicPowerBonus: 0,
+                        equipmentPhysicalPowerBonus: 0,
+                        equipmentSpeedBonus: 0,
+                        equipmentCriticalChanceBonus: 7
+                    },
+                    
+                    skills: [],
+                    equipment: {},
+                    tempBuffs: [],
+                    
                     description: "掌握黑暗魔法的哥布林法师",
-                    skills: ["火球术", "治疗术", "诅咒"],
+                    aiSkills: ["火球术", "治疗术", "诅咒"],
                     dropTable: [
-                        { item: "魔法杖", chance: 0.4 },
-                        { item: "魔法卷轴", chance: 0.6 },
-                        { item: "法师袍", chance: 0.3 },
+                        { item: "木杖", chance: 0.4 },
+                        { item: "魔法水晶", chance: 0.6 },
+                        { item: "布袍", chance: 0.3 },
                         { item: "银币", chance: 0.8 }
                     ],
                     experienceReward: 90
                 },
                 {
+                    name: "石像鬼",
                     type: "石像鬼",
                     level: 4,
-                    baseHp: 150,
-                    baseDamage: 30,
-                    defense: 20,
-                    speed: 7,
+                    
+                    hp: 150,
+                    maxHp: 150,
+                    mana: 40,
+                    maxMana: 40,
+                    stamina: 50,
+                    maxStamina: 50,
+                    
+                    stats: {
+                        baseAttack: 22,
+                        baseDefense: 20,
+                        speed: 7,
+                        baseMagicPower: 12,
+                        basePhysicalPower: 18,
+                        equipmentAttackBonus: 0,
+                        equipmentDefenseBonus: 0,
+                        equipmentMagicPowerBonus: 0,
+                        equipmentPhysicalPowerBonus: 0,
+                        equipmentSpeedBonus: 0,
+                        equipmentCriticalChanceBonus: 3
+                    },
+                    
+                    skills: [],
+                    equipment: {},
+                    tempBuffs: [],
+                    
                     description: "古老的石制守护者，防御力极强",
-                    skills: ["石化凝视", "岩石投掷"],
+                    aiSkills: ["石化凝视", "岩石投掷"],
                     dropTable: [
-                        { item: "魔法石", chance: 0.5 },
-                        { item: "坚硬石块", chance: 0.8 },
-                        { item: "高级治疗药水", chance: 0.4 },
+                        { item: "魔法水晶", chance: 0.5 },
+                        { item: "铁矿石", chance: 0.8 },
+                        { item: "中瓶治疗药水", chance: 0.4 },
                         { item: "银币", chance: 0.7 }
                     ],
                     experienceReward: 100
@@ -159,152 +348,43 @@ class EnemyTemplates {
             // 5级敌人 - 高难度
             5: [
                 {
+                    name: "暗影刺客",
                     type: "暗影刺客",
                     level: 5,
-                    baseHp: 130,
-                    baseDamage: 40,
-                    defense: 15,
-                    speed: 18,
+                    
+                    hp: 130,
+                    maxHp: 130,
+                    mana: 50,
+                    maxMana: 50,
+                    stamina: 80,
+                    maxStamina: 80,
+                    
+                    stats: {
+                        baseAttack: 28,
+                        baseDefense: 15,
+                        speed: 18,
+                        baseMagicPower: 10,
+                        basePhysicalPower: 25,
+                        equipmentAttackBonus: 0,
+                        equipmentDefenseBonus: 0,
+                        equipmentMagicPowerBonus: 0,
+                        equipmentPhysicalPowerBonus: 0,
+                        equipmentSpeedBonus: 0,
+                        equipmentCriticalChanceBonus: 20
+                    },
+                    
+                    skills: [],
+                    equipment: {},
+                    tempBuffs: [],
+                    
                     description: "来无影去无踪的暗影杀手",
-                    skills: ["暗影突袭", "毒刃", "隐身"],
+                    aiSkills: ["暗影突袭", "毒刃", "隐身"],
                     dropTable: [
-                        { item: "暗影匕首", chance: 0.4 },
-                        { item: "隐身斗篷", chance: 0.2 },
+                        { item: "毒刃匕首", chance: 0.4 },
                         { item: "毒药", chance: 0.5 },
                         { item: "金币", chance: 0.6 }
                     ],
                     experienceReward: 120
-                },
-                {
-                    type: "火焰元素",
-                    level: 5,
-                    baseHp: 110,
-                    baseDamage: 35,
-                    defense: 8,
-                    speed: 14,
-                    description: "纯粹的火焰能量体，攻击带有灼烧效果",
-                    skills: ["火焰爆发", "灼烧", "火墙"],
-                    dropTable: [
-                        { item: "火焰宝石", chance: 0.6 },
-                        { item: "火抗药水", chance: 0.4 },
-                        { item: "魔法卷轴", chance: 0.5 },
-                        { item: "金币", chance: 0.7 }
-                    ],
-                    experienceReward: 130
-                }
-            ],
-
-            // 6级敌人 - 精英级别
-            6: [
-                {
-                    type: "兽人酋长",
-                    level: 6,
-                    baseHp: 200,
-                    baseDamage: 45,
-                    defense: 25,
-                    speed: 10,
-                    description: "部落的强大领袖，拥有丰富的战斗经验",
-                    skills: ["战争咆哮", "重击", "召唤小弟"],
-                    dropTable: [
-                        { item: "酋长战斧", chance: 0.3 },
-                        { item: "兽人护甲", chance: 0.4 },
-                        { item: "力量药水", chance: 0.5 },
-                        { item: "金币", chance: 0.9 }
-                    ],
-                    experienceReward: 160
-                },
-                {
-                    type: "冰霜巨人",
-                    level: 6,
-                    baseHp: 250,
-                    baseDamage: 50,
-                    defense: 30,
-                    speed: 5,
-                    description: "来自极地的巨大生物，攻击带有冰冻效果",
-                    skills: ["冰霜重击", "冰墙", "暴风雪"],
-                    dropTable: [
-                        { item: "冰霜之心", chance: 0.4 },
-                        { item: "巨人之骨", chance: 0.6 },
-                        { item: "冰抗药水", chance: 0.5 },
-                        { item: "金币", chance: 0.8 }
-                    ],
-                    experienceReward: 180
-                }
-            ],
-
-            // 7级敌人 - Boss级别
-            7: [
-                {
-                    type: "黑暗骑士",
-                    level: 7,
-                    baseHp: 300,
-                    baseDamage: 55,
-                    defense: 35,
-                    speed: 12,
-                    description: "堕落的圣骑士，被黑暗力量腐蚀",
-                    skills: ["黑暗斩击", "邪恶光环", "死亡骑术"],
-                    dropTable: [
-                        { item: "黑暗之剑", chance: 0.5 },
-                        { item: "堕落铠甲", chance: 0.3 },
-                        { item: "黑暗宝石", chance: 0.4 },
-                        { item: "白金币", chance: 0.7 }
-                    ],
-                    experienceReward: 220
-                },
-                {
-                    type: "古龙幼崽",
-                    level: 7,
-                    baseHp: 280,
-                    baseDamage: 60,
-                    defense: 25,
-                    speed: 15,
-                    description: "年幼的巨龙，已经展现出恐怖的力量",
-                    skills: ["龙息", "龙爪撕裂", "龙威"],
-                    dropTable: [
-                        { item: "龙鳞", chance: 0.8 },
-                        { item: "龙血", chance: 0.3 },
-                        { item: "龙珠", chance: 0.1 },
-                        { item: "白金币", chance: 0.9 }
-                    ],
-                    experienceReward: 250
-                }
-            ],
-
-            // 8级敌人 - 传说级别
-            8: [
-                {
-                    type: "巫妖王",
-                    level: 8,
-                    baseHp: 350,
-                    baseDamage: 65,
-                    defense: 30,
-                    speed: 13,
-                    description: "不死的法师之王，掌握着禁忌魔法",
-                    skills: ["死亡法术", "亡灵召唤", "时间停止"],
-                    dropTable: [
-                        { item: "巫妖之杖", chance: 0.4 },
-                        { item: "不死之书", chance: 0.2 },
-                        { item: "灵魂宝石", chance: 0.5 },
-                        { item: "秘银币", chance: 0.8 }
-                    ],
-                    experienceReward: 300
-                },
-                {
-                    type: "泰坦守护者",
-                    level: 8,
-                    baseHp: 400,
-                    baseDamage: 70,
-                    defense: 40,
-                    speed: 8,
-                    description: "远古时代的巨大守护者，力量无穷",
-                    skills: ["泰坦之拳", "大地震击", "神圣护盾"],
-                    dropTable: [
-                        { item: "泰坦之心", chance: 0.3 },
-                        { item: "远古铠甲", chance: 0.4 },
-                        { item: "神圣药水", chance: 0.6 },
-                        { item: "秘银币", chance: 0.9 }
-                    ],
-                    experienceReward: 350
                 }
             ]
         };
@@ -316,7 +396,7 @@ class EnemyTemplates {
         if (!levelTemplates || levelTemplates.length === 0) {
             // 如果没有对应等级的敌人，返回最接近的等级
             const availableLevels = Object.keys(this.templates).map(Number).sort((a, b) => a - b);
-            const closestLevel = availableLevels.reduce((prev, curr) => 
+            const closestLevel = availableLevels.reduce((prev, curr) =>
                 Math.abs(curr - level) < Math.abs(prev - level) ? curr : prev
             );
             return this.getRandomEnemyFromLevel(closestLevel);
@@ -339,19 +419,67 @@ class EnemyTemplates {
         return this.createEnemyInstance(template);
     }
 
-    // 创建敌人实例，添加随机变化
+    // 创建敌人实例，添加随机变化并使用与玩家相同的属性计算
     createEnemyInstance(template) {
         const variance = 0.2; // 20%的属性变化
         
-        return {
-            ...template,
-            hp: Math.floor(template.baseHp * (1 + (Math.random() - 0.5) * variance)),
-            maxHp: Math.floor(template.baseHp * (1 + (Math.random() - 0.5) * variance)),
-            damage: Math.floor(template.baseDamage * (1 + (Math.random() - 0.5) * variance)),
-            // 保持原有属性
-            defense: template.defense,
-            speed: template.speed
-        };
+        // 复制模板并添加随机变化
+        const enemy = JSON.parse(JSON.stringify(template));
+        
+        // 对生命值添加随机变化
+        const hpVariance = 1 + (Math.random() - 0.5) * variance;
+        enemy.hp = Math.floor(enemy.hp * hpVariance);
+        enemy.maxHp = enemy.hp;
+        
+        // 添加计算后的属性（使用与玩家相同的计算方式）
+        enemy.attack = this.calculateEnemyAttack(enemy);
+        enemy.defense = this.calculateEnemyDefense(enemy);
+        enemy.magicPower = this.calculateEnemyMagicPower(enemy);
+        enemy.physicalPower = this.calculateEnemyPhysicalPower(enemy);
+        enemy.speed = this.calculateEnemySpeed(enemy);
+        enemy.criticalChance = this.calculateEnemyCriticalChance(enemy);
+        
+        return enemy;
+    }
+
+    // 使用与玩家相同的计算公式
+    calculateEnemyAttack(enemy) {
+        const baseAttack = enemy.stats.baseAttack;
+        const levelBonus = (enemy.level - 1) * 3; // 与玩家相同的等级加成
+        const equipmentBonus = enemy.stats.equipmentAttackBonus || 0;
+        return baseAttack + levelBonus + equipmentBonus;
+    }
+
+    calculateEnemyDefense(enemy) {
+        const baseDefense = enemy.stats.baseDefense;
+        const levelBonus = (enemy.level - 1) * 2; // 与玩家相同的等级加成
+        const equipmentBonus = enemy.stats.equipmentDefenseBonus || 0;
+        return baseDefense + levelBonus + equipmentBonus;
+    }
+
+    calculateEnemyMagicPower(enemy) {
+        const base = enemy.stats.baseMagicPower || 0;
+        const levelBonus = (enemy.level - 1) * 2; // 与玩家相同的等级加成
+        const equipmentBonus = enemy.stats.equipmentMagicPowerBonus || 0;
+        return base + levelBonus + equipmentBonus;
+    }
+
+    calculateEnemyPhysicalPower(enemy) {
+        const base = enemy.stats.basePhysicalPower || 0;
+        const levelBonus = (enemy.level - 1) * 3; // 与玩家相同的等级加成
+        const equipmentBonus = enemy.stats.equipmentPhysicalPowerBonus || 0;
+        return base + levelBonus + equipmentBonus;
+    }
+
+    calculateEnemySpeed(enemy) {
+        const baseSpeed = enemy.stats.speed || 8;
+        const equipmentBonus = enemy.stats.equipmentSpeedBonus || 0;
+        return baseSpeed + equipmentBonus;
+    }
+
+    calculateEnemyCriticalChance(enemy) {
+        const equipmentBonus = enemy.stats.equipmentCriticalChanceBonus || 0;
+        return equipmentBonus;
     }
 
     // 获取多个敌人（用于群战）
@@ -384,7 +512,7 @@ class EnemyTemplates {
         // 基础推荐：敌人等级 = 玩家等级 ± 1
         const baseLevel = playerLevel;
         const variance = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
-        return Math.max(1, Math.min(8, baseLevel + variance));
+        return Math.max(1, Math.min(5, baseLevel + variance)); // 限制在1-5级
     }
 
     // 获取所有可用的敌人等级
