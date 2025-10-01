@@ -24,61 +24,55 @@ class InventoryService {
     initializeDefaultItems() {
         // 给玩家一些初始物品和装备用于测试装备系统
 
-        this.addItem('皮革背包', 1);
-        
-        // 消耗品
-        this.addItem('治疗药水', 5);
-        this.addItem('高级治疗药水', 2);
-        this.addItem('法力药水', 3);
-        this.addItem('耐力药水', 3);
-        this.addItem('面包', 3);
+        // 消耗品 - 使用新的药水系统
+        this.addItem('小瓶治疗药水', 8);
+        this.addItem('小瓶法力药水', 5);
+        this.addItem('小瓶耐力药水', 5);
         this.addItem('力量药水', 2);
         this.addItem('防御药水', 2);
+        this.addItem('速度药水', 1);
         
         // 武器 - 剑类（单手武器）
-        this.addItem('木剑', 1);
-        this.addItem('铁剑', 1);
-        this.addItem('精制铁剑', 1);
-        this.addItem('钢剑', 1);
-        this.addItem('银剑', 1);
+        this.addItem('廉价铁剑', 1);
         
-        // 武器 - 双手武器
-        this.addItem('木制双手剑', 1);
-        this.addItem('双手大剑', 1);
-        this.addItem('巨龙屠戮者', 1);
+        // 武器 - 匕首类
+        this.addItem('小刀', 1);
         
-        // 武器 - 法杖类（单手武器）
+        // 武器 - 斧类
+        this.addItem('手斧', 1);
+        // 武器 - 锤类
+        this.addItem('木棒', 1);
+        
+        // 武器 - 法杖类
         this.addItem('木杖', 1);
-        this.addItem('法师杖', 1);
-        this.addItem('奥术法杖', 1);
+        
+        // 武器 - 弓类
+        this.addItem('短弓', 1);
         
         // 防具 - 头盔
-        this.addItem('皮帽', 1);
-        this.addItem('铁盔', 1);
+        this.addItem('布帽', 1);
         
         // 防具 - 胸甲
+        this.addItem('布袍', 1);
         this.addItem('皮甲', 1);
-        this.addItem('链甲', 1);
-        this.addItem('板甲', 1);
         
         // 防具 - 护腿
         this.addItem('皮裤', 1);
         
         // 防具 - 靴子
         this.addItem('皮靴', 1);
-        this.addItem('疾风靴', 1);
+                
+        // 饰品 - 背包
+        this.addItem('小型背包', 1);
         
         // 饰品 - 戒指
-        this.addItem('力量戒指', 1);
-        this.addItem('智慧戒指', 1);
-        
-        // 饰品 - 背包
-        this.addItem('皮革背包', 1);
-        this.addItem('旅行者背包', 1);
-        this.addItem('魔法储物袋', 1);
+        this.addItem('新人冒险家之戒', 1);
         
         // 饰品 - 护符
-        this.addItem('守护护符', 1);
+        this.addItem('生命护符', 1);
+        this.addItem('防御护符', 1);
+        this.addItem('奥术护符', 1);
+        this.addItem('白刃护符', 1);
         
         // 材料和货币
         this.addItem('铁矿石', 10);

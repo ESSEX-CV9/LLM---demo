@@ -199,11 +199,13 @@
 
     <!-- 模块化JavaScript加载器 -->
     <script type="module">
-        // 配置本地CDN基础URL
-        const CDN_BASE_URL = 'http://127.0.0.1:5500/';
-        
-        // 模块列表，按依赖顺序排列
-        const modules = [
+                // 配置本地CDN基础URL
+                const CDN_BASE_URL = 'http://127.0.0.1:5500/';
+                // 暴露到全局，供运行时代码（如GameView.js）解析图片资源前缀
+                window.CDN_BASE_URL = CDN_BASE_URL;
+                
+                // 模块列表，按依赖顺序排列
+                const modules = [
             'src/core/EventBus.js',
             'src/core/ServiceLocator.js',
             'src/models/GameState.js',

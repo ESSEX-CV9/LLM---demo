@@ -861,7 +861,17 @@ class GameView {
                          data-subtype="${item.subType || ''}"
                          style="border-color: ${rarityColor}"
                          draggable="true">
-                        <div class="item-icon">${item.icon}</div>
+                        <div class="item-icon">
+                            ${(() => {
+                                const icon = item.icon || '';
+                                const isAsset = icon.startsWith('./assets/') || icon.startsWith('assets/');
+                                const base = (typeof window !== 'undefined' && window.CDN_BASE_URL) ? window.CDN_BASE_URL : '';
+                                const src = isAsset && base ? (base + icon.replace(/^\.\//, '')) : icon;
+                                return (isAsset || icon.startsWith('http://') || icon.startsWith('https://'))
+                                    ? `<img src="${src}" alt="${item.name}" style="width: 32px; height: 32px; object-fit: contain;">`
+                                    : icon;
+                            })()}
+                        </div>
                         <div class="item-quantity">${item.quantity > 1 ? item.quantity : ''}</div>
                         <div class="item-tooltip">
                             <div class="tooltip-name" style="color: ${rarityColor}">${item.name}</div>
@@ -1031,7 +1041,17 @@ class GameView {
                             <div class="slot-name">${isSecondarySlot ? '双手武器' : slotInfo.name}</div>
                         </div>` :
                         `<div class="equipped-item" data-item="${displayItem.name}" title="${displayItem.name}: ${displayItem.description}">
-                            <div class="item-icon">${displayItem.icon}</div>
+                            <div class="item-icon">
+                                ${(() => {
+                                    const icon = displayItem.icon || '';
+                                    const isAsset = icon.startsWith('./assets/') || icon.startsWith('assets/');
+                                    const base = (typeof window !== 'undefined' && window.CDN_BASE_URL) ? window.CDN_BASE_URL : '';
+                                    const src = isAsset && base ? (base + icon.replace(/^\.\//, '')) : icon;
+                                    return (isAsset || icon.startsWith('http://') || icon.startsWith('https://'))
+                                        ? `<img src="${src}" alt="${displayItem.name}" style="width: 32px; height: 32px; object-fit: contain;">`
+                                        : icon;
+                                })()}
+                            </div>
                             <div class="item-tooltip">
                                 <div class="tooltip-name" style="color: ${this.getRarityColor(displayItem.rarity)}">${displayItem.name}</div>
                                 <div class="tooltip-description">${displayItem.description}</div>
