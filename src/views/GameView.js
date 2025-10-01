@@ -905,10 +905,12 @@ class GameView {
         const stats = item.stats;
         
         if (stats.attack) statsHtml += `<div>攻击力: +${stats.attack}</div>`;
-        if (stats.defense) statsHtml += `<div>防御力: +${stats.defense}</div>`;
-        if (stats.magicPower) statsHtml += `<div>魔法强度: +${stats.magicPower}</div>`;
+        if (stats.physicalResistance) statsHtml += `<div>物理抗性: +${stats.physicalResistance}%</div>`;
+        if (stats.magicResistance) statsHtml += `<div>魔法抗性: +${stats.magicResistance}%</div>`;
         if (stats.physicalPower) statsHtml += `<div>物理强度: +${stats.physicalPower}</div>`;
-        if (stats.speed) statsHtml += `<div>速度: ${stats.speed > 0 ? '+' : ''}${stats.speed}</div>`;
+        if (stats.magicPower) statsHtml += `<div>魔法强度: +${stats.magicPower}</div>`;
+        if (stats.agility) statsHtml += `<div>敏捷: ${stats.agility > 0 ? '+' : ''}${stats.agility}</div>`;
+        if (stats.weight) statsHtml += `<div>重量: ${stats.weight > 0 ? '+' : ''}${stats.weight}</div>`;
         if (stats.maxHp) statsHtml += `<div>生命值: +${stats.maxHp}</div>`;
         if (stats.maxMana) statsHtml += `<div>法力值: +${stats.maxMana}</div>`;
         if (stats.maxStamina) statsHtml += `<div>耐力值: +${stats.maxStamina}</div>`;
@@ -1086,10 +1088,12 @@ class GameView {
         // 获取基础属性值（不包含临时增益）
         const baseStats = {
             attack: gameState?.getBasePlayerAttack() || stats.attack || 0,
-            defense: gameState?.getBasePlayerDefense() || stats.defense || 0,
-            magicPower: gameState?.getBasePlayerMagicPower() || stats.magicPower || 0,
+            physicalResistance: gameState?.getBasePlayerPhysicalResistance() || stats.physicalResistance || 0,
+            magicResistance: gameState?.getBasePlayerMagicResistance() || stats.magicResistance || 0,
             physicalPower: gameState?.getBasePlayerPhysicalPower() || stats.physicalPower || 0,
-            speed: gameState?.getBasePlayerSpeed() || stats.speed || 0,
+            magicPower: gameState?.getBasePlayerMagicPower() || stats.magicPower || 0,
+            agility: gameState?.getBasePlayerAgility() || stats.agility || 0,
+            weight: gameState?.getBasePlayerWeight() || stats.weight || 0,
             criticalChance: gameState?.getBasePlayerCriticalChance() || stats.criticalChance || 0
         };
         
@@ -1110,20 +1114,28 @@ class GameView {
                     <span>${formatStat(stats.attack || 0, baseStats.attack)}</span>
                 </div>
                 <div class="stat-row">
-                    <span>防御力:</span>
-                    <span>${formatStat(stats.defense || 0, baseStats.defense)}</span>
+                    <span>物理抗性:</span>
+                    <span>${formatStat(stats.physicalResistance || 0, baseStats.physicalResistance, '%')}</span>
                 </div>
                 <div class="stat-row">
-                    <span>魔法强度:</span>
-                    <span>${formatStat(stats.magicPower || 0, baseStats.magicPower)}</span>
+                    <span>魔法抗性:</span>
+                    <span>${formatStat(stats.magicResistance || 0, baseStats.magicResistance, '%')}</span>
                 </div>
                 <div class="stat-row">
                     <span>物理强度:</span>
                     <span>${formatStat(stats.physicalPower || 0, baseStats.physicalPower)}</span>
                 </div>
                 <div class="stat-row">
-                    <span>速度:</span>
-                    <span>${formatStat(stats.speed || 0, baseStats.speed)}</span>
+                    <span>魔法强度:</span>
+                    <span>${formatStat(stats.magicPower || 0, baseStats.magicPower)}</span>
+                </div>
+                <div class="stat-row">
+                    <span>敏捷:</span>
+                    <span>${formatStat(stats.agility || 0, baseStats.agility)}</span>
+                </div>
+                <div class="stat-row">
+                    <span>重量:</span>
+                    <span>${formatStat(stats.weight || 0, baseStats.weight)}</span>
                 </div>
                 <div class="stat-row">
                     <span>暴击率:</span>

@@ -173,15 +173,17 @@ class BattleView {
         // 获取基础属性值（不包含临时增益）
         const baseStats = {
             attack: gameState?.getBasePlayerAttack() || stats.attack || 0,
-            defense: gameState?.getBasePlayerDefense() || stats.defense || 0,
+            physicalResistance: gameState?.getBasePlayerPhysicalResistance() || stats.physicalResistance || 0,
+            magicResistance: gameState?.getBasePlayerMagicResistance() || stats.magicResistance || 0,
             magicPower: gameState?.getBasePlayerMagicPower() || stats.magicPower || 0,
             physicalPower: gameState?.getBasePlayerPhysicalPower() || stats.physicalPower || 0,
-            speed: gameState?.getBasePlayerSpeed() || stats.speed || 0,
+            agility: gameState?.getBasePlayerAgility() || stats.agility || 0,
+            weight: gameState?.getBasePlayerWeight() || stats.weight || 0,
             criticalChance: gameState?.getBasePlayerCriticalChance() || stats.criticalChance || 0
         };
         
         // 格式化属性显示：如果有临时增益则高亮显示差值
-        const formatStat = (label, emoji, totalValue, baseValue) => {
+        const formatStat = (label, emoji, totalValue, baseValue, suffix = '') => {
             const hasBuff = totalValue !== baseValue;
             const diff = totalValue - baseValue;
             return `
@@ -189,7 +191,7 @@ class BattleView {
                     <span class="stat-emoji">${emoji}</span>
                     <span class="stat-label-detail">${label}:</span>
                     <span class="stat-value-detail">
-                        ${totalValue}${hasBuff ? ` <span class="buff-indicator">(+${diff})</span>` : ''}
+                        ${totalValue}${suffix}${hasBuff ? ` <span class="buff-indicator">(+${diff})</span>` : ''}
                     </span>
                 </div>
             `;
@@ -199,11 +201,13 @@ class BattleView {
             <div class="stats-detail-container">
                 <div class="stats-detail-title">角色属性</div>
                 ${formatStat('攻击力', '⚔️', stats.attack || 0, baseStats.attack)}
-                ${formatStat('防御力', '🛡️', stats.defense || 0, baseStats.defense)}
-                ${formatStat('魔法强度', '🔮', stats.magicPower || 0, baseStats.magicPower)}
+                ${formatStat('物理抗性', '🛡️', stats.physicalResistance || 0, baseStats.physicalResistance, '%')}
+                ${formatStat('魔法抗性', '✨', stats.magicResistance || 0, baseStats.magicResistance, '%')}
                 ${formatStat('物理强度', '💪', stats.physicalPower || 0, baseStats.physicalPower)}
-                ${formatStat('速度', '⚡', stats.speed || 0, baseStats.speed)}
-                ${formatStat('暴击率', '💥', stats.criticalChance || 0, baseStats.criticalChance)}
+                ${formatStat('魔法强度', '🔮', stats.magicPower || 0, baseStats.magicPower)}
+                ${formatStat('敏捷', '⚡', stats.agility || 0, baseStats.agility)}
+                ${formatStat('重量', '⚖️', stats.weight || 0, baseStats.weight)}
+                ${formatStat('暴击率', '💥', stats.criticalChance || 0, baseStats.criticalChance, '%')}
             </div>
             ${this.generateActiveBuffsDisplay(player.buffs || [])}
         `;
