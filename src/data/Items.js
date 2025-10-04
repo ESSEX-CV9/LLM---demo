@@ -192,11 +192,11 @@ class ItemsDB {
                 name: '防御药水',
                 type: 'consumable',
                 subType: 'buff',
-                description: '临时增加10点防御力，持续5回合',
-                effect: { 
-                    type: 'temp_buff', 
-                    stats: { defense: 10 },
-                    duration: 5 
+                description: '临时增加8%物理抗性和5%魔法抗性，持续5回合',
+                effect: {
+                    type: 'temp_buff',
+                    stats: { physicalResistance: 8, magicResistance: 5 },
+                    duration: 5
                 },
                 rarity: 'uncommon',
                 icon: './assets/icons/potion/potion_defense.png',
@@ -204,16 +204,16 @@ class ItemsDB {
                 maxStack: 20,
                 value: 55
             },
-            '速度药水': {
-                id: 'speed_potion',
-                name: '速度药水',
+            '敏捷药水': {
+                id: 'agility_potion',
+                name: '敏捷药水',
                 type: 'consumable',
                 subType: 'buff',
-                description: '临时增加3点速度，持续8回合',
-                effect: { 
-                    type: 'temp_buff', 
-                    stats: { speed: 3 },
-                    duration: 8 
+                description: '临时增加5点敏捷，持续8回合',
+                effect: {
+                    type: 'temp_buff',
+                    stats: { agility: 5 },
+                    duration: 8
                 },
                 rarity: 'uncommon',
                 icon: './assets/icons/potion/potion_speed.png',
@@ -271,44 +271,6 @@ class ItemsDB {
                 stackable: true,
                 maxStack: 15,
                 value: 95
-            },
-
-            // 消耗品 - 特殊药水
-            '魅惑药水': {
-                id: 'charm_potion',
-                name: '魅惑药水',
-                type: 'consumable',
-                subType: 'special',
-                description: '有几率让敌人暂时成为盟友',
-                effect: { 
-                    type: 'status_effect', 
-                    effect: 'charm',
-                    duration: 3,
-                    chance: 0.6
-                },
-                rarity: 'rare',
-                icon: './assets/icons/potion/potion_charm.png',
-                stackable: true,
-                maxStack: 10,
-                value: 150
-            },
-            '毒药': {
-                id: 'poison_potion',
-                name: '毒药',
-                type: 'consumable',
-                subType: 'poison',
-                description: '涂抹在武器上，造成持续毒伤',
-                effect: { 
-                    type: 'weapon_coating', 
-                    effect: 'poison',
-                    damage: 5,
-                    duration: 5
-                },
-                rarity: 'uncommon',
-                icon: './assets/icons/potion/potion_poison.png',
-                stackable: true,
-                maxStack: 20,
-                value: 35
             },
 
             // 材料
@@ -441,6 +403,8 @@ class ItemsDB {
                 name: '精制铁剑',
                 type: 'weapon',
                 subType: 'sword',
+                weaponCategory: 'sword',
+                weaponSubCategory: 'oneHandSword',
                 weaponType: 'one-handed',
                 description: '经过精心锻造的铁剑，锋利无比',
                 rarity: 'uncommon',
@@ -449,6 +413,8 @@ class ItemsDB {
                 stats: {
                     attack: 18,
                     physicalPower: 12,
+                    weight: 5,
+                    agility: 0,
                     criticalChance: 5
                 },
                 requirements: { minLevel: 3 },
@@ -460,6 +426,8 @@ class ItemsDB {
                 name: '钢剑',
                 type: 'weapon',
                 subType: 'sword',
+                weaponCategory: 'sword',
+                weaponSubCategory: 'oneHandSword',
                 weaponType: 'one-handed',
                 description: '坚固的钢制长剑，平衡性极佳',
                 rarity: 'uncommon',
@@ -468,7 +436,8 @@ class ItemsDB {
                 stats: {
                     attack: 24,
                     physicalPower: 16,
-                    speed: 2
+                    weight: 6,
+                    agility: 2
                 },
                 requirements: { minLevel: 4 },
                 durability: { current: 150, max: 150 },
@@ -479,6 +448,8 @@ class ItemsDB {
                 name: '银剑',
                 type: 'weapon',
                 subType: 'sword',
+                weaponCategory: 'sword',
+                weaponSubCategory: 'oneHandSword',
                 weaponType: 'one-handed',
                 description: '银制长剑，对邪恶生物有特效',
                 rarity: 'rare',
@@ -487,6 +458,8 @@ class ItemsDB {
                 stats: {
                     attack: 30,
                     physicalPower: 20,
+                    weight: 5,
+                    agility: 1,
                     criticalChance: 8
                 },
                 effects: [
@@ -526,6 +499,8 @@ class ItemsDB {
                 name: '铁匕首',
                 type: 'weapon',
                 subType: 'dagger',
+                weaponCategory: 'sword',
+                weaponSubCategory: 'dagger',
                 weaponType: 'one-handed',
                 description: '锋利的铁制匕首，适合快速攻击',
                 rarity: 'common',
@@ -534,7 +509,8 @@ class ItemsDB {
                 stats: {
                     attack: 10,
                     physicalPower: 6,
-                    speed: 4,
+                    weight: 2,
+                    agility: 4,
                     criticalChance: 12
                 },
                 requirements: { minLevel: 2 },
@@ -546,6 +522,8 @@ class ItemsDB {
                 name: '精制匕首',
                 type: 'weapon',
                 subType: 'dagger',
+                weaponCategory: 'sword',
+                weaponSubCategory: 'dagger',
                 weaponType: 'one-handed',
                 description: '经过精心打磨的匕首，暴击率极高',
                 rarity: 'uncommon',
@@ -554,7 +532,8 @@ class ItemsDB {
                 stats: {
                     attack: 15,
                     physicalPower: 9,
-                    speed: 5,
+                    weight: 2,
+                    agility: 5,
                     criticalChance: 18
                 },
                 requirements: { minLevel: 3 },
@@ -566,20 +545,20 @@ class ItemsDB {
                 name: '毒刃匕首',
                 type: 'weapon',
                 subType: 'dagger',
+                weaponCategory: 'sword',
+                weaponSubCategory: 'dagger',
                 weaponType: 'one-handed',
-                description: '涂有剧毒的匕首，攻击时有几率中毒敌人',
+                description: '锋利的匕首，适合快速致命打击',
                 rarity: 'rare',
                 icon: './assets/icons/weapons/dagger3.png',
                 level: 4,
                 stats: {
                     attack: 20,
                     physicalPower: 12,
-                    speed: 6,
+                    weight: 2,
+                    agility: 6,
                     criticalChance: 20
                 },
-                effects: [
-                    { type: 'poison_chance', value: 0.3, damage: 3, duration: 4, description: '30%几率使敌人中毒' }
-                ],
                 requirements: { minLevel: 4 },
                 durability: { current: 100, max: 100 },
                 value: 180
@@ -589,20 +568,20 @@ class ItemsDB {
                 name: '暗影匕首',
                 type: 'weapon',
                 subType: 'dagger',
+                weaponCategory: 'sword',
+                weaponSubCategory: 'dagger',
                 weaponType: 'one-handed',
-                description: '神秘的暗影匕首，攻击时有几率造成额外伤害',
+                description: '神秘的暗影匕首，极高的暴击率',
                 rarity: 'epic',
                 icon: './assets/icons/weapons/dagger4.png',
                 level: 5,
                 stats: {
                     attack: 25,
                     physicalPower: 15,
-                    speed: 7,
+                    weight: 2,
+                    agility: 7,
                     criticalChance: 25
                 },
-                effects: [
-                    { type: 'shadow_strike', value: 0.25, multiplier: 1.5, description: '25%几率造成1.5倍伤害' }
-                ],
                 requirements: { minLevel: 5 },
                 durability: { current: 120, max: 120 },
                 value: 350
@@ -622,7 +601,8 @@ class ItemsDB {
                 stats: {
                     attack: 12,
                     physicalPower: 5,
-                    speed: -1
+                    weight: 6,
+                    agility: -1
                 },
                 requirements: { minLevel: 1 },
                 durability: { current: 70, max: 70 },
@@ -641,8 +621,9 @@ class ItemsDB {
                 stats: {
                     attack: 22,
                     physicalPower: 16,
-                    criticalChance: 8,
-                    speed: -2
+                    weight: 8,
+                    agility: -2,
+                    criticalChance: 8
                 },
                 requirements: { minLevel: 3 },
                 durability: { current: 120, max: 120 },
@@ -661,8 +642,9 @@ class ItemsDB {
                 stats: {
                     attack: 32,
                     physicalPower: 24,
-                    criticalChance: 12,
-                    speed: -3
+                    weight: 12,
+                    agility: -3,
+                    criticalChance: 12
                 },
                 requirements: { minLevel: 4 },
                 durability: { current: 150, max: 150 },
@@ -681,12 +663,10 @@ class ItemsDB {
                 stats: {
                     attack: 42,
                     physicalPower: 32,
-                    criticalChance: 15,
-                    speed: -2
+                    weight: 15,
+                    agility: -2,
+                    criticalChance: 15
                 },
-                effects: [
-                    { type: 'armor_break', value: 0.2, description: '20%几率破坏敌人护甲' }
-                ],
                 requirements: { minLevel: 6 },
                 durability: { current: 200, max: 200 },
                 value: 500
@@ -698,6 +678,8 @@ class ItemsDB {
                 name: '木棒',
                 type: 'weapon',
                 subType: 'club',
+                weaponCategory: 'hammer',
+                weaponSubCategory: 'oneHandHammer',
                 weaponType: 'one-handed',
                 description: '简陋的木棒，原始但有效',
                 rarity: 'common',
@@ -706,7 +688,8 @@ class ItemsDB {
                 stats: {
                     attack: 10,
                     physicalPower: 4,
-                    speed: -1
+                    weight: 5,
+                    agility: -1
                 },
                 requirements: { minLevel: 1 },
                 durability: { current: 50, max: 50 },
@@ -717,19 +700,19 @@ class ItemsDB {
                 name: '战锤',
                 type: 'weapon',
                 subType: 'hammer',
+                weaponCategory: 'hammer',
+                weaponSubCategory: 'oneHandHammer',
                 weaponType: 'one-handed',
-                description: '重型战锤，对护甲有额外伤害',
+                description: '重型战锤，强大的物理攻击',
                 rarity: 'uncommon',
                 icon: './assets/icons/weapons/hammer1.png',
                 level: 3,
                 stats: {
                     attack: 20,
                     physicalPower: 18,
-                    speed: -2
+                    weight: 10,
+                    agility: -2
                 },
-                effects: [
-                    { type: 'armor_penetration', value: 0.3, description: '无视30%护甲' }
-                ],
                 requirements: { minLevel: 3 },
                 durability: { current: 140, max: 140 },
                 value: 180
@@ -739,21 +722,20 @@ class ItemsDB {
                 name: '雷神之锤',
                 type: 'weapon',
                 subType: 'hammer',
+                weaponCategory: 'hammer',
+                weaponSubCategory: 'twoHandHammer',
                 weaponType: 'two-handed',
-                description: '传说中的雷神之锤，攻击时有几率释放闪电',
+                description: '传说中的雷神之锤，威力极强',
                 rarity: 'legendary',
                 icon: './assets/icons/weapons/hammer2.png',
                 level: 7,
                 stats: {
                     attack: 45,
                     physicalPower: 36,
-                    criticalChance: 18,
-                    speed: -1
+                    weight: 18,
+                    agility: -1,
+                    criticalChance: 18
                 },
-                effects: [
-                    { type: 'lightning_strike', value: 0.25, damage: 20, description: '25%几率释放闪电攻击' },
-                    { type: 'armor_penetration', value: 0.5, description: '无视50%护甲' }
-                ],
                 requirements: { minLevel: 7 },
                 durability: { current: 300, max: 300 },
                 value: 1200
@@ -788,6 +770,8 @@ class ItemsDB {
                 name: '法师杖',
                 type: 'weapon',
                 subType: 'staff',
+                weaponCategory: 'staff',
+                weaponSubCategory: 'twoHandStaff',
                 weaponType: 'two-handed',
                 description: '镶嵌水晶的法师专用法杖',
                 rarity: 'uncommon',
@@ -796,6 +780,8 @@ class ItemsDB {
                 stats: {
                     attack: 8,
                     magicPower: 24,
+                    weight: 4,
+                    agility: 0,
                     maxMana: 30
                 },
                 effects: [
@@ -810,6 +796,8 @@ class ItemsDB {
                 name: '奥术法杖',
                 type: 'weapon',
                 subType: 'staff',
+                weaponCategory: 'staff',
+                weaponSubCategory: 'twoHandStaff',
                 weaponType: 'two-handed',
                 description: '蕴含强大奥术能量的高级法杖',
                 rarity: 'rare',
@@ -818,6 +806,8 @@ class ItemsDB {
                 stats: {
                     attack: 12,
                     magicPower: 40,
+                    weight: 5,
+                    agility: 0,
                     maxMana: 50,
                     criticalChance: 10
                 },
@@ -836,6 +826,8 @@ class ItemsDB {
                 name: '魔法棒',
                 type: 'weapon',
                 subType: 'wand',
+                weaponCategory: 'staff',
+                weaponSubCategory: 'oneHandStaff',
                 weaponType: 'one-handed',
                 description: '小巧的魔法棒，适合快速施法',
                 rarity: 'common',
@@ -844,8 +836,9 @@ class ItemsDB {
                 stats: {
                     attack: 6,
                     magicPower: 16,
-                    maxMana: 20,
-                    speed: 2
+                    weight: 1,
+                    agility: 2,
+                    maxMana: 20
                 },
                 requirements: { minLevel: 2 },
                 durability: { current: 70, max: 70 },
@@ -856,6 +849,8 @@ class ItemsDB {
                 name: '水晶法杖',
                 type: 'weapon',
                 subType: 'wand',
+                weaponCategory: 'staff',
+                weaponSubCategory: 'oneHandStaff',
                 weaponType: 'one-handed',
                 description: '镶嵌纯净水晶的高级法杖',
                 rarity: 'rare',
@@ -864,13 +859,11 @@ class ItemsDB {
                 stats: {
                     attack: 10,
                     magicPower: 30,
+                    weight: 2,
+                    agility: 3,
                     maxMana: 35,
-                    speed: 3,
                     criticalChance: 8
                 },
-                effects: [
-                    { type: 'spell_power_boost', value: 0.2, description: '法术威力+20%' }
-                ],
                 requirements: { minLevel: 4 },
                 durability: { current: 120, max: 120 },
                 value: 300
@@ -882,6 +875,8 @@ class ItemsDB {
                 name: '短弓',
                 type: 'weapon',
                 subType: 'bow',
+                weaponCategory: 'bow',
+                weaponSubCategory: 'shortBow',
                 weaponType: 'two-handed',
                 description: '简单的短弓，射程有限但易于使用',
                 rarity: 'common',
@@ -890,7 +885,8 @@ class ItemsDB {
                 stats: {
                     attack: 10,
                     physicalPower: 4,
-                    speed: 2,
+                    weight: 3,
+                    agility: 2,
                     criticalChance: 5
                 },
                 requirements: { minLevel: 1 },
@@ -902,6 +898,8 @@ class ItemsDB {
                 name: '长弓',
                 type: 'weapon',
                 subType: 'bow',
+                weaponCategory: 'bow',
+                weaponSubCategory: 'longBow',
                 weaponType: 'two-handed',
                 description: '标准的长弓，射程和威力都不错',
                 rarity: 'uncommon',
@@ -910,7 +908,8 @@ class ItemsDB {
                 stats: {
                     attack: 20,
                     physicalPower: 8,
-                    speed: 3,
+                    weight: 4,
+                    agility: 3,
                     criticalChance: 12
                 },
                 requirements: { minLevel: 3 },
@@ -922,6 +921,8 @@ class ItemsDB {
                 name: '复合弓',
                 type: 'weapon',
                 subType: 'bow',
+                weaponCategory: 'bow',
+                weaponSubCategory: 'longBow',
                 weaponType: 'two-handed',
                 description: '高级复合弓，威力强大射程远',
                 rarity: 'rare',
@@ -930,12 +931,10 @@ class ItemsDB {
                 stats: {
                     attack: 32,
                     physicalPower: 14,
-                    speed: 4,
+                    weight: 5,
+                    agility: 4,
                     criticalChance: 18
                 },
-                effects: [
-                    { type: 'piercing_shot', value: 0.2, description: '20%几率穿透攻击' }
-                ],
                 requirements: { minLevel: 5 },
                 durability: { current: 160, max: 160 },
                 value: 400
@@ -945,6 +944,8 @@ class ItemsDB {
                 name: '精灵战弓',
                 type: 'weapon',
                 subType: 'bow',
+                weaponCategory: 'bow',
+                weaponSubCategory: 'longBow',
                 weaponType: 'two-handed',
                 description: '精灵工匠制作的传奇战弓，精准度极高',
                 rarity: 'legendary',
@@ -953,13 +954,10 @@ class ItemsDB {
                 stats: {
                     attack: 45,
                     physicalPower: 20,
-                    speed: 5,
+                    weight: 4,
+                    agility: 5,
                     criticalChance: 25
                 },
-                effects: [
-                    { type: 'piercing_shot', value: 0.3, description: '30%几率穿透攻击' },
-                    { type: 'wind_arrow', value: 0.15, description: '15%几率发射风之箭' }
-                ],
                 requirements: { minLevel: 6 },
                 durability: { current: 200, max: 200 },
                 value: 800
@@ -1016,7 +1014,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/helmet_studded_leather.png',
                 level: 2,
                 stats: {
-                    defense: 6,
+                    physicalResistance: 4,
+                    magicResistance: 1,
+                    weight: 3,
+                    agility: 0,
                     maxHp: 12
                 },
                 requirements: { minLevel: 2 },
@@ -1033,7 +1034,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/helmet_chainmail.png',
                 level: 3,
                 stats: {
-                    defense: 9,
+                    physicalResistance: 6,
+                    magicResistance: 2,
+                    weight: 5,
+                    agility: -1,
                     maxHp: 18
                 },
                 requirements: { minLevel: 3 },
@@ -1050,13 +1054,13 @@ class ItemsDB {
                 icon: './assets/icons/armors/helmet_horned_iron.png',
                 level: 3,
                 stats: {
-                    defense: 10,
+                    physicalResistance: 7,
+                    magicResistance: 2,
+                    weight: 6,
+                    agility: -1,
                     maxHp: 20,
                     attack: 2
                 },
-                effects: [
-                    { type: 'intimidation', value: 0.1, description: '10%几率震慑敌人' }
-                ],
                 requirements: { minLevel: 3 },
                 durability: { current: 120, max: 120 },
                 value: 120
@@ -1071,7 +1075,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/helmet_plate.png',
                 level: 4,
                 stats: {
-                    defense: 15,
+                    physicalResistance: 10,
+                    magicResistance: 3,
+                    weight: 8,
+                    agility: -2,
                     maxHp: 30
                 },
                 requirements: { minLevel: 4 },
@@ -1088,7 +1095,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/helmet_full_knight_plate.png',
                 level: 5,
                 stats: {
-                    defense: 20,
+                    physicalResistance: 12,
+                    magicResistance: 4,
+                    weight: 10,
+                    agility: -2,
                     maxHp: 40
                 },
                 effects: [
@@ -1131,7 +1141,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/chest_padded_armor.png',
                 level: 1,
                 stats: {
-                    defense: 5,
+                    physicalResistance: 3,
+                    magicResistance: 1,
+                    weight: 3,
+                    agility: 0,
                     maxHp: 10
                 },
                 requirements: { minLevel: 1 },
@@ -1148,7 +1161,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/chest_leather_armor.png',
                 level: 1,
                 stats: {
-                    defense: 8,
+                    physicalResistance: 5,
+                    magicResistance: 2,
+                    weight: 5,
+                    agility: 1,
                     maxHp: 15
                 },
                 requirements: { minLevel: 1 },
@@ -1165,7 +1181,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/chest_studded_leather.png',
                 level: 2,
                 stats: {
-                    defense: 12,
+                    physicalResistance: 7,
+                    magicResistance: 2,
+                    weight: 7,
+                    agility: 0,
                     maxHp: 20
                 },
                 requirements: { minLevel: 2 },
@@ -1182,9 +1201,11 @@ class ItemsDB {
                 icon: './assets/icons/armors/chest_chainmail.png',
                 level: 2,
                 stats: {
-                    defense: 15,
-                    maxHp: 25,
-                    speed: -1
+                    physicalResistance: 10,
+                    magicResistance: 3,
+                    weight: 12,
+                    agility: -1,
+                    maxHp: 25
                 },
                 requirements: { minLevel: 2 },
                 durability: { current: 120, max: 120 },
@@ -1223,9 +1244,11 @@ class ItemsDB {
                 icon: './assets/icons/armors/chest_superior_leather.png',
                 level: 3,
                 stats: {
-                    defense: 18,
-                    maxHp: 30,
-                    speed: 1
+                    physicalResistance: 10,
+                    magicResistance: 4,
+                    weight: 6,
+                    agility: 2,
+                    maxHp: 30
                 },
                 requirements: { minLevel: 3 },
                 durability: { current: 140, max: 140 },
@@ -1241,7 +1264,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/chest_superior_studded.png',
                 level: 3,
                 stats: {
-                    defense: 20,
+                    physicalResistance: 12,
+                    magicResistance: 3,
+                    weight: 8,
+                    agility: 1,
                     maxHp: 35
                 },
                 requirements: { minLevel: 3 },
@@ -1258,9 +1284,11 @@ class ItemsDB {
                 icon: './assets/icons/armors/chest_superior_chainmail.png',
                 level: 4,
                 stats: {
-                    defense: 22,
-                    maxHp: 38,
-                    speed: -1
+                    physicalResistance: 14,
+                    magicResistance: 4,
+                    weight: 14,
+                    agility: -1,
+                    maxHp: 38
                 },
                 requirements: { minLevel: 4 },
                 durability: { current: 180, max: 180 },
@@ -1276,13 +1304,14 @@ class ItemsDB {
                 icon: './assets/icons/armors/chest_superior_plate.png',
                 level: 5,
                 stats: {
-                    defense: 35,
-                    maxHp: 60,
-                    speed: -2
+                    physicalResistance: 20,
+                    magicResistance: 6,
+                    weight: 20,
+                    agility: -3,
+                    maxHp: 60
                 },
                 effects: [
-                    { type: 'damage_reduction', value: 0.15, description: '受到伤害-15%' },
-                    { type: 'reflect_damage', value: 0.1, description: '反弹10%伤害' }
+                    { type: 'damage_reduction', value: 0.15, description: '受到伤害-15%' }
                 ],
                 requirements: { minLevel: 5 },
                 durability: { current: 250, max: 250 },
@@ -1300,7 +1329,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/legs_cloth_pants.png',
                 level: 1,
                 stats: {
-                    defense: 2,
+                    physicalResistance: 1,
+                    magicResistance: 2,
+                    weight: 1,
+                    agility: 1,
                     maxHp: 5
                 },
                 requirements: { minLevel: 1 },
@@ -1317,7 +1349,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/legs_leather_pants.png',
                 level: 1,
                 stats: {
-                    defense: 4,
+                    physicalResistance: 3,
+                    magicResistance: 1,
+                    weight: 3,
+                    agility: 0,
                     maxHp: 10
                 },
                 requirements: { minLevel: 1 },
@@ -1334,7 +1369,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/legs_studded_pants.png',
                 level: 2,
                 stats: {
-                    defense: 6,
+                    physicalResistance: 4,
+                    magicResistance: 1,
+                    weight: 4,
+                    agility: 0,
                     maxHp: 15
                 },
                 requirements: { minLevel: 2 },
@@ -1351,7 +1389,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/legs_chainmail_pants.png',
                 level: 3,
                 stats: {
-                    defense: 9,
+                    physicalResistance: 6,
+                    magicResistance: 2,
+                    weight: 7,
+                    agility: -1,
                     maxHp: 20
                 },
                 requirements: { minLevel: 3 },
@@ -1368,7 +1409,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/legs_plate_pants.png',
                 level: 4,
                 stats: {
-                    defense: 15,
+                    physicalResistance: 10,
+                    magicResistance: 3,
+                    weight: 10,
+                    agility: -2,
                     maxHp: 30
                 },
                 requirements: { minLevel: 4 },
@@ -1387,8 +1431,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/boots_cloth_shoes.png',
                 level: 1,
                 stats: {
-                    defense: 1,
-                    speed: 1
+                    physicalResistance: 1,
+                    magicResistance: 1,
+                    weight: 1,
+                    agility: 2
                 },
                 requirements: { minLevel: 1 },
                 durability: { current: 25, max: 25 },
@@ -1404,8 +1450,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/boots_leather.png',
                 level: 1,
                 stats: {
-                    defense: 3,
-                    speed: 2
+                    physicalResistance: 2,
+                    magicResistance: 1,
+                    weight: 2,
+                    agility: 3
                 },
                 requirements: { minLevel: 1 },
                 durability: { current: 40, max: 40 },
@@ -1421,8 +1469,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/boots_studded.png',
                 level: 2,
                 stats: {
-                    defense: 5,
-                    speed: 2,
+                    physicalResistance: 3,
+                    magicResistance: 1,
+                    weight: 3,
+                    agility: 2,
                     maxHp: 8
                 },
                 requirements: { minLevel: 2 },
@@ -1439,8 +1489,10 @@ class ItemsDB {
                 icon: './assets/icons/armors/boots_chainmail.png',
                 level: 3,
                 stats: {
-                    defense: 7,
-                    speed: 1,
+                    physicalResistance: 4,
+                    magicResistance: 2,
+                    weight: 5,
+                    agility: 1,
                     maxHp: 12
                 },
                 requirements: { minLevel: 3 },
@@ -1457,9 +1509,11 @@ class ItemsDB {
                 icon: './assets/icons/armors/boots_plate.png',
                 level: 4,
                 stats: {
-                    defense: 12,
-                    maxHp: 20,
-                    speed: -1
+                    physicalResistance: 7,
+                    magicResistance: 2,
+                    weight: 8,
+                    agility: 0,
+                    maxHp: 20
                 },
                 requirements: { minLevel: 4 },
                 durability: { current: 120, max: 120 },
@@ -1571,7 +1625,8 @@ class ItemsDB {
                 icon: './assets/icons/ringtiles/amulet_defense.png',
                 level: 2,
                 stats: {
-                    defense: 8,
+                    physicalResistance: 5,
+                    magicResistance: 3,
                     maxHp: 20
                 },
                 effects: [
@@ -1614,9 +1669,6 @@ class ItemsDB {
                     physicalPower: 8,
                     criticalChance: 8
                 },
-                effects: [
-                    { type: 'weapon_mastery', value: 0.1, description: '武器熟练度+10%' }
-                ],
                 requirements: { minLevel: 3 },
                 value: 280
             },
@@ -1663,7 +1715,7 @@ class ItemsDB {
                 level: 3,
                 stats: {
                     inventorySlots: 10,
-                    speed: 1
+                    agility: 1
                 },
                 requirements: { minLevel: 3 },
                 value: 250

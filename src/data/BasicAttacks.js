@@ -392,21 +392,15 @@ function getBasicAttackById(attackId) {
  * @returns {number} 计算后的伤害值
  */
 function calculateBasicAttackDamage(attack, attacker) {
-    const weaponAttack = attacker.attack || 0;
+    // 统一技能与武器特攻计算公式（无随机）：
+    // damage = (baseDamage + attackPower * 0.5) * (power / 100 + 0.8)
+    const attackPower = attacker.attack || 0;
     const baseDamage = attack.baseDamage || 0;
-    const multiplier = attack.damageMultiplier || 1.0;
-    
-    // 根据攻击类型选择强度
-    let powerRatio = 1.0;
-    if (attack.type === 'physical') {
-        powerRatio = (attacker.physicalPower || 100) / 100;
-    } else if (attack.type === 'magic') {
-        powerRatio = (attacker.magicPower || 100) / 100;
-    }
-    
-    // 伤害 = 基础伤害 + 武器攻击力 * 倍率 * 强度比率
-    const finalDamage = baseDamage + weaponAttack * multiplier * powerRatio;
-    
+    const power = attack.type === 'physical'
+        ? (attacker.physicalPower || 0)
+        : (attack.type === 'magic' ? (attacker.magicPower || 0) : 0);
+
+    const finalDamage = (baseDamage + attackPower * 0.5) * (power / 100 + 0.8);
     return Math.floor(finalDamage);
 }
 
@@ -418,3 +412,6 @@ const BasicAttacksDB = {
 };
 
 export default BasicAttacksDB;
+
+// 全局暴露（用于非模块环境访问）
+window.BasicAttacksDB = BasicAttacksDB;

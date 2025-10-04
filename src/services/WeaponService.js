@@ -208,8 +208,28 @@ class WeaponService {
             });
         }
 
-        // 刷新UI
+        // 立即更新战斗界面显示资源消耗
         this.eventBus.emit('ui:battle:update', battleState, 'game');
+
+        // ✅ 修复：检查敌人是否全部死亡
+        if (battleState.enemies.every(enemy => enemy.hp <= 0)) {
+            // 敌人全灭，结束战斗
+            setTimeout(() => {
+                battleService.endBattle('victory');
+            }, 500);
+            return { success: true, message: logMessage, damage: totalDamage };
+        }
+
+        // ✅ 修复：切换到敌人回合并触发敌人行动
+        battleState.turn = 'enemy';
+        this.eventBus.emit('ui:battle:update', battleState, 'game');
+        
+        // 延迟执行敌人行动
+        setTimeout(() => {
+            if (battleService && typeof battleService.executeEnemyTurn === 'function') {
+                battleService.executeEnemyTurn();
+            }
+        }, 1500);
 
         return { success: true, message: logMessage, damage: totalDamage };
     }
@@ -218,8 +238,9 @@ class WeaponService {
      * 执行单体攻击
      */
     executeSingleTargetAttack(attack, player, enemy, battleService) {
-        // 检查闪避
-        const dodged = battleService.checkDodge(player, enemy);
+        // 检查闪避（应用武器特殊攻击命中率加成）
+        const hitBonus = this.calculateWeaponAttackHitBonus(attack);
+        const dodged = battleService.checkDodge(player, enemy, hitBonus);
         if (dodged) {
             return {
                 damage: 0,
@@ -281,8 +302,9 @@ class WeaponService {
         const damageResults = [];
 
         for (const enemy of aliveEnemies) {
-            // 检查闪避
-            const dodged = battleService.checkDodge(player, enemy);
+            // 检查闪避（应用武器特殊攻击命中率加成）
+            const hitBonus = this.calculateWeaponAttackHitBonus(attack);
+            const dodged = battleService.checkDodge(player, enemy, hitBonus);
             if (dodged) {
                 damageResults.push(`${enemy.type}闪避`);
                 continue;
@@ -351,6 +373,77 @@ class WeaponService {
             estimatedDamage: damage,
             canUse: (player.mana >= attack.manaCost) && (player.stamina >= attack.staminaCost)
         };
+    }
+
+    // 计算武器特殊攻击命中率加成
+    calculateWeaponAttackHitBonus(attack) {
+        // 如果攻击直接定义了命中率加成，使用它
+        if (attack.hitBonus !== undefined) {
+            return attack.hitBonus;
+        }
+
+        // 根据武器类型和攻击特性自动计算
+        let baseHitBonus = 0;
+
+        // 1. 根据攻击类型判断武器类别
+        const attackId = attack.id || '';
+        
+        if (attackId.includes('dagger')) {
+            baseHitBonus = 18; // 匕首：快速精准
+        } else if (attackId.includes('bow') || attackId.includes('crossbow')) {
+            baseHitBonus = 12; // 弓/弩：瞄准精准
+        } else if (attackId.includes('sword')) {
+            baseHitBonus = 10; // 剑：平衡
+        } else if (attackId.includes('axe')) {
+            baseHitBonus = 4;  // 斧：重型笨重
+        } else if (attackId.includes('hammer') || attackId.includes('club')) {
+            baseHitBonus = 5;  // 锤：重型笨重
+        } else if (attackId.includes('staff') || attackId.includes('wand')) {
+            baseHitBonus = 14; // 法杖/魔杖：魔法制导
+        } else if (attackId.includes('shield')) {
+            baseHitBonus = 6;  // 盾：防御性攻击
+        } else {
+            baseHitBonus = 8;  // 徒手：基础
+        }
+
+        // 2. 根据攻击特性调整
+        const attackName = attack.name || '';
+        const attackDesc = attack.description || '';
+
+        // 精准/瞄准类：+5%
+        if (attackName.includes('精准') || attackName.includes('瞄准') ||
+            attackDesc.includes('精准') || attackDesc.includes('瞄准')) {
+            baseHitBonus += 5;
+        }
+
+        // AOE范围攻击：-4%
+        if (attack.target === 'aoe') {
+            baseHitBonus -= 4;
+        }
+
+        // 破甲类：+2%
+        if (attack.armorPierce || attackDesc.includes('破甲')) {
+            baseHitBonus += 2;
+        }
+
+        // 快速/连击类：+3%
+        if (attack.hits > 1 || attackName.includes('速') || attackName.includes('快')) {
+            baseHitBonus += 3;
+        }
+
+        // 重击/蓄力类：-3%
+        if (attackName.includes('重') || attackName.includes('蓄力') ||
+            attackName.includes('强力') || attack.damageMultiplier >= 2.0) {
+            baseHitBonus -= 3;
+        }
+
+        // 支援类：必中
+        if (attack.type === 'support') {
+            baseHitBonus = 100;
+        }
+
+        // 确保在合理范围内
+        return Math.max(0, Math.min(25, baseHitBonus));
     }
 }
 

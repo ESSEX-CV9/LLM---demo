@@ -332,6 +332,11 @@ class EquipmentService {
             stats: { ...player.stats }
         };
 
+        // 计算当前资源的百分比
+        const hpPercent = baseStats.maxHp > 0 ? baseStats.hp / baseStats.maxHp : 1;
+        const manaPercent = baseStats.maxMana > 0 ? baseStats.mana / baseStats.maxMana : 1;
+        const staminaPercent = baseStats.maxStamina > 0 ? baseStats.stamina / baseStats.maxStamina : 1;
+
         // 重置装备加成，保留基础属性
         const newStats = {
             ...baseStats.stats,
@@ -402,10 +407,16 @@ class EquipmentService {
         const newMaxMana = baseStats.maxMana + totalMaxManaBonus;
         const newMaxStamina = baseStats.maxStamina + totalMaxStaminaBonus;
 
-        // 确保当前值不超过新的最大值
-        const currentHp = Math.min(baseStats.hp, newMaxHp);
-        const currentMana = Math.min(baseStats.mana, newMaxMana);
-        const currentStamina = Math.min(baseStats.stamina, newMaxStamina);
+        // ✅ 修复：按比例调整当前值，保持百分比不变
+        // 如果装备前 HP = 80/100 (80%)，装备后应该是 96/120 (80%)，而不是 80/120
+        let currentHp = Math.floor(newMaxHp * hpPercent);
+        let currentMana = Math.floor(newMaxMana * manaPercent);
+        let currentStamina = Math.floor(newMaxStamina * staminaPercent);
+
+        // 确保至少为1（如果最大值>0）或为0（如果最大值=0）
+        currentHp = newMaxHp > 0 ? Math.max(1, Math.min(currentHp, newMaxHp)) : 0;
+        currentMana = newMaxMana > 0 ? Math.max(0, Math.min(currentMana, newMaxMana)) : 0;
+        currentStamina = newMaxStamina > 0 ? Math.max(0, Math.min(currentStamina, newMaxStamina)) : 0;
 
         return {
             stats: newStats,

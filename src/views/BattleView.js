@@ -31,7 +31,7 @@ class BattleView {
                     
                     <!-- 中间战斗信息区域 -->
                     <div class="battle-center-area">
-                        <div class="battle-log-landscape" id="battleLog">
+                        <div class="battle-log-fixed" id="battleLog">
                             ${battleState.battleLog.map(log => `
                                 <div class="log-entry ${log.type}">${log.message}</div>
                             `).join('')}
@@ -58,23 +58,28 @@ class BattleView {
         this.setupBattleEvents(battleModal, battleState);
     }
 
-    // 生成敌人显示（支持最多3个敌人）- 横向矮长方形布局
+    // 生成敌人显示（支持最多3个敌人）- 新布局：上部头像+名称+buff，下部数值条
     generateEnemiesDisplay(battleState) {
         const enemies = battleState.enemies.slice(0, 3); // 最多显示3个
         return `
             <div class="enemies-container">
                 ${enemies.map((enemy, index) => `
                     <div class="enemy-unit ${enemy.hp <= 0 ? 'defeated' : ''}" data-index="${index}">
-                        <!-- 左侧：头像和名称 -->
-                        <div class="enemy-left-section">
+                        <!-- 上部：头像 + 名称 + buff/debuff -->
+                        <div class="enemy-header-section">
                             <div class="enemy-sprite-compact">
                                 <span class="sprite-emoji">👹</span>
                             </div>
-                            <div class="enemy-name-compact">👹 ${enemy.type}</div>
+                            <div class="enemy-info">
+                                <div class="enemy-name">${enemy.type}</div>
+                                <div class="enemy-id-compact">#${index + 1}</div>
+                            </div>
+                            <!-- 效果图标显示 -->
+                            ${this.renderUnitEffects(enemy)}
                         </div>
                         
-                        <!-- 右侧：状态条（垂直排列） -->
-                        <div class="enemy-bars-horizontal">
+                        <!-- 下部：状态条区域 -->
+                        <div class="enemy-bars-compact">
                             <!-- HP条 -->
                             <div class="status-bar hp-bar">
                                 <div class="bar-label">HP</div>
@@ -112,52 +117,56 @@ class BattleView {
         `;
     }
 
-    // 生成玩家显示
+    // 生成玩家显示 - 矮窄卡片格式，头像和ID在数值条右边
     generatePlayerDisplay(battleState) {
         const player = battleState.player;
         return `
             <div class="player-unit">
-                <!-- 玩家名称 -->
-                <div class="player-name">🛡️ ${player.name || '冒险者'}</div>
-                
-                <!-- 玩家图片/贴图占位 -->
-                <div class="player-sprite">
-                    <div class="sprite-placeholder">
-                        <span class="sprite-emoji">🛡️</span>
-                    </div>
-                </div>
-                
-                <!-- 玩家状态条 -->
-                <div class="player-bars">
-                    <!-- HP条 -->
-                    <div class="status-bar hp-bar">
-                        <div class="bar-label">HP</div>
-                        <div class="bar-container">
-                            <div class="bar-fill hp-fill player-hp" style="width: ${(player.hp / player.maxHp) * 100}%"></div>
-                            <span class="bar-text">${player.hp}/${player.maxHp}</span>
+                <!-- 上部：矮窄卡片 -->
+                <div class="player-card-compact">
+                    <!-- 左侧：状态条 -->
+                    <div class="player-bars-compact">
+                        <!-- HP条 -->
+                        <div class="status-bar hp-bar">
+                            <div class="bar-label">HP</div>
+                            <div class="bar-container">
+                                <div class="bar-fill hp-fill player-hp" style="width: ${(player.hp / player.maxHp) * 100}%"></div>
+                                <span class="bar-text">${player.hp}/${player.maxHp}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- MP条 -->
+                        <div class="status-bar mp-bar">
+                            <div class="bar-label">MP</div>
+                            <div class="bar-container">
+                                <div class="bar-fill mp-fill player-mp" style="width: ${((player.mana || 0) / (player.maxMana || 1)) * 100}%"></div>
+                                <span class="bar-text">${player.mana || 0}/${player.maxMana || 0}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- SP条 -->
+                        <div class="status-bar sp-bar">
+                            <div class="bar-label">SP</div>
+                            <div class="bar-container">
+                                <div class="bar-fill sp-fill player-sp" style="width: ${((player.stamina || 0) / (player.stamina || 1)) * 100}%"></div>
+                                <span class="bar-text">${player.stamina || 0}/${player.maxStamina || 0}</span>
+                            </div>
                         </div>
                     </div>
                     
-                    <!-- MP条 -->
-                    <div class="status-bar mp-bar">
-                        <div class="bar-label">MP</div>
-                        <div class="bar-container">
-                            <div class="bar-fill mp-fill player-mp" style="width: ${((player.mana || 0) / (player.maxMana || 1)) * 100}%"></div>
-                            <span class="bar-text">${player.mana || 0}/${player.maxMana || 0}</span>
+                    <!-- 右侧：头像和ID -->
+                    <div class="player-right-section">
+                        <div class="player-sprite-compact">
+                            <span class="sprite-emoji">🛡️</span>
                         </div>
-                    </div>
-                    
-                    <!-- SP条 -->
-                    <div class="status-bar sp-bar">
-                        <div class="bar-label">SP</div>
-                        <div class="bar-container">
-                            <div class="bar-fill sp-fill player-sp" style="width: ${((player.stamina || 0) / (player.maxStamina || 1)) * 100}%"></div>
-                            <span class="bar-text">${player.stamina || 0}/${player.maxStamina || 0}</span>
-                        </div>
+                        <div class="player-name-compact">${player.name || '冒险者'}</div>
                     </div>
                 </div>
                 
-                <!-- 玩家属性详情（类似背包格式） -->
+                <!-- 🆕 效果图标显示 -->
+                ${this.renderUnitEffects(player)}
+                
+                <!-- 下部：属性详情（更紧凑矮的格式） -->
                 <div class="player-stats-detail">
                     ${this.generatePlayerStatsDetail(player)}
                 </div>
@@ -165,7 +174,7 @@ class BattleView {
         `;
     }
 
-    // 生成玩家属性详情（类似背包的格式，带临时增益）
+    // 生成玩家属性详情（更紧凑和矮的格式）
     generatePlayerStatsDetail(player) {
         const gameState = window.gameCore?.getService('gameStateService')?.getState();
         const stats = gameState?.getPlayerStats() || player;
@@ -187,10 +196,10 @@ class BattleView {
             const hasBuff = totalValue !== baseValue;
             const diff = totalValue - baseValue;
             return `
-                <div class="stat-row-detail ${hasBuff ? 'has-buff' : ''}" ${hasBuff ? `data-buff-info="${label} +${diff}"` : ''}>
+                <div class="stat-row-compact ${hasBuff ? 'has-buff' : ''}">
                     <span class="stat-emoji">${emoji}</span>
-                    <span class="stat-label-detail">${label}:</span>
-                    <span class="stat-value-detail">
+                    <span class="stat-label-compact">${label}</span>
+                    <span class="stat-value-compact">
                         ${totalValue}${suffix}${hasBuff ? ` <span class="buff-indicator">(+${diff})</span>` : ''}
                     </span>
                 </div>
@@ -198,16 +207,17 @@ class BattleView {
         };
         
         return `
-            <div class="stats-detail-container">
-                <div class="stats-detail-title">角色属性</div>
-                ${formatStat('攻击力', '⚔️', stats.attack || 0, baseStats.attack)}
-                ${formatStat('物理抗性', '🛡️', stats.physicalResistance || 0, baseStats.physicalResistance, '%')}
-                ${formatStat('魔法抗性', '✨', stats.magicResistance || 0, baseStats.magicResistance, '%')}
-                ${formatStat('物理强度', '💪', stats.physicalPower || 0, baseStats.physicalPower)}
-                ${formatStat('魔法强度', '🔮', stats.magicPower || 0, baseStats.magicPower)}
-                ${formatStat('敏捷', '⚡', stats.agility || 0, baseStats.agility)}
-                ${formatStat('重量', '⚖️', stats.weight || 0, baseStats.weight)}
-                ${formatStat('暴击率', '💥', stats.criticalChance || 0, baseStats.criticalChance, '%')}
+            <div class="stats-compact-container">
+                <div class="stats-compact-grid">
+                    ${formatStat('攻击', '⚔️', stats.attack || 0, baseStats.attack)}
+                    ${formatStat('物抗', '🛡️', stats.physicalResistance || 0, baseStats.physicalResistance, '%')}
+                    ${formatStat('魔抗', '✨', stats.magicResistance || 0, baseStats.magicResistance, '%')}
+                    ${formatStat('物强', '💪', stats.physicalPower || 0, baseStats.physicalPower)}
+                    ${formatStat('魔强', '🔮', stats.magicPower || 0, baseStats.magicPower)}
+                    ${formatStat('敏捷', '⚡', stats.agility || 0, baseStats.agility)}
+                    ${formatStat('重量', '⚖️', stats.weight || 0, baseStats.weight)}
+                    ${formatStat('暴击', '💥', stats.criticalChance || 0, baseStats.criticalChance, '%')}
+                </div>
             </div>
             ${this.generateActiveBuffsDisplay(player.buffs || [])}
         `;
@@ -251,7 +261,44 @@ class BattleView {
         return '';
     }
 
-    // 生成战斗操作按钮 - 新布局：技能按钮在左，通用操作在右
+    // 渲染技能按钮的特殊效果标识
+    renderSkillEffectBadges(skill) {
+        if (!skill.specialEffects) return '';
+        
+        const badges = [];
+        const se = skill.specialEffects;
+        
+        // 多段攻击
+        if (se.multiHit) badges.push('⚡');
+        // DOT效果
+        if (se.dot) {
+            const dotIcons = { burn: '🔥', poison: '🟢', bleed: '🩸' };
+            badges.push(dotIcons[se.dot.type] || '💢');
+        }
+        // 控制效果
+        if (se.cc) {
+            const ccIcons = { stun: '💫', freeze: '❄️', slow: '🐌' };
+            badges.push(ccIcons[se.cc.type] || '💫');
+        }
+        // 吸血
+        if (se.lifesteal) badges.push('🧛');
+        // 穿透
+        if (se.penetration && (se.penetration.physical > 0 || se.penetration.magic > 0)) badges.push('🗡️');
+        // 斩杀
+        if (se.execute) badges.push('💀');
+        // 标记
+        if (se.mark) badges.push('🎯');
+        // 反伤
+        if (se.reflect) badges.push('🛡️');
+        
+        return badges.length > 0 ? `
+            <div class="skill-effect-badges">
+                ${badges.map(b => `<span class="badge-icon">${b}</span>`).join('')}
+            </div>
+        ` : '';
+    }
+
+    // 生成战斗操作按钮 - 新布局：2行5列（技能1-3 攻击 物品 / 技能4-6 防御 逃跑）
     generateBattleActions(battleState) {
         if (battleState.turn !== 'player') {
             return '<div class="waiting-message">等待敌人行动...</div>';
@@ -261,9 +308,9 @@ class BattleView {
         const skillService = window.gameCore?.getService('skillService');
         const equippedSkills = skillService ? skillService.getEquippedSkills(battleState.player) : [];
 
-        // 生成4个技能槽按钮
+        // 生成6个技能槽按钮
         const skillButtons = [];
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 6; i++) {
             const skillData = equippedSkills[i];
             if (skillData && skillData.skillData) {
                 const skill = skillData.skillData;
@@ -281,57 +328,63 @@ class BattleView {
                               (battleState.player.stamina || 0) >= spCost;
                 
                 const disabledClass = canUse ? '' : 'disabled';
-                const cooldownText = cooldownLeft > 0 ? `<span class="cooldown-text">冷却${cooldownLeft}</span>` : '';
+                const cooldownText = cooldownLeft > 0 ? `<span class="cooldown-text">CD${cooldownLeft}</span>` : '';
+                const costText = mpCost > 0 ? `MP${mpCost}` : spCost > 0 ? `SP${spCost}` : '';
+                const effectBadges = this.renderSkillEffectBadges(skill);
                 
                 skillButtons.push(`
-                    <button class="battle-skill-slot-btn ${disabledClass}"
+                    <button class="battle-btn skill-btn ${disabledClass}"
+                            data-action="技能"
                             data-skill="${skill.id}"
                             data-level="${level}"
                             ${!canUse ? 'disabled' : ''}>
-                        <span class="skill-slot-icon">✨</span>
-                        <span class="skill-slot-name">${skill.name}</span>
+                        <span class="btn-name">${skill.name}</span>
+                        <span class="btn-cost">${costText}</span>
                         ${cooldownText}
+                        ${effectBadges}
                     </button>
                 `);
             } else {
                 skillButtons.push(`
-                    <button class="battle-skill-slot-btn empty" disabled>
-                        <span class="skill-slot-icon">—</span>
-                        <span class="skill-slot-name">空</span>
+                    <button class="battle-btn skill-btn empty" disabled>
+                        <span class="btn-name">技能${i + 1}</span>
                     </button>
                 `);
             }
         }
 
         return `
-            <div class="battle-actions-new-layout">
-                <!-- 左侧：4个技能槽 -->
-                <div class="battle-skills-row">
-                    ${skillButtons.join('')}
+            <div class="battle-actions-grid">
+                <!-- 第一行：技能1-3 + 攻击 + 物品 -->
+                <div class="battle-actions-row">
+                    ${skillButtons[0]}
+                    ${skillButtons[1]}
+                    ${skillButtons[2]}
+                    <div class="battle-action-group">
+                        <button class="battle-btn attack-btn" data-action="attack-menu">
+                            <span class="btn-name">⚔️ 攻击</span>
+                            <span class="btn-expand">▼</span>
+                        </button>
+                        <div class="attack-submenu hidden" id="attackSubmenu">
+                            ${this.renderAttackSubmenu(battleState)}
+                        </div>
+                    </div>
+                    <button class="battle-btn item-btn" data-action="使用物品">
+                        <span class="btn-name">🎒 物品</span>
+                    </button>
                 </div>
                 
-                <!-- 右侧：通用操作按钮 -->
-                <div class="battle-general-actions">
-                    <div class="general-row">
-                        <button class="battle-action-btn attack-btn" data-action="攻击">
-                            <span class="btn-icon">⚔️</span>
-                            <span class="btn-text">攻击</span>
-                        </button>
-                        <button class="battle-action-btn item-btn" data-action="使用物品">
-                            <span class="btn-icon">🧪</span>
-                            <span class="btn-text">物品</span>
-                        </button>
-                    </div>
-                    <div class="general-row">
-                        <button class="battle-action-btn defend-btn" data-action="防御">
-                            <span class="btn-icon">🛡️</span>
-                            <span class="btn-text">防御</span>
-                        </button>
-                        <button class="battle-action-btn escape-btn" data-action="逃跑">
-                            <span class="btn-icon">🏃</span>
-                            <span class="btn-text">逃跑</span>
-                        </button>
-                    </div>
+                <!-- 第二行：技能4-6 + 防御 + 逃跑 -->
+                <div class="battle-actions-row">
+                    ${skillButtons[3]}
+                    ${skillButtons[4]}
+                    ${skillButtons[5]}
+                    <button class="battle-btn defend-btn" data-action="防御">
+                        <span class="btn-name">🛡️ 防御</span>
+                    </button>
+                    <button class="battle-btn escape-btn" data-action="逃跑">
+                        <span class="btn-name">🏃 逃跑</span>
+                    </button>
                 </div>
             </div>
             
@@ -350,31 +403,48 @@ class BattleView {
     }
 
     setupBattleEvents(modal, battleState) {
-        const actionButtons = modal.querySelectorAll('.battle-action-btn');
+        const actionButtons = modal.querySelectorAll('.battle-btn');
         const targetSelection = modal.querySelector('#targetSelection');
-        const skillsSelection = modal.querySelector('#skillsSelection');
 
         const aliveEnemies = battleState.enemies.filter(e => e.hp > 0);
         const singleTargetIndex = aliveEnemies.length === 1 ? battleState.enemies.indexOf(aliveEnemies[0]) : null;
+
+        // 🆕 绑定攻击菜单事件
+        this.bindAttackMenuEvents(modal, battleState);
 
         actionButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 const action = btn.dataset.action;
 
-                if (action === '攻击') {
-                    // 1v1直接攻击，无需选择目标
+                if (action === 'attack-menu') {
+                    // 攻击菜单按钮已在bindAttackMenuEvents中处理
+                    return;
+                } else if (action === '攻击') {
+                    // 兼容旧版本
                     if (singleTargetIndex !== null) {
                         this.executeBattleAction('攻击', singleTargetIndex);
                     } else {
-                        // 多目标时显示目标选择
                         if (targetSelection) targetSelection.classList.toggle('hidden');
                     }
+                } else if (action === '技能') {
+                    // 技能攻击
+                    const skillId = btn.dataset.skill;
+                    if (singleTargetIndex !== null) {
+                        this.executeBattleAction('技能', singleTargetIndex, null, skillId);
+                    } else {
+                        // 多目标下默认选第一个存活敌人
+                        const fallbackIndex = aliveEnemies.length > 0 ? battleState.enemies.indexOf(aliveEnemies[0]) : 0;
+                        this.executeBattleAction('技能', fallbackIndex, null, skillId);
+                    }
+                } else if (action === '防御') {
+                    // 直接执行防御
+                    this.executeBattleAction('防御');
                 } else if (action === '使用物品') {
                     // 直接弹出背包界面
                     this.openInventoryForBattle(battleState);
-                } else {
-                    // 直接执行行动（防御、逃跑）
-                    this.executeBattleAction(action);
+                } else if (action === '逃跑') {
+                    // 直接执行逃跑
+                    this.executeBattleAction('逃跑');
                 }
             });
         });
@@ -388,19 +458,71 @@ class BattleView {
                 if (targetSelection) targetSelection.classList.add('hidden');
             });
         });
+    }
 
-        // 技能槽按钮事件
-        const skillSlotButtons = modal.querySelectorAll('.battle-skill-slot-btn:not(.empty):not(.disabled)');
-        skillSlotButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const skillId = btn.dataset.skill;
-                if (singleTargetIndex !== null) {
-                    this.executeBattleAction('技能', singleTargetIndex, null, skillId);
-                } else {
-                    // 多目标下默认选第一个存活敌人
-                    const fallbackIndex = aliveEnemies.length > 0 ? battleState.enemies.indexOf(aliveEnemies[0]) : 0;
-                    this.executeBattleAction('技能', fallbackIndex, null, skillId);
+    // 绑定攻击菜单事件
+    bindAttackMenuEvents(modal, battleState) {
+        const attackBtn = modal.querySelector('[data-action="attack-menu"]');
+        const submenu = modal.querySelector('#attackSubmenu');
+        
+        if (!attackBtn || !submenu) return;
+        
+        // 点击攻击按钮展开/收起菜单
+        attackBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            submenu.classList.toggle('hidden');
+        });
+        
+        // 点击外部关闭菜单
+        const closeMenuHandler = (e) => {
+            if (submenu && !submenu.classList.contains('hidden')) {
+                if (!submenu.contains(e.target) && !attackBtn.contains(e.target)) {
+                    submenu.classList.add('hidden');
                 }
+            }
+        };
+        document.addEventListener('click', closeMenuHandler);
+        
+        // 子菜单项点击事件
+        submenu.querySelectorAll('.submenu-item:not(.disabled)').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const attackType = item.dataset.attackType;
+                const attackId = item.dataset.attackId;
+                
+                const aliveEnemies = battleState.enemies.filter(e => e.hp > 0);
+                const singleTargetIndex = aliveEnemies.length === 1 ? battleState.enemies.indexOf(aliveEnemies[0]) : null;
+                
+                if (attackType === 'normal') {
+                    // 普通攻击
+                    if (singleTargetIndex !== null) {
+                        this.executeBattleAction('攻击', singleTargetIndex);
+                    } else {
+                        // 多目标时显示目标选择
+                        const targetSelection = modal.querySelector('#targetSelection');
+                        if (targetSelection) targetSelection.classList.remove('hidden');
+                    }
+                } else if (attackType === 'special') {
+                    // 特殊攻击 - 修复：使用BasicAttacksDB获取攻击数据
+                    const BasicAttacksDB = window.BasicAttacksDB;
+                    const attack = BasicAttacksDB?.getBasicAttackById?.(attackId);
+                    
+                    if (attack?.target === 'aoe') {
+                        // 群攻直接执行
+                        this.executeBattleAction('特殊攻击', null, null, attackId);
+                    } else {
+                        // 单体攻击
+                        if (singleTargetIndex !== null) {
+                            this.executeBattleAction('特殊攻击', singleTargetIndex, null, attackId);
+                        } else {
+                            // 多目标时显示目标选择
+                            const targetSelection = modal.querySelector('#targetSelection');
+                            if (targetSelection) targetSelection.classList.remove('hidden');
+                        }
+                    }
+                }
+                
+                submenu.classList.add('hidden');
             });
         });
     }
@@ -605,6 +727,53 @@ class BattleView {
         return colors[rarity] || colors.common;
     }
 
+    // 渲染攻击子菜单
+    renderAttackSubmenu(battleState) {
+        const weaponService = window.gameCore?.getService('weaponService');
+        const player = battleState.player;
+        
+        let html = `
+            <!-- 普通攻击 -->
+            <button class="submenu-item" data-attack-type="normal">
+                <span class="item-icon">⚔️</span>
+                <div class="item-info">
+                    <div class="item-name">普通攻击</div>
+                    <div class="item-desc">基础物理攻击</div>
+                </div>
+            </button>
+        `;
+        
+        // 获取特殊攻击
+        if (weaponService) {
+            const attacks = weaponService.getAvailableBasicAttacks(player);
+            attacks.forEach(attack => {
+                // 跳过徒手攻击
+                if (attack.id === 'unarmed_light' || attack.id === 'unarmed_heavy') return;
+                
+                // 检查资源是否足够
+                const spCost = attack.staminaCost || 0;
+                const canUse = (player.stamina || 0) >= spCost;
+                
+                html += `
+                    <button class="submenu-item ${!canUse ? 'disabled' : ''}"
+                            data-attack-type="special"
+                            data-attack-id="${attack.id}"
+                            ${!canUse ? 'disabled' : ''}>
+                        <span class="item-icon">${attack.icon || '🗡️'}</span>
+                        <div class="item-info">
+                            <div class="item-name">${attack.name}</div>
+                            ${spCost > 0 ? `<div class="item-cost">SP: ${spCost}</div>` : ''}
+                            ${!canUse ? '<div class="item-disabled">SP不足</div>' : ''}
+                            ${attack.target === 'aoe' ? '<span class="item-tag">群攻</span>' : ''}
+                        </div>
+                    </button>
+                `;
+            });
+        }
+        
+        return html;
+    }
+
     executeBattleAction(action, target, item, skillId) {
         const battleService = window.gameCore?.getService('battleService');
         if (battleService) {
@@ -690,6 +859,88 @@ class BattleView {
                 }
             }
         });
+    }
+
+    // 渲染单位身上的所有效果图标
+    renderUnitEffects(unit) {
+        if (!unit.activeEffects || unit.activeEffects.length === 0) return '';
+        
+        const effects = unit.activeEffects.map(effect => {
+            const icon = this.getEffectIcon(effect);
+            const duration = effect.remainingTurns || 0;
+            
+            return `
+                <div class="effect-icon"
+                     data-effect-type="${effect.type}"
+                     data-effect-subtype="${effect.subType || ''}"
+                     title="${this.getEffectTooltip(effect)}">
+                    <span class="icon">${icon}</span>
+                    <span class="duration">${duration}</span>
+                </div>
+            `;
+        }).join('');
+        
+        return `
+            <div class="unit-effects-panel">
+                ${effects}
+            </div>
+        `;
+    }
+
+    // 获取效果图标
+    getEffectIcon(effect) {
+        const icons = {
+            dot: { burn: '🔥', poison: '🟢', bleed: '🩸' },
+            cc: { stun: '💫', freeze: '❄️', slow: '🐌' },
+            mark: '🎯',
+            reflect: '🛡️',
+            shield: '🛡️',
+            buff: '✨'
+        };
+        
+        if (effect.type === 'dot' || effect.type === 'cc') {
+            return icons[effect.type][effect.subType] || '✨';
+        }
+        return icons[effect.type] || '✨';
+    }
+
+    // 获取效果名称
+    getEffectName(effect) {
+        const names = {
+            dot: { burn: '灼烧', poison: '中毒', bleed: '流血' },
+            cc: { stun: '晕眩', freeze: '冰冻', slow: '减速' },
+            mark: '标记',
+            reflect: '反伤护盾',
+            shield: '护盾',
+            buff: '增益'
+        };
+        
+        if (effect.type === 'dot' || effect.type === 'cc') {
+            return names[effect.type][effect.subType] || '效果';
+        }
+        return names[effect.type] || '效果';
+    }
+
+    // 获取效果提示文本
+    getEffectTooltip(effect) {
+        const name = effect.name || this.getEffectName(effect);
+        const duration = effect.remainingTurns || 0;
+        
+        let desc = '';
+        if (effect.type === 'dot') {
+            desc = `每回合受到${effect.damage || effect.value || 0}点伤害`;
+        } else if (effect.type === 'cc') {
+            desc = effect.subType === 'stun' || effect.subType === 'freeze'
+                ? '无法行动' : '行动受限';
+        } else if (effect.type === 'mark') {
+            desc = `受到伤害+${Math.floor((effect.damageBonus || 0.25) * 100)}%`;
+        } else if (effect.type === 'reflect') {
+            desc = `反弹${Math.floor((effect.percent || 0.3) * 100)}%伤害`;
+        } else if (effect.description) {
+            desc = effect.description;
+        }
+        
+        return `${name}\n${desc}\n剩余${duration}回合`;
     }
 
     hide() {

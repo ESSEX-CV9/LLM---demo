@@ -1,5 +1,46 @@
 /* Skills modal and cards */
 
+/* ==================== 统一滚动条样式 ==================== */
+/* 所有技能相关容器使用统一的滚动条样式，与主界面一致 */
+.skills-content::-webkit-scrollbar,
+.battle-inventory-modal::-webkit-scrollbar,
+.dialog-box::-webkit-scrollbar,
+.skills-list-view::-webkit-scrollbar {
+    width: 8px;
+}
+
+.skills-content::-webkit-scrollbar-track,
+.battle-inventory-modal::-webkit-scrollbar-track,
+.dialog-box::-webkit-scrollbar-track,
+.skills-list-view::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.skills-content::-webkit-scrollbar-thumb,
+.battle-inventory-modal::-webkit-scrollbar-thumb,
+.dialog-box::-webkit-scrollbar-thumb,
+.skills-list-view::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+.skills-content::-webkit-scrollbar-thumb:hover,
+.battle-inventory-modal::-webkit-scrollbar-thumb:hover,
+.dialog-box::-webkit-scrollbar-thumb:hover,
+.skills-list-view::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* Firefox滚动条样式 */
+.skills-content,
+.battle-inventory-modal,
+.dialog-box,
+.skills-list-view {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
+}
+
 .skills-modal {
   position: fixed;
   top: 0;
@@ -59,11 +100,11 @@
   font-size: 12px;
 }
 
-/* 新布局：技能槽在左侧 */
+/* 新布局：技能槽在左侧（缩小宽度） */
 .skills-body-with-slots {
   display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 20px;
+  grid-template-columns: 120px 1fr;
+  gap: 15px;
   align-items: start;
 }
 
@@ -73,38 +114,39 @@
   }
 }
 
-/* 技能装备区域 */
+/* 技能装备区域（紧凑版） */
 .skills-equipment-area {
   background: rgba(255,255,255,0.05);
   border: 2px solid rgba(255,255,255,0.15);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 8px;
+  padding: 8px;
   position: sticky;
   top: 16px;
 }
 
 .skills-equipment-area h4 {
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
   color: #ffd54f;
-  font-size: 14px;
+  font-size: 11px;
   text-align: center;
+  font-weight: 600;
 }
 
-/* 技能槽容器 */
+/* 技能槽容器（紧凑版） */
 .skill-slots {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 4px;
+  margin-bottom: 8px;
 }
 
-/* 单个技能槽 */
+/* 单个技能槽（紧凑版） */
 .skill-slot {
   background: rgba(255,255,255,0.08);
-  border: 2px solid rgba(255,255,255,0.2);
-  border-radius: 8px;
-  padding: 8px;
-  min-height: 56px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 4px;
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -150,33 +192,34 @@
 }
 
 .skill-slot-name {
-  font-size: 13px;
+  font-size: 10px;
   font-weight: 600;
   color: #fff;
+  line-height: 1.2;
 }
 
 .skill-slot-level {
-  font-size: 11px;
+  font-size: 9px;
   color: #ffd54f;
 }
 
 .skill-slot-icon {
-  font-size: 18px;
-  margin-left: 8px;
+  font-size: 14px;
+  margin-left: 4px;
 }
 
 .skill-slot-remove {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 20px;
-  height: 20px;
+  top: 1px;
+  right: 1px;
+  width: 16px;
+  height: 16px;
   background: rgba(244,67,54,0.8);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   color: white;
   opacity: 0;
@@ -196,26 +239,27 @@
 }
 
 .slot-number {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: bold;
   color: rgba(255,255,255,0.4);
 }
 
 .slot-hint {
-  font-size: 10px;
+  font-size: 8px;
   color: rgba(255,255,255,0.5);
   text-align: center;
+  line-height: 1.2;
 }
 
-/* 技能槽提示 */
+/* 技能槽提示（紧凑版） */
 .skill-slot-hint {
   text-align: center;
-  font-size: 11px;
+  font-size: 9px;
   color: rgba(255,255,255,0.6);
-  line-height: 1.4;
-  padding: 8px;
+  line-height: 1.3;
+  padding: 4px;
   background: rgba(255,255,255,0.05);
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid rgba(255,255,255,0.1);
 }
 
@@ -404,128 +448,1228 @@
 
 /* ===== 战斗界面新布局样式 ===== */
 
-.battle-actions-new-layout {
-  display: flex;
-  gap: 16px;
-  align-items: stretch;
-  width: 100%;
-  padding: 8px;
-}
-
-/* 技能槽行（左侧） */
-.battle-skills-row {
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-@media (max-width: 900px) {
-  .battle-skills-row {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* 通用操作区域（右侧） */
-.battle-general-actions {
+/* 战斗操作网格 - 2行5列布局 */
+.battle-actions-grid {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+}
+
+.battle-actions-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
-  min-width: 160px;
 }
 
-.general-row {
-  display: flex;
-  gap: 8px;
-}
-
-.general-row button {
-  flex: 1;
-}
-
-/* 战斗技能槽按钮 */
-.battle-skill-slot-btn {
+/* 战斗按钮通用样式 */
+.battle-btn {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
   padding: 12px 8px;
-  background: linear-gradient(135deg, rgba(76,175,80,0.2), rgba(76,175,80,0.1));
-  border: 2px solid rgba(76,175,80,0.6);
   border-radius: 8px;
   color: white;
   cursor: pointer;
   transition: all 0.2s ease;
-  position: relative;
-  min-height: 72px;
+  min-height: 70px;
+  font-size: 13px;
+  border: 2px solid;
 }
 
-.battle-skill-slot-btn:hover:not(.disabled):not(.empty) {
-  background: linear-gradient(135deg, rgba(76,175,80,0.35), rgba(76,175,80,0.2));
-  border-color: rgba(76,175,80,0.9);
+.battle-btn:hover:not(:disabled):not(.empty) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76,175,80,0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-.battle-skill-slot-btn:active:not(.disabled):not(.empty) {
+.battle-btn:active:not(:disabled):not(.empty) {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(76,175,80,0.3);
 }
 
-.battle-skill-slot-btn.empty {
-  background: rgba(255,255,255,0.05);
-  border: 2px dashed rgba(255,255,255,0.2);
-  cursor: not-allowed;
-  opacity: 0.5;
+/* 技能按钮 */
+.battle-btn.skill-btn {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.25), rgba(76, 175, 80, 0.15));
+  border-color: rgba(76, 175, 80, 0.6);
 }
 
-.battle-skill-slot-btn.disabled {
-  background: rgba(255,255,255,0.05);
-  border-color: rgba(255,255,255,0.2);
+.battle-btn.skill-btn:hover:not(:disabled):not(.empty) {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.4), rgba(76, 175, 80, 0.25));
+  border-color: rgba(76, 175, 80, 0.9);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.5);
+}
+
+.battle-btn.skill-btn.empty {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px dashed rgba(255, 255, 255, 0.2);
   cursor: not-allowed;
   opacity: 0.4;
 }
 
-.skill-slot-icon {
-  font-size: 24px;
+.battle-btn.skill-btn.disabled {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  cursor: not-allowed;
+  opacity: 0.5;
+  filter: grayscale(60%);
 }
 
-.skill-slot-name {
-  font-size: 12px;
+/* 通用操作按钮 */
+.battle-btn.general-btn {
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.25), rgba(33, 150, 243, 0.15));
+  border-color: rgba(33, 150, 243, 0.6);
+  font-weight: 600;
+}
+
+.battle-btn.general-btn:hover {
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.4), rgba(33, 150, 243, 0.25));
+  border-color: rgba(33, 150, 243, 0.9);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.5);
+}
+
+/* 攻击按钮特殊样式 */
+.battle-btn.attack-btn {
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.25), rgba(244, 67, 54, 0.15));
+  border-color: rgba(244, 67, 54, 0.6);
+}
+
+.battle-btn.attack-btn:hover {
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.4), rgba(244, 67, 54, 0.25));
+  border-color: rgba(244, 67, 54, 0.9);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.5);
+}
+
+/* 防御按钮特殊样式 */
+.battle-btn.defend-btn {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.25), rgba(156, 39, 176, 0.15));
+  border-color: rgba(156, 39, 176, 0.6);
+}
+
+.battle-btn.defend-btn:hover {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.4), rgba(156, 39, 176, 0.25));
+  border-color: rgba(156, 39, 176, 0.9);
+  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.5);
+}
+
+/* 物品按钮特殊样式 */
+.battle-btn.item-btn {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.25), rgba(255, 152, 0, 0.15));
+  border-color: rgba(255, 152, 0, 0.6);
+}
+
+.battle-btn.item-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.4), rgba(255, 152, 0, 0.25));
+  border-color: rgba(255, 152, 0, 0.9);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.5);
+}
+
+/* 逃跑按钮特殊样式 */
+.battle-btn.escape-btn {
+  background: linear-gradient(135deg, rgba(158, 158, 158, 0.25), rgba(158, 158, 158, 0.15));
+  border-color: rgba(158, 158, 158, 0.6);
+}
+
+.battle-btn.escape-btn:hover {
+  background: linear-gradient(135deg, rgba(158, 158, 158, 0.4), rgba(158, 158, 158, 0.25));
+  border-color: rgba(158, 158, 158, 0.9);
+  box-shadow: 0 4px 12px rgba(158, 158, 158, 0.5);
+}
+
+/* 按钮内容 */
+.btn-name {
+  font-size: 13px;
   font-weight: 600;
   text-align: center;
   line-height: 1.2;
 }
 
+.btn-cost {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 2px;
+}
+
+/* 冷却显示 */
 .cooldown-text {
   position: absolute;
   top: 4px;
   right: 4px;
   font-size: 10px;
   padding: 2px 6px;
-  background: rgba(244,67,54,0.9);
+  background: rgba(244, 67, 54, 0.95);
   border-radius: 10px;
   font-weight: bold;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 等待消息 */
+.waiting-message {
+  text-align: center;
+  padding: 20px;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
 }
 
 /* 响应式调整 */
-@media (max-width: 768px) {
-  .battle-actions-new-layout {
-    flex-direction: column;
+/* Responsive rule removed: keep 5-column layout except at very narrow widths */
+
+@media (max-width: 420px) {
+  .battle-actions-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
-  
-  .battle-skills-row {
-    grid-template-columns: repeat(4, 1fr);
+
+  .battle-actions-grid {
+    padding: 8px;
+    gap: 8px;
   }
-  
-  .battle-general-actions {
-    flex-direction: row;
-    min-width: auto;
+
+  .battle-btn {
+    min-height: 55px;
+    padding: 8px 6px;
+    font-size: 12px;
   }
-  
-  .general-row {
+
+  .btn-name {
+    font-size: 11px;
+  }
+
+  .btn-cost {
+    font-size: 10px;
+  }
+}
+
+/* ==================== 技能特殊效果徽章 ==================== */
+.special-effects-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 8px 0;
+}
+
+.effect-badge {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+    color: white;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.effect-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* 不同类型效果的颜色 */
+.effect-badge.multi-hit {
+    background: linear-gradient(135deg, #9c27b0 0%, #673ab7 100%);
+    border: 1px solid #9c27b0;
+}
+
+.effect-badge.dot {
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    border: 1px solid #f44336;
+}
+
+.effect-badge.cc {
+    background: linear-gradient(135deg, #ffeb3b 0%, #fdd835 100%);
+    border: 1px solid #ffeb3b;
+    color: #000;
+}
+
+.effect-badge.lifesteal {
+    background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
+    border: 1px solid #9c27b0;
+}
+
+.effect-badge.pen {
+    background: linear-gradient(135deg, #607d8b 0%, #455a64 100%);
+    border: 1px solid #607d8b;
+}
+
+.effect-badge.execute {
+    background: linear-gradient(135deg, #000000 0%, #212121 100%);
+    border: 1px solid #424242;
+}
+
+.effect-badge.mark {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    border: 1px solid #ff9800;
+}
+
+.effect-badge.reflect {
+    background: linear-gradient(135deg, #3f51b5 0%, #303f9f 100%);
+    border: 1px solid #3f51b5;
+}
+
+/* ==================== 武器要求 ==================== */
+.weapon-requirement {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(255, 152, 0, 0.15);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+    border-radius: 6px;
+    margin: 8px 0;
+    font-size: 12px;
+}
+
+.weapon-requirement.met {
+    background: rgba(76, 175, 80, 0.15);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.weapon-requirement.not-met {
+    background: rgba(244, 67, 54, 0.15);
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+.weapon-icons {
+    font-size: 16px;
+}
+
+.weapon-text {
     flex: 1;
+}
+
+.met-indicator {
+    color: #4caf50;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.not-met-indicator {
+    color: #f44336;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+/* ==================== 视图切换按钮（紧凑版） ==================== */
+.skills-view-switcher {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+}
+
+.view-btn {
+    flex: 1;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.view-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.view-btn.active {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    border-color: #4CAF50;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+/* ==================== 技能树容器 ==================== */
+.skills-tree-view {
+    width: 100%;
+    height: 600px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* 交互式技能树容器 */
+.interactive-tree-container {
+    width: 100%;
+    height: 550px;
+    display: flex;
     flex-direction: column;
-  }
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1e 100%);
+    border-radius: 8px;
+}
+
+.skills-list-view.hidden,
+.skills-tree-view.hidden {
+    display: none;
+}
+
+/* 技能树分类标签（紧凑版） */
+.skill-tree-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+}
+
+.tree-tab {
+    flex: 1;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tree-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tree-tab.active {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    border-color: #2196F3;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.4);
+}
+
+/* 技能树内容区域 */
+.skill-tree-content {
+    position: relative;
+    min-height: 500px;
+}
+
+.tree-category {
+    display: block;
+}
+
+.tree-category.hidden {
+    display: none;
+}
+
+/* 技能层级 */
+.skill-tier {
+    margin-bottom: 40px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    border-left: 4px solid #4CAF50;
+}
+
+.tier-label {
+    font-size: 14px;
+    font-weight: bold;
+    color: #4CAF50;
+    margin-bottom: 15px;
+    text-align: left;
+    padding-left: 10px;
+}
+
+.tier-nodes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: flex-start;
+}
+
+/* ==================== 技能树节点 ==================== */
+.skill-tree-node {
+    width: 90px;
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+}
+
+/* 节点hover效果 */
+.skill-tree-node:hover {
+    z-index: 10;
+}
+
+/* 拖拽效果 */
+.skill-tree-node.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+    cursor: grabbing;
+}
+
+.skill-tree-node[draggable="true"]:not(.locked) {
+    cursor: grab;
+}
+
+.skill-tree-node[draggable="true"]:active:not(.dragging) {
+    cursor: grabbing;
+}
+
+.node-main {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    border: 3px solid;
+    transition: all 0.3s;
+}
+
+/* 节点状态样式 */
+.skill-tree-node.learnable .node-main {
+    border-color: #4CAF50;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2) 0%, rgba(76, 175, 80, 0.1) 100%);
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+}
+
+.skill-tree-node.owned .node-main {
+    border-color: #2196F3;
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.3) 0%, rgba(33, 150, 243, 0.2) 100%);
+    box-shadow: 0 0 10px rgba(33, 150, 243, 0.3);
+}
+
+/* 新增：可升级状态 */
+.skill-tree-node.upgradable .node-main {
+    border-color: #FF9800;
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.3) 0%, rgba(255, 152, 0, 0.2) 100%);
+    box-shadow: 0 0 12px rgba(255, 152, 0, 0.4);
+    animation: pulse-orange 2s infinite;
+}
+
+/* 新增：已满级状态 */
+.skill-tree-node.maxlevel .node-main {
+    border-color: #9C27B0;
+    background: linear-gradient(135deg, rgba(156, 39, 176, 0.3) 0%, rgba(156, 39, 176, 0.2) 100%);
+    box-shadow: 0 0 10px rgba(156, 39, 176, 0.3);
+}
+
+.skill-tree-node.equipped .node-main {
+    border-color: #FFD700;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 215, 0, 0.2) 100%);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    animation: glow-gold 2s infinite;
+}
+
+.skill-tree-node.locked .node-main {
+    border-color: #666;
+    background: rgba(100, 100, 100, 0.1);
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.skill-tree-node.locked:hover {
+    /* 锁定状态不做任何变换 */
+}
+
+/* 新增：升级指示器 - 放在节点右侧 */
+.node-upgradable {
+    position: absolute;
+    top: 50%;
+    right: -28px;
+    transform: translateY(-50%);
+    background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.node-upgradable:hover {
+    transform: translateY(-50%) scale(1.15);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+.node-upgradable:active {
+    transform: translateY(-50%) scale(1.05);
+}
+
+@keyframes pulse-orange {
+    0%, 100% { box-shadow: 0 0 12px rgba(255, 152, 0, 0.4); }
+    50% { box-shadow: 0 0 20px rgba(255, 152, 0, 0.7); }
+}
+
+/* 技能图标 */
+.node-icon {
+    font-size: 36px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+/* 等级徽章 */
+.node-level {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: #2196F3;
+    color: white;
+    padding: 3px 7px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 装备标识 */
+.node-equipped {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: #FFD700;
+    color: #000;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 2px 6px rgba(255, 215, 0, 0.5);
+}
+
+/* 节点名称 */
+.node-name {
+    margin-top: 6px;
+    text-align: center;
+    font-size: 11px;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    line-height: 1.2;
+    max-width: 90px;
+    word-wrap: break-word;
+}
+
+/* 金色发光动画 */
+@keyframes glow-gold {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+    }
+}
+
+/* ==================== 交互式技能树样式 ==================== */
+
+/* 控制栏 */
+.tree-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    display: flex;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 8px;
+    backdrop-filter: blur(5px);
+}
+
+.tree-controls button {
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tree-controls button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
+}
+
+.tree-controls button:active {
+    transform: scale(0.95);
+}
+
+#scaleDisplay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 50px;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 0 8px;
+}
+
+/* 画布容器 */
+.tree-canvas-wrapper {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1e 100%);
+}
+
+/* 画布 */
+.tree-canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: 0 0;
+    cursor: grab;
+    will-change: transform;
+    user-select: none;
+}
+
+.tree-canvas:active {
+    cursor: grabbing;
+}
+
+/* SVG连接线层 */
+.tree-connections {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 0;
+}
+
+/* 节点容器 */
+.tree-nodes-container {
+    position: relative;
+    width: fit-content;
+    height: fit-content;
+}
+
+/* 分类节点容器 */
+.tree-category-nodes {
+    display: none;
+    position: relative;
+}
+
+.tree-category-nodes.active {
+    display: block;
+}
+
+/* 交互式节点（绝对定位） */
+.skill-tree-node.interactive {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: all;
+}
+
+/* 连接线样式 */
+.skill-connection {
+    transition: stroke-width 0.2s, opacity 0.2s;
+}
+
+.skill-connection.highlighted {
+    stroke-width: 4px !important;
+    filter: drop-shadow(0 0 5px currentColor);
+}
+
+/* 不同状态的连接线颜色 */
+.connection-locked {
+    stroke: #666;
+    stroke-dasharray: 5, 5;
+    opacity: 0.5;
+}
+
+.connection-learnable {
+    stroke: #4CAF50;
+    opacity: 0.8;
+}
+
+.connection-owned {
+    stroke: #2196F3;
+    opacity: 0.9;
+}
+
+.connection-upgradable {
+    stroke: #FF9800;
+    opacity: 0.9;
+    animation: connectionPulse 2s infinite;
+}
+
+.connection-equipped {
+    stroke: #FFD700;
+    opacity: 1;
+    filter: drop-shadow(0 0 3px #FFD700);
+}
+
+.connection-maxlevel {
+    stroke: #9C27B0;
+    opacity: 0.9;
+}
+
+@keyframes connectionPulse {
+    0%, 100% {
+        stroke-opacity: 0.7;
+    }
+    50% {
+        stroke-opacity: 1;
+    }
+}
+
+/* 提示信息 */
+.tree-hint {
+    padding: 10px;
+    text-align: center;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    background: rgba(0, 0, 0, 0.3);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 空分类提示 */
+.no-skills-message {
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .tree-controls {
+        bottom: 10px;
+        top: auto;
+        right: 50%;
+        transform: translateX(50%);
+    }
+    
+    .tree-controls button {
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+    }
+    
+    .interactive-tree-container {
+        height: 500px;
+    }
+    
+    /* 移动端禁用hover效果 */
+    .skill-tree-node.interactive:hover {
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* ==================== Tooltip 样式 ==================== */
+.skill-tooltip {
+    position: fixed;
+    background: rgba(20, 20, 40, 0.98);
+    border: 2px solid #4CAF50;
+    border-radius: 12px;
+    padding: 16px;
+    min-width: 320px;
+    max-width: 420px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+    z-index: 100000;
+    pointer-events: none;
+    color: #fff;
+    font-size: 13px;
+    animation: tooltipFadeIn 0.2s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.tooltip-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tooltip-icon {
+    font-size: 28px;
+}
+
+.tooltip-name {
+    flex: 1;
+    font-size: 17px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.tooltip-level {
+    font-size: 13px;
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.tooltip-tags {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.tooltip-tags .tag {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.tooltip-tags .tag.physical {
+    background: #f44336;
+    color: white;
+}
+
+.tooltip-tags .tag.magic {
+    background: #9C27B0;
+    color: white;
+}
+
+.tooltip-stats {
+    margin: 10px 0;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 13px;
+}
+
+.stat-label {
+    color: #aaa;
+}
+
+.stat-value {
+    color: #fff;
+    font-weight: bold;
+}
+
+.tooltip-requirements {
+    margin: 10px 0;
+    padding: 10px;
+    background: rgba(33, 150, 243, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+.req-title {
+    font-size: 12px;
+    color: #2196F3;
+    margin-bottom: 6px;
+    font-weight: bold;
+}
+
+.req-item {
+    font-size: 12px;
+    padding: 3px 0;
+    color: #f44336;
+}
+
+.req-item.met {
+    color: #4CAF50;
+}
+
+.tooltip-upgrade-preview {
+    margin: 10px 0;
+    padding: 10px;
+    background: rgba(255, 152, 0, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.upgrade-title {
+    font-size: 12px;
+    color: #FF9800;
+    margin-bottom: 6px;
+    font-weight: bold;
+}
+
+.upgrade-change {
+    font-size: 12px;
+    padding: 3px 0;
+    color: #fff;
+}
+
+.new-value {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.increase {
+    color: #4CAF50;
+    font-size: 11px;
+    margin-left: 4px;
+}
+
+.tooltip-description {
+    font-size: 12px;
+    color: #ccc;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    margin: 10px 0;
+    line-height: 1.5;
+}
+
+.tooltip-hint {
+    text-align: center;
+    font-size: 11px;
+    color: #FFD700;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-style: italic;
+}
+
+/* ==================== 操作弹窗样式 ==================== */
+.skill-action-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 200000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dialog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+.dialog-box {
+    position: relative;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border: 2px solid #4CAF50;
+    border-radius: 16px;
+    padding: 28px;
+    max-width: 480px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.9);
+    color: white;
+    animation: dialogSlideIn 0.3s ease-out;
+}
+
+@keyframes dialogSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.dialog-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    font-size: 28px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.dialog-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: rotate(90deg);
+}
+
+.dialog-skill-info {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 24px;
+    padding-bottom: 18px;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.skill-icon-large {
+    font-size: 56px;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.skill-title h3 {
+    margin: 0;
+    font-size: 24px;
+    color: #fff;
+}
+
+.skill-level {
+    margin: 6px 0 0 0;
+    font-size: 14px;
+    color: #4CAF50;
+}
+
+.dialog-current-effect,
+.dialog-upgrade-effect {
+    margin-bottom: 18px;
+    padding: 14px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dialog-current-effect h4,
+.dialog-upgrade-effect h4 {
+    margin: 0 0 10px 0;
+    font-size: 15px;
+    color: #4CAF50;
+}
+
+.effect-text {
+    font-size: 13px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.dialog-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.dialog-actions button {
+    padding: 14px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dialog-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.dialog-actions button:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.btn-learn {
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    color: white;
+}
+
+.btn-upgrade {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+}
+
+.btn-equip {
+    background: linear-gradient(135deg, #FFD700 0%, #FFC107 100%);
+    color: #000;
+}
+
+.btn-unequip {
+    background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+    color: white;
+}
+
+.btn-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.maxlevel-hint {
+    text-align: center;
+    padding: 12px;
+    background: rgba(156, 39, 176, 0.2);
+    border: 1px solid rgba(156, 39, 176, 0.4);
+    border-radius: 8px;
+    color: #E1BEE7;
+    font-size: 14px;
+}
+
+.dialog-hint {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 18px;
+    padding: 12px;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    font-size: 13px;
+    color: #FFD700;
+}
+
+.hint-icon {
+    font-size: 18px;
 }
