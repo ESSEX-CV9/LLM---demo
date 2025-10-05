@@ -117,14 +117,12 @@ class GameView {
                 
                 <div class="game-main">
                     <div class="narrative-area" id="narrativeArea">
-                        <div class="narrative-message intro">
-                            🌟 欢迎来到地牢探险！
-                            <br><br>
-                            你站在古老地牢的入口前，黑暗的通道向前延伸，空气中弥漫着神秘的气息...
-                            <br><br>
-                            <em>提示：试试输入"向前探索"、"搜索房间"或"查看状态"来开始你的冒险！</em>
+                            <div class="narrative-message intro">🌟 欢迎来到地牢探险！
+    
+    你站在古老地牢的入口前，黑暗的通道向前延伸，空气中弥漫着神秘的气息...
+    
+    <em>提示：试试输入"向前探索"、"搜索房间"或"查看状态"来开始你的冒险！</em></div>
                         </div>
-                    </div>
                     
                     <div class="action-area">
                         <div class="input-group">
@@ -1995,13 +1993,11 @@ restoreNarrativeFromHistory(data) {
         // 始终显示欢迎消息（无论是否有历史记录）
         const welcomeDiv = document.createElement('div');
         welcomeDiv.className = 'narrative-message intro';
-        welcomeDiv.innerHTML = `
-            🌟 欢迎回到地牢探险！
-            <br><br>
-            你重新回到了这个充满神秘与危险的地牢世界...
-            <br><br>
-            <em>存档已加载，继续你的冒险吧！</em>
-        `;
+        welcomeDiv.innerHTML = `🌟 欢迎回到地牢探险！
+
+你重新回到了这个充满神秘与危险的地牢世界...
+
+<em>存档已加载，继续你的冒险吧！</em>`;
         narrativeArea.appendChild(welcomeDiv);
 
         // 如果有历史记录，恢复它们
@@ -2546,13 +2542,11 @@ hideGlobalTooltip() {
             
             const welcomeDiv = document.createElement('div');
             welcomeDiv.className = 'narrative-message intro slide-up';
-            welcomeDiv.innerHTML = `
-                🌟 欢迎来到地牢探险！
-                <br><br>
-                你站在古老地牢的入口前，黑暗的通道向前延伸，空气中弥漫着神秘的气息...
-                <br><br>
-                <em>提示：试试输入"向前探索"、"搜索房间"或"查看状态"来开始你的冒险！</em>
-            `;
+            welcomeDiv.innerHTML = `🌟 欢迎来到地牢探险！
+
+你站在古老地牢的入口前，黑暗的通道向前延伸，空气中弥漫着神秘的气息...
+
+<em>提示：试试输入"向前探索"、"搜索房间"或"查看状态"来开始你的冒险！</em>`;
             narrativeArea.appendChild(welcomeDiv);
         }
         

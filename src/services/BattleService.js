@@ -472,11 +472,11 @@ class BattleService {
                         player.defending = false;
                         const critText = isCritical ? '暴击！' : '';
                         const resistInfo = `魔抗${Math.floor(player.magicResistance)}%`;
-                        logMessage = `${enemy.type}使用${skillName}${critText}，对你造成了${actualDamage}点伤害！（${resistInfo}+防御姿态减伤）`;
+                        logMessage = `${enemy.type}使用【${skillName}】${critText}，对你造成了${actualDamage}点伤害！（${resistInfo}+防御姿态减伤）`;
                     } else {
                         const critText = isCritical ? '暴击！' : '';
                         const resistInfo = `魔抗${Math.floor(player.magicResistance)}%`;
-                        logMessage = `${enemy.type}使用${skillName}${critText}，对你造成了${actualDamage}点伤害！（${resistInfo}减伤）`;
+                        logMessage = `${enemy.type}使用【${skillName}】${critText}，对你造成了${actualDamage}点伤害！（${resistInfo}减伤）`;
                     }
                     player.hp = Math.max(0, player.hp - actualDamage);
                 }

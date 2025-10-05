@@ -74,7 +74,7 @@ class BattleView {
                                 </div>
                                 <div class="enemy-info">
                                     <div class="enemy-name">${enemy.name || enemy.type}</div>
-                                    <div class="enemy-id-compact">#${index + 1}</div>
+                                    <div class="enemy-id-compact">Lv.${enemy.level || 1}</div>
                                 </div>
                             </div>
                             

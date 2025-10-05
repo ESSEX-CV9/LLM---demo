@@ -60,7 +60,8 @@ class GameState {
         
         this.conversation = {
             history: [],
-            context: ''
+            context: '',
+            summaries: []  // 存储历史总结
         };
         
         this.battle = {

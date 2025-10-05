@@ -260,6 +260,7 @@ body {
     line-height: 1.6;
     animation: fadeInUp 0.3s ease-out;
     position: relative;
+    white-space: pre-line; /* 保留换行符，合并多余空格 */
 }
 
 @keyframes fadeInUp {
