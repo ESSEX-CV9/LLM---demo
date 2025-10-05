@@ -15,6 +15,14 @@ class SkillsView {
     this.treeConnector = null;
     this.currentTreeData = null;
     
+    // 视图状态持久化键名
+    this.STORAGE_KEY = 'skillsTreeView:v2';
+
+    // 默认聚焦参数（可按需调整）
+    this.DEFAULT_FOCUS_SCALE = 0.75;
+    this.DEFAULT_FOCUS_OFFSET_X = -280;   // 正值向右
+    this.DEFAULT_FOCUS_OFFSET_Y = 290;  // 正值代表让节点更靠上显示（内部会取负）
+
     this.setupEventListeners();
   }
 
@@ -1260,27 +1268,75 @@ class SkillsView {
     // 绑定分类切换事件（重新绘制连接线）
     this.bindTreeCategorySwitchWithConnections();
     
-    // 首次渲染后自动适配视图并同步SVG视口，确保连接线与节点同屏显示
-    const activeCategoryEl = this.modal.querySelector('.tree-category-nodes.active');
-    if (activeCategoryEl) {
-      const category = activeCategoryEl.dataset.category;
-      const treeData = this.currentTreeData?.[category];
+    // 🆕 首次渲染后：恢复持久化状态 或 智能聚焦
+    requestAnimationFrame(() => {
+      this.restoreOrSmartFocus(player);
+    });
+    
+    console.log('[SkillsView] 交互式技能树初始化完成');
+  }
+  
+  /**
+   * 恢复持久化状态或执行智能聚焦
+   * @param {Object} player - 玩家对象
+   */
+  restoreOrSmartFocus(player) {
+    const savedState = this.loadTreeViewState();
+    
+    if (savedState && savedState.activeCategory && savedState.categories) {
+      // 有持久化状态：恢复
+      const { activeCategory, categories } = savedState;
+      
+      console.log(`[SkillsView] 恢复持久化状态：分类=${activeCategory}`);
+      
+      // 切换到保存的分类
+      const tab = this.modal.querySelector(`.tree-tab[data-category="${activeCategory}"]`);
+      if (tab && !tab.classList.contains('active')) {
+        tab.click();
+      }
+      
+      // 恢复该分类的 transform
+      if (categories[activeCategory] && this.treeInteraction) {
+        this.treeInteraction.setTransform(categories[activeCategory], true);
+      }
+      
+      // 同步 SVG viewBox
+      const treeData = this.currentTreeData?.[activeCategory];
+      if (treeData && this.treeConnector?.updateViewBox) {
+        this.treeConnector.updateViewBox(treeData.bounds, 100);
+      }
+    } else {
+      // 无持久化状态：智能聚焦
+      console.log('[SkillsView] 无持久化状态，执行智能聚焦');
+      
+      const activeCategory = this.getActiveCategory();
+      const treeData = this.currentTreeData?.[activeCategory];
+      
       if (treeData) {
-        // 同步SVG坐标系到内容边界
+        // 同步 SVG viewBox
         if (this.treeConnector?.updateViewBox) {
           this.treeConnector.updateViewBox(treeData.bounds, 100);
         }
-        // 适配到屏幕
-        if (this.treeInteraction?.fitToScreen) {
-          // 延迟到下一帧，确保DOM与SVG路径都已插入
-          requestAnimationFrame(() => {
-            this.treeInteraction.fitToScreen(treeData.bounds, 50, true);
-          });
+        
+        // 计算目标节点
+        const targetNode = this.computeTargetNode(activeCategory, player);
+        
+        if (targetNode) {
+          // 聚焦到目标节点：默认缩放 + X/Y 偏移
+          this.focusOnNodeWithDefaults(
+            targetNode,
+            this.DEFAULT_FOCUS_SCALE,
+            this.DEFAULT_FOCUS_OFFSET_X,
+            this.DEFAULT_FOCUS_OFFSET_Y,
+            true
+          );
+        } else {
+          // 兜底：fitToScreen
+          console.log('[SkillsView] 无可聚焦节点，使用 fitToScreen');
+          this.treeInteraction?.fitToScreen(treeData.bounds, 50, true);
         }
       }
     }
-    
-    console.log('[SkillsView] 交互式技能树初始化完成');
   }
   
   /**
@@ -1631,7 +1687,191 @@ class SkillsView {
     this.eventBus.emit('ui:notification', message, 'game');
   }
 
+  // ==================== 视图状态持久化功能 ====================
+  
+  /**
+   * 从 localStorage 加载技能树视图状态
+   * @returns {Object|null} 状态对象或 null
+   */
+  loadTreeViewState() {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (stored) {
+        const state = JSON.parse(stored);
+        console.log('[SkillsView] 加载持久化状态:', state);
+        return state;
+      }
+    } catch (error) {
+      console.warn('[SkillsView] 加载持久化状态失败:', error);
+    }
+    return null;
+  }
+  
+  /**
+   * 保存技能树视图状态到 localStorage
+   * @param {String} activeCategory - 当前激活的分类
+   * @param {Object} categoryTransforms - 各分类的 transform
+   */
+  saveTreeViewState(activeCategory, categoryTransforms) {
+    try {
+      const state = {
+        activeCategory,
+        categories: categoryTransforms,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
+      console.log('[SkillsView] 保存持久化状态:', state);
+    } catch (error) {
+      console.warn('[SkillsView] 保存持久化状态失败:', error);
+    }
+  }
+  
+  /**
+   * 获取当前激活的分类
+   * @returns {String} 分类名称
+   */
+  getActiveCategory() {
+    const activeTab = this.modal?.querySelector('.tree-tab.active');
+    return activeTab?.dataset.category || 'physical';
+  }
+  
+  /**
+   * 计算目标聚焦节点（智能选择算法）
+   * @param {String} category - 分类名称
+   * @param {Object} player - 玩家对象
+   * @returns {Object|null} 目标节点或 null
+   */
+  computeTargetNode(category, player) {
+    if (!this.currentTreeData || !this.currentTreeData[category]) {
+      return null;
+    }
+    
+    const nodes = this.currentTreeData[category].nodes;
+    if (!nodes || nodes.length === 0) {
+      return null;
+    }
+    
+    // 优先级：upgradable > learnable > equipped > owned > 最新习得 > 根节点
+    
+    // 1. 可升级节点
+    let target = nodes.find(n => n.data.state === 'upgradable');
+    if (target) {
+      console.log('[SkillsView] 智能聚焦：选择可升级节点', target.data.name);
+      return target;
+    }
+    
+    // 2. 可学习节点
+    target = nodes.find(n => n.data.state === 'learnable');
+    if (target) {
+      console.log('[SkillsView] 智能聚焦：选择可学习节点', target.data.name);
+      return target;
+    }
+    
+    // 3. 已装备节点
+    target = nodes.find(n => n.data.state === 'equipped');
+    if (target) {
+      console.log('[SkillsView] 智能聚焦：选择已装备节点', target.data.name);
+      return target;
+    }
+    
+    // 4. 已掌握但未装备节点
+    target = nodes.find(n => n.data.state === 'owned' || n.data.state === 'maxlevel');
+    if (target) {
+      console.log('[SkillsView] 智能聚焦：选择已掌握节点', target.data.name);
+      return target;
+    }
+    
+    // 5. 最新习得技能（从玩家技能列表末尾查找）
+    if (player.skills && player.skills.length > 0) {
+      for (let i = player.skills.length - 1; i >= 0; i--) {
+        const skillId = player.skills[i].id;
+        target = nodes.find(n => n.id === skillId);
+        if (target) {
+          console.log('[SkillsView] 智能聚焦：选择最新习得技能', target.data.name);
+          return target;
+        }
+      }
+    }
+    
+    // 6. 兜底：选择根节点（无前置条件的节点）
+    const rootNodes = nodes.filter(n => !n.data.requirements || !n.data.requirements.requires || n.data.requirements.requires.length === 0);
+    if (rootNodes.length > 0) {
+      target = rootNodes[0];
+      console.log('[SkillsView] 智能聚焦：选择根节点（兜底）', target.data.name);
+      return target;
+    }
+    
+    // 7. 最后兜底：第一个节点
+    console.log('[SkillsView] 智能聚焦：选择第一个节点（最终兜底）', nodes[0].data.name);
+    return nodes[0];
+  }
+  
+  /**
+   * 聚焦到指定节点（带默认缩放和偏移）
+   * @param {Object} node - 目标节点
+   * @param {Number} scale - 缩放比例，默认 this.DEFAULT_FOCUS_SCALE
+   * @param {Number} offsetX - 水平偏移，正值向右，默认 this.DEFAULT_FOCUS_OFFSET_X
+   * @param {Number} offsetY - 垂直偏移，正值代表让节点更靠上显示（内部会取负），默认 this.DEFAULT_FOCUS_OFFSET_Y
+   * @param {Boolean} animated - 是否动画，默认 true
+   */
+  focusOnNodeWithDefaults(
+    node,
+    scale = this.DEFAULT_FOCUS_SCALE,
+    offsetX = this.DEFAULT_FOCUS_OFFSET_X,
+    offsetY = this.DEFAULT_FOCUS_OFFSET_Y,
+    animated = true
+  ) {
+    if (!node || !this.treeInteraction) {
+      return;
+    }
+    
+    console.log(`[SkillsView] 聚焦节点: ${node.data.name}, scale=${scale}, offsetX=${offsetX}, offsetY=${offsetY}`);
+    
+    // 使用布局坐标系的节点尺寸（100x100），避免混用已缩放的屏幕尺寸导致偏移错误
+    const targetCanvasPos = { x: node.x + 50, y: node.y + 50 };
+    
+    // 使用扩展后的 centerOnNode
+    // 注意：为实现“节点在视窗稍偏上”，这里将 offsetY 取负值
+    this.treeInteraction.centerOnNode(
+      targetCanvasPos,
+      scale,
+      animated,
+      { x: offsetX, y: -Math.abs(offsetY) }
+    );
+  }
+
   close() {
+    // 💾 保存视图状态到 localStorage
+    if (this.treeInteraction && this.currentTreeData) {
+      const activeCategory = this.getActiveCategory();
+      const categoryTransforms = {};
+      
+      // 保存当前激活分类的 transform
+      const currentTransform = this.treeInteraction.getTransform();
+      categoryTransforms[activeCategory] = currentTransform;
+      
+      // 尝试从已有状态中恢复其他分类的 transform（避免丢失）
+      const existingState = this.loadTreeViewState();
+      if (existingState && existingState.categories) {
+        ['physical', 'magic', 'passive'].forEach(cat => {
+          if (cat !== activeCategory && existingState.categories[cat]) {
+            categoryTransforms[cat] = existingState.categories[cat];
+          }
+        });
+      }
+      
+      // 补充从内存中保存的其他分类 transform
+      if (this._categoryTransforms) {
+        ['physical', 'magic', 'passive'].forEach(cat => {
+          if (!categoryTransforms[cat] && this._categoryTransforms[cat]) {
+            categoryTransforms[cat] = this._categoryTransforms[cat];
+          }
+        });
+      }
+      
+      this.saveTreeViewState(activeCategory, categoryTransforms);
+    }
+    
     // 清理键盘事件监听
     if (this._keyboardHandler) {
       document.removeEventListener('keydown', this._keyboardHandler);
@@ -1647,6 +1887,7 @@ class SkillsView {
     // 清理树数据
     this.currentTreeData = null;
     this.treeConnector = null;
+    this._categoryTransforms = null;
     
     // 移除弹窗
     if (this.modal) {

@@ -285,8 +285,9 @@ class SkillTreeInteraction {
    * @param {Object} node - 节点对象 { x, y }
    * @param {Number} targetScale - 目标缩放比例
    * @param {Boolean} animated - 是否使用动画
+   * @param {Object} offset - 可选偏移量 { x: 0, y: 0 }，正值向右/下偏移
    */
-  centerOnNode(node, targetScale = 1.5, animated = true) {
+  centerOnNode(node, targetScale = 1.5, animated = true, offset = { x: 0, y: 0 }) {
     const rect = this.container.getBoundingClientRect();
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
@@ -294,9 +295,9 @@ class SkillTreeInteraction {
     // 应用缩放
     this.scale = this.clampScale(targetScale);
     
-    // 计算平移使节点居中
-    this.translateX = centerX - node.x * this.scale;
-    this.translateY = centerY - node.y * this.scale;
+    // 计算平移使节点居中，并附加偏移
+    this.translateX = centerX - node.x * this.scale + (offset.x || 0);
+    this.translateY = centerY - node.y * this.scale + (offset.y || 0);
     
     this.applyTransform(animated);
     this.notifyChange();
@@ -342,9 +343,10 @@ class SkillTreeInteraction {
       this.canvas.style.transition = 'none';
     }
     
+    // 重要：先缩放再平移，使计算公式 screen = scale * content + translate 生效
+    // 这与 bindZoom/centerOnNode/fitToScreen 的数学推导一致，避免出现“右下角偏移”
     this.canvas.style.transform = `
-      translate(${this.translateX}px, ${this.translateY}px)
-      scale(${this.scale})
+      translate(${this.translateX}px, ${this.translateY}px)\n      scale(${this.scale})
     `;
     
     // 清除transition以便后续拖动流畅
