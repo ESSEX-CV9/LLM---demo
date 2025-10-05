@@ -60,6 +60,11 @@ class GameView {
         
         // 新游戏开始时重置UI状态
         this.eventBus.on('game:new-game:started', this.handleNewGameStarted.bind(this), 'game');
+        
+        // 重新生成消息相关事件
+        this.eventBus.on('ui:regenerate:start', this.handleRegenerateStart.bind(this), 'game');
+        this.eventBus.on('ui:regenerate:complete', this.handleRegenerateComplete.bind(this), 'game');
+        this.eventBus.on('ui:regenerate:error', this.handleRegenerateError.bind(this), 'game');
     }
 
     hideLoadingScreen() {
@@ -634,12 +639,21 @@ class GameView {
         messageDiv.appendChild(timeElement);
         messageDiv.appendChild(contentElement);
         
+        // 为GM生成的消息添加重新生成按钮（仅最新的消息，且不是从存档恢复）
+        const typeVal = messageData.type || '';
+        if (!messageData.skipHistory && !messageData.isRestoringFromSave && (typeVal === 'gm_narrative' || typeVal === 'gm_continuation' || typeVal === 'gm_fallback')) {
+            // 移除之前所有消息的重新生成按钮
+            this.removeAllRegenerateButtons();
+            
+            // 为当前消息添加重新生成按钮
+            this.addRegenerateButton(messageDiv, messageData);
+        }
+        
         narrativeArea.appendChild(messageDiv);
         narrativeArea.scrollTop = narrativeArea.scrollHeight;
         
         // 将 GM 叙述加入历史，以便存档恢复（避免重复，仅针对 gm_* 类型，且不是从历史恢复的）
         try {
-            const typeVal = messageData.type || '';
             if (!messageData.skipHistory && (typeVal === 'gm_narrative' || typeVal === 'gm_continuation' || typeVal === 'gm_fallback')) {
                 const gsService = window.gameCore?.getService('gameStateService');
                 if (gsService && typeof gsService.addConversationEntry === 'function') {
@@ -1996,9 +2010,35 @@ restoreNarrativeFromHistory(data) {
                 let content = entry.content || '';
                 let type = entry.type || (entry.role === 'user' ? 'player_action' : 'gm_narrative');
                 
-                // 修复玩家行动格式：确保有 > 前缀
-                if (type === 'player_action' && !content.startsWith('>')) {
-                    content = `> ${content}`;
+                // 修复玩家行动格式：确保有正确的 > 前缀
+                if (type === 'player_action') {
+                    // 移除时间戳和多余的前缀，重新格式化
+                    const lines = content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                    
+                    for (const line of lines) {
+                        // 跳过时间戳行（格式如 "01:20:10"）
+                        if (line.match(/^\d{1,2}:\d{2}:\d{2}$/)) {
+                            continue;
+                        }
+                        
+                        // 查找包含实际行动内容的行
+                        let actionContent = line;
+                        
+                        // 如果行包含时间戳前缀，提取实际行动内容
+                        const timestampMatch = line.match(/^\d{1,2}:\d{2}:\d{2}>\s*(.+)$/);
+                        if (timestampMatch) {
+                            actionContent = timestampMatch[1];
+                        } else if (line.startsWith('> ')) {
+                            actionContent = line.substring(2);
+                        } else if (!line.startsWith('>')) {
+                            // 如果不是以任何前缀开始，直接使用
+                            actionContent = line;
+                        }
+                        
+                        // 重新格式化为正确的玩家行动格式
+                        content = `> ${actionContent}`;
+                        break; // 找到第一个有效行动后就停止
+                    }
                 }
                 
                 // 修复函数结果显示：从 result 字段恢复原始显示内容
@@ -2022,7 +2062,8 @@ restoreNarrativeFromHistory(data) {
                     content,
                     type,
                     timestamp: entry.timestamp || Date.now(),
-                    skipHistory: true // 避免重复写入历史
+                    skipHistory: true, // 避免重复写入历史
+                    isRestoringFromSave: true // 标记为存档恢复，避免添加重新生成按钮
                 });
             });
         }
@@ -2106,6 +2147,25 @@ restoreNarrativeFromHistory(data) {
             // 正常状态，启用输入
             this.enableInput();
         }
+        
+        // 在历史恢复完成后，为最后一个GM消息添加重新生成按钮
+        setTimeout(() => {
+            // 查找最后一个GM消息并添加重新生成按钮
+            const gmMessages = narrativeArea.querySelectorAll('.narrative-message.gm_narrative, .narrative-message.gm_continuation, .narrative-message.gm_fallback');
+            if (gmMessages.length > 0) {
+                const lastGmMessage = gmMessages[gmMessages.length - 1];
+                // 从最后一个GM消息获取消息数据
+                const messageData = {
+                    type: lastGmMessage.classList.contains('gm_narrative') ? 'gm_narrative' :
+                          lastGmMessage.classList.contains('gm_continuation') ? 'gm_continuation' : 'gm_fallback',
+                    content: lastGmMessage.textContent,
+                    timestamp: lastGmMessage.getAttribute('data-ts') || Date.now()
+                };
+                
+                this.addRegenerateButtonToLastGmMessage(messageData);
+                console.log('[GameView] 已为存档恢复的最后GM消息添加重新生成按钮');
+            }
+        }, 100);
 
         // 更新调试面板的游戏状态
         setTimeout(() => {
@@ -2510,6 +2570,402 @@ hideGlobalTooltip() {
         }
         
         console.log('[GameView] 新游戏UI状态重置完成');
+    }
+
+    // ========== 重新生成消息相关方法 ==========
+    
+    // 移除所有现有的重新生成按钮
+    removeAllRegenerateButtons() {
+        const existingButtons = document.querySelectorAll('.regenerate-button');
+        existingButtons.forEach(button => {
+            button.remove();
+        });
+    }
+    
+    // 为消息添加重新生成按钮
+    addRegenerateButton(messageDiv, messageData) {
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'message-actions';
+        buttonContainer.style.cssText = `
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        `;
+        
+        const regenerateButton = document.createElement('button');
+        regenerateButton.className = 'regenerate-button';
+        regenerateButton.innerHTML = '🔄';
+        // regenerateButton.title = '重新生成这条消息'; // 移除title属性以避免悬浮提示
+        regenerateButton.style.cssText = `
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        `;
+        
+        // 悬浮效果
+        regenerateButton.addEventListener('mouseenter', () => {
+            regenerateButton.style.background = 'rgba(255, 255, 255, 0.2)';
+            regenerateButton.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+            regenerateButton.style.transform = 'scale(1.1)';
+        });
+        
+        regenerateButton.addEventListener('mouseleave', () => {
+            regenerateButton.style.background = 'rgba(255, 255, 255, 0.1)';
+            regenerateButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            regenerateButton.style.transform = 'scale(1)';
+        });
+        
+        // 点击事件
+        regenerateButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.handleRegenerateMessage(messageDiv, messageData);
+        });
+        
+        buttonContainer.appendChild(regenerateButton);
+        messageDiv.appendChild(buttonContainer);
+        
+        // 设置消息的悬浮显示按钮效果
+        messageDiv.style.position = 'relative';
+        messageDiv.addEventListener('mouseenter', () => {
+            buttonContainer.style.opacity = '1';
+        });
+        messageDiv.addEventListener('mouseleave', () => {
+            buttonContainer.style.opacity = '0';
+        });
+    }
+    
+    // 处理重新生成消息请求
+    async handleRegenerateMessage(messageDiv, originalMessageData) {
+        try {
+            console.log('[GameView] 开始重新生成消息:', originalMessageData);
+            
+            // 如果当前输入被禁用，先重置状态（允许取消当前操作）
+            if (this.isInputDisabled) {
+                console.log('[GameView] 取消当前操作以进行重新生成');
+                this.enableInput(); // 重置输入状态
+                this.hideLoadingMessage(); // 隐藏可能存在的加载消息
+                this.setStatus('ready', '就绪'); // 重置状态
+            }
+            
+            // 记录原始消息类型，以便保持格式
+            const originalMessageType = originalMessageData.type;
+            const isFollowupMessage = originalMessageType === 'gm_continuation';
+            
+            // 禁用输入并显示状态
+            this.disableInput();
+            this.setStatus('processing', '正在重新生成消息...');
+            
+            // 获取必要的服务
+            const gameController = window.gameCore?.getService('gameController');
+            const gameStateService = window.gameCore?.getService('gameStateService');
+            
+            if (!gameController || !gameStateService) {
+                throw new Error('必要的游戏服务不可用');
+            }
+            
+            // 获取最后一次玩家行动
+            const lastPlayerAction = this.getLastPlayerAction();
+            if (!lastPlayerAction) {
+                throw new Error('未找到最后一次玩家行动');
+            }
+            
+            console.log('[GameView] 最后一次玩家行动:', lastPlayerAction);
+            console.log('[GameView] 原始消息类型:', originalMessageType, '是否为后续消息:', isFollowupMessage);
+            
+            // 删除当前消息及之后的所有消息
+            this.removeMessagesFromElement(messageDiv);
+            
+            // 从历史记录中移除对应的条目
+            this.removeFromConversationHistory(originalMessageData);
+            
+            // 发送重新生成事件
+            this.eventBus.emit('ui:regenerate:start', {
+                originalMessage: originalMessageData,
+                messageElement: messageDiv,
+                isFollowupMessage: isFollowupMessage,
+                originalType: originalMessageType
+            }, 'game');
+            
+            // 根据消息类型选择重新生成策略
+            if (isFollowupMessage) {
+                // 对于后续消息，需要特殊处理以保持格式
+                await this.regenerateFollowupMessage(lastPlayerAction, originalMessageType);
+            } else {
+                // 普通消息重新生成
+                await gameController.handlePlayerAction({ action: lastPlayerAction });
+            }
+            
+        } catch (error) {
+            console.error('[GameView] 重新生成消息失败:', error);
+            this.eventBus.emit('ui:regenerate:error', {
+                error: error.message,
+                originalMessage: originalMessageData
+            }, 'game');
+            this.enableInput();
+            this.setStatus('error', '重新生成失败');
+            this.showNotification('重新生成失败: ' + error.message, 'error');
+        }
+    }
+    
+    // 获取最后一次玩家行动
+    getLastPlayerAction() {
+        const narrativeArea = document.getElementById('narrativeArea');
+        const playerMessages = narrativeArea.querySelectorAll('.narrative-message.player_action');
+        
+        if (playerMessages.length === 0) {
+            console.warn('[GameView] 未找到玩家行动消息');
+            return null;
+        }
+        
+        const lastPlayerMessage = playerMessages[playerMessages.length - 1];
+        const content = lastPlayerMessage.textContent.trim();
+        
+        console.log('[GameView] 原始玩家消息内容:', content);
+        
+        // 移除时间戳，查找包含 '>' 的行
+        const lines = content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        
+        for (const line of lines) {
+            if (line.startsWith('> ')) {
+                const action = line.substring(2).trim();
+                console.log('[GameView] 解析出的玩家行动:', action);
+                return action;
+            }
+        }
+        
+        // 如果没有找到以 '>' 开头的行，尝试查找最后一个非时间戳行
+        const nonTimestampLines = lines.filter(line => !line.match(/^\d{1,2}:\d{2}:\d{2}$/));
+        if (nonTimestampLines.length > 0) {
+            const lastLine = nonTimestampLines[nonTimestampLines.length - 1];
+            // 如果最后一行以 '>' 开头，移除它
+            const action = lastLine.startsWith('> ') ? lastLine.substring(2).trim() : lastLine;
+            console.log('[GameView] 从非时间戳行解析出的玩家行动:', action);
+            return action;
+        }
+        
+        console.warn('[GameView] 无法解析玩家行动内容');
+        return null;
+    }
+    
+    // 从指定元素开始删除所有后续消息
+    removeMessagesFromElement(startElement) {
+        let currentElement = startElement;
+        const toRemove = [];
+        
+        // 收集要删除的元素
+        while (currentElement) {
+            toRemove.push(currentElement);
+            currentElement = currentElement.nextElementSibling;
+        }
+        
+        // 删除元素
+        toRemove.forEach(element => {
+            if (element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+        });
+    }
+    
+    // 从对话历史中移除对应的条目
+    removeFromConversationHistory(messageData) {
+        try {
+            const gsService = window.gameCore?.getService('gameStateService');
+            if (gsService && typeof gsService.removeConversationEntry === 'function') {
+                gsService.removeConversationEntry(messageData);
+            }
+        } catch (e) {
+            console.warn('[GameView] 移除历史记录失败:', e);
+        }
+    }
+    
+    // 重新生成后续消息（保持原有类型和格式）
+    async regenerateFollowupMessage(lastPlayerAction, originalType) {
+        try {
+            // 查找最近的函数执行结果
+            const lastFunctionResult = this.getLastFunctionResult();
+            
+            if (!lastFunctionResult) {
+                console.warn('[GameView] 未找到函数执行结果，回退到普通重新生成');
+                // 如果没找到函数结果，回退到普通重新生成
+                const gameController = window.gameCore?.getService('gameController');
+                await gameController.handlePlayerAction({ action: lastPlayerAction });
+                return;
+            }
+            
+            console.log('[GameView] 基于函数结果重新生成后续消息:', lastFunctionResult);
+            
+            // 直接基于已有的函数执行结果生成后续叙述
+            this.generateFollowupWithFunctionResult(lastFunctionResult.functionName, lastFunctionResult.result, originalType);
+            
+        } catch (error) {
+            console.error('[GameView] 后续消息重新生成失败:', error);
+            throw error;
+        }
+    }
+    
+    // 获取最近的函数执行结果
+    getLastFunctionResult() {
+        try {
+            const gameStateService = window.gameCore?.getService('gameStateService');
+            const gameState = gameStateService?.getState();
+            
+            if (!gameState || !gameState.conversation || !gameState.conversation.history) {
+                return null;
+            }
+            
+            // 从历史记录中从后往前查找最近的函数执行结果
+            const history = gameState.conversation.history;
+            for (let i = history.length - 1; i >= 0; i--) {
+                const entry = history[i];
+                if (entry.type === 'function_result' && entry.result) {
+                    console.log('[GameView] 找到函数执行结果:', entry);
+                    return {
+                        functionName: entry.content.replace('函数执行结果: ', ''),
+                        result: entry.result
+                    };
+                }
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('[GameView] 获取函数结果失败:', error);
+            return null;
+        }
+    }
+    
+    // 基于函数结果生成后续消息
+    async generateFollowupWithFunctionResult(functionName, functionResult, messageType) {
+        try {
+            const gameStateService = window.gameCore?.getService('gameStateService');
+            const llmService = window.gameCore?.getService('llmService');
+            
+            if (!gameStateService || !llmService) {
+                throw new Error('必要的服务不可用');
+            }
+            
+            // 生成后续剧情的提示词
+            const continuationPrompt = `
+## 函数执行结果：
+函数：${functionName}
+结果：${JSON.stringify(functionResult, null, 2)}
+
+请根据上述结果继续描述后续情节，不要再调用任何函数。
+
+## 📝 必须遵循的输出格式：
+你的回复必须包含两个部分，使用第二人称描述：
+
+**第一部分 - 剧情描述**：
+- 描述刚才函数执行的结果带来的剧情发展
+- 包括战斗结果、发现物品、事件影响等
+- 展现因果关系和戏剧性
+- 例如战斗后："激战过后，你喘着粗气站在敌人的尸体旁。鲜血染红了地面，你的武器还在滴血。这时，一个黑袍人影从阴影中走出，她轻笑了一声，'真是莽撞啊，年轻的冒险者。'"
+
+**第二部分 - 环境描述**：
+- 纯粹描述当前的环境状态、氛围
+- 不涉及具体行动，只聚焦感官细节
+- 包括视觉、听觉、嗅觉等感受
+- 例如战斗后环境："你环视四周，你的面前有一个石门，沉重石门看起来没法从这边打开。你的左边有一个窄小的通道，里面没有光亮，不知道到底通向何方"
+
+记住：不要提及任何数值变化（HP、经验值、等级等），系统会自动处理和显示这些。`;
+
+            console.log('[GameView] 开始基于函数结果生成后续消息');
+
+            const response = await llmService.generateResponse(
+                gameStateService.generateGamePrompt(),
+                {
+                    userInput: continuationPrompt
+                }
+            );
+
+            if (response.success) {
+                // 使用原始消息类型显示
+                this.eventBus.emit('ui:display:narrative', {
+                    content: response.result,
+                    type: messageType // 保持原有类型
+                }, 'game');
+                console.log('[GameView] 后续消息重新生成完成，类型:', messageType);
+            } else {
+                throw new Error('LLM生成失败');
+            }
+            
+        } catch (error) {
+            console.error('[GameView] 生成后续消息失败:', error);
+            // 显示后备消息
+            this.eventBus.emit('ui:display:narrative', {
+                content: '你的行动产生了一些影响，但具体细节模糊不清...',
+                type: 'gm_fallback'
+            }, 'game');
+        }
+    }
+
+    // 处理重新生成开始事件
+    handleRegenerateStart(data) {
+        console.log('[GameView] 重新生成开始:', data);
+        // 延迟显示加载消息，确保在LLM请求开始时显示
+        setTimeout(() => {
+            if (this.isInputDisabled) { // 只有在仍然处理中时才显示
+                this.showLoadingMessage();
+            }
+        }, 100);
+    }
+    
+    // 处理重新生成完成事件
+    handleRegenerateComplete(data) {
+        console.log('[GameView] 重新生成完成:', data);
+        this.hideLoadingMessage();
+    }
+    
+    // 处理重新生成错误事件
+    handleRegenerateError(data) {
+        console.log('[GameView] 重新生成错误:', data);
+        this.hideLoadingMessage();
+        this.enableInput();
+        this.setStatus('error', '重新生成失败');
+    }
+    
+    // 为最后一个GM消息添加重新生成按钮（存档恢复时使用）
+    addRegenerateButtonToLastGmMessage(messageData) {
+        try {
+            const narrativeArea = document.getElementById('narrativeArea');
+            const gmMessages = narrativeArea.querySelectorAll('.narrative-message.gm_narrative, .narrative-message.gm_continuation, .narrative-message.gm_fallback');
+            
+            if (gmMessages.length === 0) {
+                console.log('[GameView] 没有找到GM消息');
+                return;
+            }
+            
+            // 找到最后一个GM消息
+            const lastGmMessage = gmMessages[gmMessages.length - 1];
+            
+            // 检查是否已经有重新生成按钮
+            if (lastGmMessage.querySelector('.regenerate-button')) {
+                console.log('[GameView] 最后一个GM消息已经有重新生成按钮');
+                return;
+            }
+            
+            console.log('[GameView] 为存档恢复的最后GM消息添加重新生成按钮');
+            
+            // 移除所有现有的重新生成按钮
+            this.removeAllRegenerateButtons();
+            
+            // 为最后一个GM消息添加重新生成按钮
+            this.addRegenerateButton(lastGmMessage, messageData);
+            
+        } catch (error) {
+            console.error('[GameView] 添加最后GM消息的重新生成按钮失败:', error);
+        }
     }
 }
  

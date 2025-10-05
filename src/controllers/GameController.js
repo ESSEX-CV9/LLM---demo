@@ -93,6 +93,13 @@ class GameController {
 
     async generateContinuation(functionResult, functionName) {
         try {
+            // 检查是否应该跳过后续生成（用于重新生成功能）
+            const gameView = window.gameView;
+            if (gameView && gameView._skipFollowupGeneration) {
+                console.log('[GameController] 跳过后续生成 - 由重新生成功能接管');
+                return;
+            }
+            
             const gameStateService = this.serviceLocator.get('gameStateService');
             const llmService = this.serviceLocator.get('llmService');
 
@@ -121,7 +128,7 @@ class GameController {
 记住：不要提及任何数值变化（HP、经验值、等级等），系统会自动处理和显示这些。`;
 
             const response = await llmService.generateResponse(
-                gameStateService.generateGamePrompt(), 
+                gameStateService.generateGamePrompt(),
                 {
                     userInput: continuationPrompt
                 }

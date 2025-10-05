@@ -32,6 +32,89 @@ class GameStateService {
         this.eventBus.emit('state:conversation:updated', entry, 'game');
     }
 
+    // 移除对话条目（用于重新生成功能）
+    removeConversationEntry(messageData) {
+        try {
+            const history = this.gameState.conversation.history;
+            if (!history) return;
+            
+            console.log('[GameStateService] 开始移除对话条目，当前历史长度:', history.length);
+            console.log('[GameStateService] 要移除的消息:', messageData);
+            
+            // 根据消息类型和内容查找并移除对应的历史条目
+            const typeToMatch = messageData.type || 'gm_narrative';
+            const contentToMatch = messageData.content;
+            
+            // 首先移除GM消息
+            let gmRemoved = false;
+            for (let i = history.length - 1; i >= 0; i--) {
+                const entry = history[i];
+                if (entry.type === typeToMatch && entry.content === contentToMatch) {
+                    history.splice(i, 1);
+                    console.log('[GameStateService] 移除GM消息:', typeToMatch, '位置:', i);
+                    gmRemoved = true;
+                    break;
+                }
+            }
+            
+            // 如果是重新生成GM消息，还需要移除相关的历史条目以避免重复
+            if (gmRemoved && (typeToMatch === 'gm_narrative' || typeToMatch === 'gm_continuation' || typeToMatch === 'gm_fallback')) {
+                // 移除最后的玩家行动和相关的函数结果
+                let removedPlayerAction = false;
+                let removedFunctionResult = false;
+                
+                // 从后往前查找，移除最近的相关条目
+                for (let i = history.length - 1; i >= 0; i--) {
+                    const entry = history[i];
+                    
+                    // 移除最后一个玩家行动（如果还没移除的话）
+                    if (!removedPlayerAction && entry.type === 'player_action') {
+                        history.splice(i, 1);
+                        console.log('[GameStateService] 移除最后的玩家行动消息，位置:', i);
+                        removedPlayerAction = true;
+                        continue; // 继续查找函数结果
+                    }
+                    
+                    // 移除最近的函数结果（特别是战斗相关的）
+                    if (!removedFunctionResult && entry.type === 'function_result') {
+                        // 检查是否是可能导致重复的函数结果（如战斗准备）
+                        if (entry.result && (entry.result.outcome === 'battle_ready' || entry.result.outcome === 'battle_started')) {
+                            history.splice(i, 1);
+                            console.log('[GameStateService] 移除战斗相关函数结果，位置:', i);
+                            removedFunctionResult = true;
+                        }
+                    }
+                    
+                    // 如果两个条目都已移除，就停止
+                    if (removedPlayerAction && removedFunctionResult) {
+                        break;
+                    }
+                }
+                
+                // 如果只移除了玩家行动，再检查一次函数结果
+                if (removedPlayerAction && !removedFunctionResult) {
+                    for (let i = history.length - 1; i >= 0; i--) {
+                        const entry = history[i];
+                        if (entry.type === 'function_result') {
+                            // 移除最后一个函数结果以防止重复显示
+                            history.splice(i, 1);
+                            console.log('[GameStateService] 移除最后的函数结果以防重复，位置:', i);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            console.log('[GameStateService] 移除完成，新的历史长度:', history.length);
+            
+            this.eventBus.emit('state:conversation:updated', {
+                historyLength: history.length
+            }, 'game');
+        } catch (e) {
+            console.warn('[GameStateService] 移除对话条目失败:', e);
+        }
+    }
+
     handleGameAction(actionData) {
         this.addConversationEntry({
             role: 'user',

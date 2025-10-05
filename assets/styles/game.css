@@ -2039,6 +2039,104 @@ body {
     box-shadow: none !important;
 }
 
+/* ==================== 重新生成消息按钮样式 ==================== */
+.message-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+}
+
+.regenerate-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
+}
+
+.regenerate-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.regenerate-button:active {
+    transform: scale(0.95);
+}
+
+/* 为GM消息添加悬浮显示按钮的效果 */
+.narrative-message.gm_narrative:hover .message-actions,
+.narrative-message.gm_continuation:hover .message-actions,
+.narrative-message.gm_fallback:hover .message-actions {
+    opacity: 1;
+}
+
+/* 确保消息容器有相对定位 */
+.narrative-message.gm_narrative,
+.narrative-message.gm_continuation,
+.narrative-message.gm_fallback {
+    position: relative;
+}
+
+/* 重新生成按钮的特殊状态 */
+.regenerate-button.regenerating {
+    animation: regenerateSpin 1s linear infinite;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+@keyframes regenerateSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 重新生成按钮的提示样式 - 已禁用 */
+/*
+.regenerate-button[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 1000;
+    margin-bottom: 4px;
+    pointer-events: none;
+}
+*/
+
+/* 响应式设计 - 移动设备上的重新生成按钮 */
+@media (max-width: 768px) {
+    .message-actions {
+        opacity: 1; /* 在移动设备上始终显示 */
+        top: 4px;
+        right: 4px;
+    }
+    
+    .regenerate-button {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+    }
+}
+
 /* ==================== 战斗效果图标系统 ==================== */
 .unit-effects-panel {
     display: flex;
