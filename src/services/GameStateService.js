@@ -269,17 +269,102 @@ ${contextSection}
 ## 函数调用规则：
 当需要调用游戏功能时，必须先用2-3句叙述当前情境与玩家状态（衔接前文剧情），然后使用以下格式调用，并在调用后立即停止输出：
 
-战斗系统（推荐使用敌人等级系统）：
+战斗系统（使用敌人模版系统）：
 <FUNCTION_CALL>
 {
   "name": "start_battle",
   "arguments": {
-    "enemies": [{"type": "小史莱姆", "level": 1}],
-    "environment": "地牢走廊",
-    "special_conditions": ["昏暗"]
+    "encounter_type": "template",
+    "enemies": [
+      {"level": 5, "category": "minion", "species": "forest_wolf", "count": 2},
+      {"level": 7, "category": "elite", "species": "goblin_warchief"}
+    ],
+    "environment": "黑暗的森林",
+    "special_conditions": ["昏暗", "危险"]
   }
 }
 </FUNCTION_CALL>
+
+## 敌人模版参数说明：
+**必需参数：**
+- encounter_type: "template"（必须使用此值）
+- enemies: 敌人配置数组
+
+**敌人配置参数：**
+- level: 1-100的敌人等级（必需）
+- category: 敌人强度类型（可选，默认"minion"）
+- species: 敌人物种类型（可选，如不指定则随机选择）
+- count: 生成数量（可选，默认1，Boss只能为1）
+
+## 可选物种类型(species)：
+
+**小怪物种：**
+- forest_wolf: 森林狼 - 敏捷掠食者，撕咬+流血
+- goblin: 哥布林战士 - 狡猾小怪，群体作战
+- skeleton: 骷髅兵 - 不死战士，物理抗性
+- wild_boar: 野猪 - 暴躁野兽，冲锋攻击
+- bandit: 盗贼 - 经验劫匪，暴击偷袭
+- fire_elemental: 火元素 - 燃烧生物，火球+灼烧
+- ice_slime: 冰霜史莱姆 - 寒冷粘液，冰锥+减速
+- shadow_sprite: 暗影精灵 - 阴影魔物，暗影+闪避
+- electric_snake: 电光蛇 - 电能蛇类，闪电链+麻痹
+- poison_mushroom: 毒菇怪 - 有毒菌类，毒孢子+控制
+
+**精英物种：**
+- goblin_warchief: 哥布林督军 - 部落领袖，战争咆哮
+- skeleton_captain: 骷髅队长 - 不死指挥官，亡灵号令
+- alpha_wolf: 巨狼首领 - 狼群领袖，群体增益
+- mage_guard: 法师护卫 - 魔法战士，法术防护
+- bandit_leader: 盗贼头目 - 狡猾首领，毒刃刺杀
+
+**高级精英物种：**
+- shadow_assassin: 暗影刺客 - 暗影杀手，影分身
+- elemental_guardian: 元素守护者 - 元素守护灵，多元素
+- necromancer: 死灵法师 - 死灵操控者，亡灵召唤
+- war_machine: 战争机器 - 魔法构造体，装甲火炮
+- chaos_sorcerer: 混沌术士 - 疯狂法师，混沌魔法
+
+**BOSS物种：**
+- shadow_dragon: 暗影龙王 - 古老巨龙，龙息+复活
+- elemental_lord: 元素领主 - 位面统治者，元素主宰
+- lich_king: 死灵大君 - 不死之王，死亡领域
+- mech_overlord: 机械霸主 - 超级AI，歼灭光束
+- void_master: 虚空主宰 - 虚空恐怖，现实崩坏
+
+## 敌人强度类型详解：
+
+**🐺 小怪 (minion) - 快速战斗，1-3回合**
+- 物理系：森林狼、哥布林战士、骷髅兵、野猪、盗贼
+- 魔法系：火元素、冰霜史莱姆、暗影精灵、电光蛇、毒菇怪
+- 推荐组合：2-4个同级或低1级小怪
+
+**⚔️ 精英 (elite) - 中等挑战，3-8回合**
+- 类型：哥布林督军、骷髅队长、巨狼首领、法师护卫、盗贼头目
+- 推荐组合：1个同级精英 + 1-2个低级小怪
+
+**👑 高级精英 (advanced_elite) - 高难度，8-15回合**
+- 类型：暗影刺客、元素守护者、死灵法师、战争机器、混沌术士
+- 推荐组合：1个同级或高1级的高级精英
+
+**🐉 Boss (boss) - 史诗挑战，15-30回合**
+- 类型：暗影龙王、元素领主、死灵大君、机械霸主、虚空主宰
+- 推荐组合：1个高2-3级的Boss（具备复活机制）
+
+## 战斗配置建议：
+**新手遭遇（玩家1-3级）：**
+"enemies": [{"level": 2, "category": "minion", "count": 2}]
+
+**日常探险（玩家4-10级）：**
+"enemies": [
+  {"level": 5, "category": "minion", "count": 3},
+  {"level": 6, "category": "elite"}
+]
+
+**危险挑战（玩家10+级）：**
+"enemies": [{"level": 12, "category": "advanced_elite"}]
+
+**BOSS战（重要剧情节点）：**
+"enemies": [{"level": 15, "category": "boss"}]
 
 调用函数前的叙述要求：
 - 简要描述当前环境、遭遇与动机，至少2-3句
@@ -289,22 +374,6 @@ ${contextSection}
 战斗后剧情生成规则：
 - 交互式战斗开始后不要继续生成剧情
 - 仅在战斗完成后，系统将把最终战斗结果传回AI，再生成后续剧情
-
-## 敌人等级指南：
-- 1级敌人：小史莱姆、幼年哥布林（新手友好，容易获胜）
-- 2级敌人：野狼、哥布林战士（稍有挑战）
-- 3级敌人：骷髅兵、森林巨熊（中等难度）
-- 4级敌人：哥布林萨满、石像鬼（较高难度）
-- 5级敌人：暗影刺客、火焰元素（高难度）
-- 6级敌人：兽人酋长、冰霜巨人（精英级别）
-- 7级敌人：黑暗骑士、古龙幼崽（Boss级别）
-- 8级敌人：巫妖王、泰坦守护者（传说级别）
-
-根据玩家等级选择合适的敌人：
-- 玩家1级：推荐1级敌人
-- 玩家2级：推荐1-2级敌人
-- 玩家3级：推荐2-3级敌人
-- 以此类推...
 
 解谜系统：
 <FUNCTION_CALL>

@@ -82,21 +82,32 @@ class SkillService {
   checkWeaponRequirement(requiredWeapons) {
     const gameStateService = this.getGameStateService();
     const player = gameStateService?.getState()?.player;
-    if (!player) return false;
+    if (!player) {
+      console.log('[SkillService] checkWeaponRequirement: 无法获取玩家状态');
+      return false;
+    }
     
     const weapon1 = player.equipment?.weapon1;
-    if (!weapon1) return false;
+    if (!weapon1) {
+      console.log('[SkillService] checkWeaponRequirement: 玩家未装备武器');
+      return false;
+    }
     
     const weaponCategory = weapon1.weaponCategory;
     const weaponSubCategory = weapon1.weaponSubCategory;
     
+    console.log(`[SkillService] checkWeaponRequirement: 装备武器类型=${weaponCategory}, 子类型=${weaponSubCategory}, 技能要求=${requiredWeapons.join(',')}`);
+    
     // 检查是否匹配任一要求
-    return requiredWeapons.some(req => {
+    const result = requiredWeapons.some(req => {
       if (req === 'dagger') {
         return weaponSubCategory === 'dagger';
       }
       return weaponCategory === req;
     });
+    
+    console.log(`[SkillService] checkWeaponRequirement: 武器检查结果=${result}`);
+    return result;
   }
 
   getUpgradableSkills(player) {
@@ -340,7 +351,7 @@ class SkillService {
     if ((owned.cooldownLeft || 0) > 0) return { ok: false, reason: '冷却中' };
     const skill = SkillsDB.getSkillById(skillId);
     
-    // 新增：武器前提检查
+    // 新增：武器前提检查（修复：使用全局状态检查装备，因为battleState.player没有完整的equipment信息）
     if (skill.weaponRequirement && skill.weaponRequirement.length > 0) {
       const hasValidWeapon = this.checkWeaponRequirement(skill.weaponRequirement);
       if (!hasValidWeapon) {

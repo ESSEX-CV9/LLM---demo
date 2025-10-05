@@ -22,6 +22,13 @@ class SkillsView {
     this.DEFAULT_FOCUS_SCALE = 0.75;
     this.DEFAULT_FOCUS_OFFSET_X = -280;   // 正值向右
     this.DEFAULT_FOCUS_OFFSET_Y = 290;  // 正值代表让节点更靠上显示（内部会取负）
+    
+    // 三个分类独立的连接线偏移量配置
+    this.CATEGORY_OFFSETS = {
+      physical: { x: -1880, y: -148 },  // 物理技能树偏移（当前默认值）
+      magic: { x: -1955, y: -148 },     // 魔法技能树偏移（需要调整）
+      passive: { x: -380, y: -148 }    // 被动技能树偏移（需要调整）
+    };
 
     this.setupEventListeners();
   }
@@ -1243,7 +1250,8 @@ class SkillsView {
       minScale: 0.3,
       maxScale: 3,
       onTransformChange: (transform) => {
-        // 更新缩放显示
+        // 守护：界面可能已关闭或DOM尚未就绪
+        if (!this.modal) return;
         const percent = Math.round(transform.scale * 100);
         const scaleDisplay = this.modal.querySelector('#scaleDisplay');
         if (scaleDisplay) {
@@ -1252,18 +1260,19 @@ class SkillsView {
       }
     });
     
-    // 创建连接线绘制器（支持可调偏移）
+    // 创建连接线绘制器（使用物理技能树的默认偏移量）
+    const physicalOffsets = this.CATEGORY_OFFSETS.physical;
     this.treeConnector = new SkillTreeConnector(svg, {
       strokeWidth: 2,
       curveStyle: 'bezier',
       showArrows: true,
-      // 允许从全局 window.SKILL_CONN_OFFSET 读入偏移，便于手动调试；否则使用默认偏移
+      // 优先级：全局调试偏移 > 物理技能树默认偏移
       offsetX: (typeof window !== 'undefined' && window.SKILL_CONN_OFFSET && typeof window.SKILL_CONN_OFFSET.x === 'number')
         ? window.SKILL_CONN_OFFSET.x
-        : -1880,
+        : physicalOffsets.x,
       offsetY: (typeof window !== 'undefined' && window.SKILL_CONN_OFFSET && typeof window.SKILL_CONN_OFFSET.y === 'number')
         ? window.SKILL_CONN_OFFSET.y
-        : -148
+        : physicalOffsets.y
     });
 
     // 暴露全局调试方法：运行时调整偏移并重绘当前分类
@@ -1278,6 +1287,27 @@ class SkillsView {
           console.log('[SkillsView] 已应用连接线偏移:', { x: ox, y: oy });
         } catch (err) {
           console.warn('[SkillsView] 应用连接线偏移失败:', err);
+        }
+      };
+      
+      // 新增：为特定分类设置偏移的调试方法
+      window.setSkillCategoryOffset = (category, x, y) => {
+        try {
+          const ox = Number(x) || 0;
+          const oy = Number(y) || 0;
+          if (this.CATEGORY_OFFSETS[category]) {
+            this.CATEGORY_OFFSETS[category] = { x: ox, y: oy };
+            console.log(`[SkillsView] 更新${category}分类偏移:`, { x: ox, y: oy });
+            
+            // 如果当前就是这个分类，立即应用
+            const activeCategory = this.getActiveCategory();
+            if (activeCategory === category) {
+              this.treeConnector?.setOffsets(ox, oy);
+              this.drawConnectionsForCategory(activeCategory);
+            }
+          }
+        } catch (err) {
+          console.warn('[SkillsView] 设置分类偏移失败:', err);
         }
       };
     }
@@ -1475,6 +1505,21 @@ class SkillsView {
     if (!this.currentTreeData || !this.currentTreeData[category]) return;
     
     const { nodes, bounds } = this.currentTreeData[category];
+    
+    // 🆕 切换分类时更新连接线偏移量
+    const categoryOffsets = this.CATEGORY_OFFSETS[category];
+    if (categoryOffsets && this.treeConnector) {
+      // 优先使用全局调试偏移，否则使用分类默认偏移
+      const offsetX = (typeof window !== 'undefined' && window.SKILL_CONN_OFFSET && typeof window.SKILL_CONN_OFFSET.x === 'number')
+        ? window.SKILL_CONN_OFFSET.x
+        : categoryOffsets.x;
+      const offsetY = (typeof window !== 'undefined' && window.SKILL_CONN_OFFSET && typeof window.SKILL_CONN_OFFSET.y === 'number')
+        ? window.SKILL_CONN_OFFSET.y
+        : categoryOffsets.y;
+        
+      this.treeConnector.setOffsets(offsetX, offsetY);
+      console.log(`[SkillsView] 为分类 ${category} 设置连接线偏移:`, { x: offsetX, y: offsetY });
+    }
     
     // 为节点添加父子关系（用于绘制连接线）
     nodes.forEach(node => {

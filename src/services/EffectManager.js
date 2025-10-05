@@ -30,7 +30,7 @@ class EffectManager {
             id: effectId,
             type: 'dot',
             subType: dotData.type, // 'burn', 'poison', 'bleed'
-            target: target,
+            // 🆕 移除 target 引用避免循环引用，effect已存储在target.activeEffects中
             damage: dotData.damage,
             remainingTurns: dotData.duration,
             sourceId: sourceId,
@@ -66,7 +66,7 @@ class EffectManager {
             id: effectId,
             type: 'cc',
             subType: ccData.type, // 'stun', 'freeze', 'slow'
-            target: target,
+            // 🆕 移除 target 引用避免循环引用
             remainingTurns: ccData.duration,
             sourceId: sourceId,
             timestamp: Date.now()
@@ -95,7 +95,7 @@ class EffectManager {
             type: 'mark',
             damageBonus: markData.damageBonus,
             remainingTurns: markData.duration,
-            target: target,
+            // 🆕 移除 target 引用避免循环引用
             sourceId: sourceId,
             timestamp: Date.now()
         };
@@ -123,7 +123,7 @@ class EffectManager {
             type: 'reflect',
             percent: reflectData.percent,
             remainingTurns: reflectData.duration,
-            target: target,
+            // 🆕 移除 target 引用避免循环引用
             sourceId: sourceId,
             timestamp: Date.now()
         };

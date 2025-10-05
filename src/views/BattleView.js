@@ -58,59 +58,63 @@ class BattleView {
         this.setupBattleEvents(battleModal, battleState);
     }
 
-    // 生成敌人显示（支持最多3个敌人）- 新布局：上部头像+名称+buff，下部数值条
+    // 生成敌人显示（支持滚动显示所有敌人）- 新布局：左侧头像+名称+编号，右侧数值条
     generateEnemiesDisplay(battleState) {
-        const enemies = battleState.enemies.slice(0, 3); // 最多显示3个
+        const enemies = battleState.enemies; // 显示所有敌人，不限制数量
         return `
             <div class="enemies-container">
                 ${enemies.map((enemy, index) => `
                     <div class="enemy-unit ${enemy.hp <= 0 ? 'defeated' : ''}" data-index="${index}">
-                        <!-- 上部：头像 + 名称 + buff/debuff -->
-                        <div class="enemy-header-section">
-                            <div class="enemy-sprite-compact">
-                                <span class="sprite-emoji">👹</span>
+                        <!-- 水平布局：左侧头像+名称+编号，右侧状态条 -->
+                        <div class="enemy-horizontal-layout">
+                            <!-- 左侧：头像 + 名称 + 编号 -->
+                            <div class="enemy-left-section">
+                                <div class="enemy-sprite-compact">
+                                    <span class="sprite-emoji">👹</span>
+                                </div>
+                                <div class="enemy-info">
+                                    <div class="enemy-name">${enemy.name || enemy.type}</div>
+                                    <div class="enemy-id-compact">#${index + 1}</div>
+                                </div>
                             </div>
-                            <div class="enemy-info">
-                                <div class="enemy-name">${enemy.type}</div>
-                                <div class="enemy-id-compact">#${index + 1}</div>
+                            
+                            <!-- 右侧：状态条区域 -->
+                            <div class="enemy-bars-compact">
+                                <!-- HP条 -->
+                                <div class="status-bar hp-bar">
+                                    <div class="bar-label">HP</div>
+                                    <div class="bar-container">
+                                        <div class="bar-fill hp-fill" style="width: ${(enemy.hp / enemy.maxHp) * 100}%"></div>
+                                        <span class="bar-text">${enemy.hp}/${enemy.maxHp}</span>
+                                    </div>
+                                </div>
+                                
+                                ${enemy.mana !== undefined ? `
+                                <!-- MP条 -->
+                                <div class="status-bar mp-bar">
+                                    <div class="bar-label">MP</div>
+                                    <div class="bar-container">
+                                        <div class="bar-fill mp-fill" style="width: ${((enemy.mana || 0) / (enemy.maxMana || 1)) * 100}%"></div>
+                                        <span class="bar-text">${enemy.mana || 0}</span>
+                                    </div>
+                                </div>
+                                ` : ''}
+                                
+                                ${enemy.stamina !== undefined ? `
+                                <!-- SP条 -->
+                                <div class="status-bar sp-bar">
+                                    <div class="bar-label">SP</div>
+                                    <div class="bar-container">
+                                        <div class="bar-fill sp-fill" style="width: ${((enemy.stamina || 0) / (enemy.maxStamina || 1)) * 100}%"></div>
+                                        <span class="bar-text">${enemy.stamina || 0}</span>
+                                    </div>
+                                </div>
+                                ` : ''}
                             </div>
-                            <!-- 效果图标显示 -->
-                            ${this.renderUnitEffects(enemy)}
                         </div>
                         
-                        <!-- 下部：状态条区域 -->
-                        <div class="enemy-bars-compact">
-                            <!-- HP条 -->
-                            <div class="status-bar hp-bar">
-                                <div class="bar-label">HP</div>
-                                <div class="bar-container">
-                                    <div class="bar-fill hp-fill" style="width: ${(enemy.hp / enemy.maxHp) * 100}%"></div>
-                                    <span class="bar-text">${enemy.hp}/${enemy.maxHp}</span>
-                                </div>
-                            </div>
-                            
-                            ${enemy.mana !== undefined ? `
-                            <!-- MP条 -->
-                            <div class="status-bar mp-bar">
-                                <div class="bar-label">MP</div>
-                                <div class="bar-container">
-                                    <div class="bar-fill mp-fill" style="width: ${((enemy.mana || 0) / (enemy.maxMana || 1)) * 100}%"></div>
-                                    <span class="bar-text">${enemy.mana || 0}</span>
-                                </div>
-                            </div>
-                            ` : ''}
-                            
-                            ${enemy.stamina !== undefined ? `
-                            <!-- SP条 -->
-                            <div class="status-bar sp-bar">
-                                <div class="bar-label">SP</div>
-                                <div class="bar-container">
-                                    <div class="bar-fill sp-fill" style="width: ${((enemy.stamina || 0) / (enemy.maxStamina || 1)) * 100}%"></div>
-                                    <span class="bar-text">${enemy.stamina || 0}</span>
-                                </div>
-                            </div>
-                            ` : ''}
-                        </div>
+                        <!-- 效果图标显示 -->
+                        ${this.renderUnitEffects(enemy)}
                     </div>
                 `).join('')}
             </div>
@@ -322,10 +326,16 @@ class BattleView {
                 const mpCost = skill.cost?.mp?.[lvIdx] ?? 0;
                 const spCost = skill.cost?.sp?.[lvIdx] ?? 0;
                 
-                // 检查是否可用
-                const canUse = cooldownLeft === 0 &&
-                              (battleState.player.mana || 0) >= mpCost &&
-                              (battleState.player.stamina || 0) >= spCost;
+                // 检查是否可用（包含武器要求检查）
+                let canUse = cooldownLeft === 0 &&
+                            (battleState.player.mana || 0) >= mpCost &&
+                            (battleState.player.stamina || 0) >= spCost;
+                
+                // 新增：检查武器要求
+                if (canUse && skill.weaponRequirement && skill.weaponRequirement.length > 0) {
+                    const hasValidWeapon = this.checkWeaponRequirement(skill.weaponRequirement);
+                    canUse = hasValidWeapon;
+                }
                 
                 const disabledClass = canUse ? '' : 'disabled';
                 const cooldownText = cooldownLeft > 0 ? `<span class="cooldown-text">CD${cooldownLeft}</span>` : '';
@@ -394,7 +404,7 @@ class BattleView {
                 <div class="target-buttons">
                     ${aliveEnemies.map((enemy, index) => `
                         <button class="target-btn" data-target="${battleState.enemies.indexOf(enemy)}">
-                            ${enemy.type} (${enemy.hp}/${enemy.maxHp})
+                            ${enemy.name || enemy.type} (${enemy.hp}/${enemy.maxHp})
                         </button>
                     `).join('')}
                 </div>
@@ -953,6 +963,27 @@ class BattleView {
         if (this.gameView && typeof this.gameView.enableInput === 'function') {
             this.gameView.enableInput();
         }
+    }
+
+    // 检查武器要求（从SkillService复制的逻辑）
+    checkWeaponRequirement(requiredWeapons) {
+        const gameStateService = window.gameCore?.getService('gameStateService');
+        const player = gameStateService?.getState()?.player;
+        if (!player) return false;
+        
+        const weapon1 = player.equipment?.weapon1;
+        if (!weapon1) return false;
+        
+        const weaponCategory = weapon1.weaponCategory;
+        const weaponSubCategory = weapon1.weaponSubCategory;
+        
+        // 检查是否匹配任一要求
+        return requiredWeapons.some(req => {
+            if (req === 'dagger') {
+                return weaponSubCategory === 'dagger';
+            }
+            return weaponCategory === req;
+        });
     }
 }
 

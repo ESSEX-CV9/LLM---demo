@@ -194,15 +194,23 @@ class BattleService {
         if (this.battleState.turn === 'player') {
             result = await this.executePlayerAction(action, target, item, skillId);
             
-            // 如果是特殊攻击或技能，WeaponService/SkillService已经处理了回合切换
-            // 不需要重复处理
-            if (action === '特殊攻击' || action === '技能') {
-                return result;
-            }
-            
-            // 检查敌人是否全部死亡
+            // 🆕 统一检查战斗结束条件（无论什么行动类型）
             if (this.battleState.enemies.every(enemy => enemy.hp <= 0)) {
                 return await this.endBattle('victory');
+            }
+            
+            // 如果是特殊攻击或技能，在检查战斗结束后再处理回合逻辑
+            if (action === '特殊攻击' || action === '技能') {
+                // 技能/特殊攻击后仍需切换回合（如果战斗未结束）
+                this.battleState.turn = 'enemy';
+                this.eventBus.emit('ui:battle:update', this.battleState, 'game');
+                
+                // 延迟执行敌人行动
+                setTimeout(() => {
+                    this.executeEnemyTurn();
+                }, 1500);
+                
+                return result;
             }
             
             // 切换到敌人回合

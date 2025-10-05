@@ -857,6 +857,16 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+    /* 隐藏滚动条但保持滚动功能 */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+.enemies-container::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
 }
 
 .enemy-unit {
@@ -868,7 +878,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    min-height: 100px;
+    min-height: 80px;
+    flex-shrink: 0;
 }
 
 .enemy-unit.defeated {
@@ -878,7 +889,24 @@ body {
     filter: grayscale(100%);
 }
 
-/* 敌人上部区域（头像+名称+buff） */
+/* 敌人水平布局容器 */
+.enemy-horizontal-layout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+/* 敌人左侧区域（头像+名称+编号） */
+.enemy-left-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    min-width: 100px;
+}
+
+/* 敌人上部区域（头像+名称+buff） - 保留用于向后兼容 */
 .enemy-header-section {
     display: flex;
     align-items: center;
@@ -888,8 +916,8 @@ body {
 }
 
 .enemy-sprite-compact {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     background: rgba(231, 76, 60, 0.3);
     border: 2px solid rgba(231, 76, 60, 0.5);
     border-radius: 50%;
@@ -900,37 +928,41 @@ body {
 }
 
 .enemy-sprite-compact .sprite-emoji {
-    font-size: 24px;
+    font-size: 18px;
 }
 
 .enemy-info {
-    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 2px;
     min-width: 0;
+    flex: 1;
 }
 
 .enemy-name {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: bold;
     color: #ffffff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.2;
 }
 
 .enemy-id-compact {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 600;
     color: rgba(255, 255, 255, 0.6);
+    line-height: 1;
 }
 
-/* 敌人状态条区域（下部） */
+/* 敌人状态条区域（右侧） */
 .enemy-bars-compact {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
+    flex: 1;
+    min-width: 120px;
 }
 
 /* 移除旧的right-section样式 */
@@ -978,8 +1010,8 @@ body {
     flex: 1;
     position: relative;
     background: rgba(0, 0, 0, 0.4);
-    height: 16px;
-    border-radius: 8px;
+    height: 14px;
+    border-radius: 7px;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.15);
 }
@@ -987,7 +1019,7 @@ body {
 .bar-fill {
     height: 100%;
     transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    border-radius: 8px;
+    border-radius: 7px;
 }
 
 /* HP条颜色 */
@@ -1019,9 +1051,9 @@ body {
     transform: translate(-50%, -50%);
     color: white;
     font-weight: 700;
-    font-size: 10px;
+    font-size: 9px;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
 }
 
 /* 增益效果显示 */
