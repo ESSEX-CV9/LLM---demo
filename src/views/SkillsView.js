@@ -83,16 +83,7 @@ class SkillsView {
         <div class="skills-body-with-slots">
           <!-- 左侧技能装备槽 -->
           <div class="skills-equipment-area">
-            <h4>⚔️ 战斗技能槽</h4>
-            <div class="skill-slots" id="skillSlots">
-              ${this.renderSkillSlots(player)}
-            </div>
-            <div class="skill-slot-hint">拖拽或点击技能装备/卸下<br>最多装备6个技能</div>
-          </div>
-          
-          <!-- 右侧技能展示区域 -->
-          <div class="skills-list-area">
-            <!-- 视图切换按钮 -->
+            <!-- 视图切换按钮移到技能槽上方 -->
             <div class="skills-view-switcher">
               <button class="view-btn active" data-view="tree" id="viewBtnTree">
                 🌳 技能树
@@ -102,6 +93,15 @@ class SkillsView {
               </button>
             </div>
             
+            <h4>⚔️ 战斗技能槽</h4>
+            <div class="skill-slots" id="skillSlots">
+              ${this.renderSkillSlots(player)}
+            </div>
+            <div class="skill-slot-hint">拖拽或点击技能装备/卸下<br>最多装备6个技能</div>
+          </div>
+          
+          <!-- 右侧技能展示区域 -->
+          <div class="skills-list-area">
             <!-- 技能树视图 -->
             <div class="skills-tree-view" id="skillsTreeView">
               ${this.renderSkillTree(player, allSkills)}
@@ -128,10 +128,10 @@ class SkillsView {
     `;
 
     
-    // 初始化交互式技能树
-    this.initInteractiveTree(player, allSkills);
+    // 将弹窗插入DOM并设置引用后再初始化交互式技能树
     document.body.appendChild(modal);
     this.modal = modal;
+    this.initInteractiveTree(player, allSkills);
 
     // 绑定事件
     const closeBtn = modal.querySelector('.close-button');
@@ -1252,12 +1252,35 @@ class SkillsView {
       }
     });
     
-    // 创建连接线绘制器
+    // 创建连接线绘制器（支持可调偏移）
     this.treeConnector = new SkillTreeConnector(svg, {
       strokeWidth: 2,
       curveStyle: 'bezier',
-      showArrows: true
+      showArrows: true,
+      // 允许从全局 window.SKILL_CONN_OFFSET 读入偏移，便于手动调试；否则使用默认偏移
+      offsetX: (typeof window !== 'undefined' && window.SKILL_CONN_OFFSET && typeof window.SKILL_CONN_OFFSET.x === 'number')
+        ? window.SKILL_CONN_OFFSET.x
+        : -1880,
+      offsetY: (typeof window !== 'undefined' && window.SKILL_CONN_OFFSET && typeof window.SKILL_CONN_OFFSET.y === 'number')
+        ? window.SKILL_CONN_OFFSET.y
+        : -148
     });
+
+    // 暴露全局调试方法：运行时调整偏移并重绘当前分类
+    if (typeof window !== 'undefined') {
+      window.setSkillConnectionsOffset = (x, y) => {
+        try {
+          const ox = Number(x) || 0;
+          const oy = Number(y) || 0;
+          this.treeConnector?.setOffsets(ox, oy);
+          const activeCategory = this.getActiveCategory();
+          this.drawConnectionsForCategory(activeCategory);
+          console.log('[SkillsView] 已应用连接线偏移:', { x: ox, y: oy });
+        } catch (err) {
+          console.warn('[SkillsView] 应用连接线偏移失败:', err);
+        }
+      };
+    }
     
     // 渲染所有分类的技能树
     this.renderAllCategoryTrees(player, allSkills, layoutEngine);

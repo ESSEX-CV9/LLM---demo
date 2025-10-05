@@ -19,6 +19,19 @@ class SkillTreeConnector {
       equipped: options.equippedColor || '#FFD700',
       default: options.defaultColor || '#666'
     };
+
+    // 全局/参数可调连接线偏移（用于修正右下偏移问题）
+    // 优先级：options.offsetX/Y > window.SKILL_CONN_OFFSET.{x,y} > 0
+    this.offsetX = (typeof options.offsetX === 'number')
+      ? options.offsetX
+      : ((typeof window !== 'undefined' && window.SKILL_CONN_OFFSET && typeof window.SKILL_CONN_OFFSET.x === 'number')
+          ? window.SKILL_CONN_OFFSET.x
+          : 0);
+    this.offsetY = (typeof options.offsetY === 'number')
+      ? options.offsetY
+      : ((typeof window !== 'undefined' && window.SKILL_CONN_OFFSET && typeof window.SKILL_CONN_OFFSET.y === 'number')
+          ? window.SKILL_CONN_OFFSET.y
+          : 0);
     
     // 创建箭头定义（如果需要）
     if (this.showArrows) {
@@ -100,11 +113,11 @@ class SkillTreeConnector {
    * @param {Boolean} isDashed - 是否使用虚线
    */
   drawConnection(parent, child, isDashed = false) {
-    // 计算起点和终点
-    const startX = parent.x;
-    const startY = parent.y + 50; // 父节点底部
-    const endX = child.x;
-    const endY = child.y - 50; // 子节点顶部
+    // 计算起点和终点（加入可调偏移）
+    const startX = parent.x + (this.offsetX || 0);
+    const startY = parent.y + 50 + (this.offsetY || 0); // 父节点底部
+    const endX = child.x + (this.offsetX || 0);
+    const endY = child.y - 50 + (this.offsetY || 0); // 子节点顶部
     
     // 创建路径
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -339,6 +352,16 @@ class SkillTreeConnector {
       }
       this.createArrowMarkers();
     }
+  }
+
+  /**
+   * 设置连接线偏移（运行时可调）
+   * @param {number} offsetX
+   * @param {number} offsetY
+   */
+  setOffsets(offsetX = 0, offsetY = 0) {
+    this.offsetX = Number(offsetX) || 0;
+    this.offsetY = Number(offsetY) || 0;
   }
 }
 

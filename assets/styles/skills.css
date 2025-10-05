@@ -1156,11 +1156,13 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    /* 使用 SVG 自身的 viewBox/width/height 属性进行尺寸控制，避免继承 0 尺寸导致不可见 */
+    width: auto;
+    height: auto;
     pointer-events: none;
     overflow: visible;
     z-index: 0;
+    display: block;
 }
 
 /* 节点容器 */
