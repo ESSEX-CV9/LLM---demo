@@ -757,9 +757,6 @@ class BattleView {
         if (weaponService) {
             const attacks = weaponService.getAvailableBasicAttacks(player);
             attacks.forEach(attack => {
-                // 跳过徒手攻击
-                if (attack.id === 'unarmed_light' || attack.id === 'unarmed_heavy') return;
-                
                 // 检查资源是否足够
                 const spCost = attack.staminaCost || 0;
                 const canUse = (player.stamina || 0) >= spCost;

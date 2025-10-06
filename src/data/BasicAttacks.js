@@ -25,7 +25,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 5,
             damageMultiplier: 0.6,
-            staminaCost: 0,
+            staminaCost: 1,
             manaCost: 0,
             description: '快速的拳脚攻击'
         },
@@ -36,7 +36,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 12,
             damageMultiplier: 1.0,
-            staminaCost: 0,
+            staminaCost: 3,
             manaCost: 0,
             description: '蓄力的重拳攻击'
         }
@@ -340,9 +340,7 @@ function getBasicAttacksForWeapon(weaponCategory, weaponSubCategory) {
         return attacks;
     }
     
-    // 添加轻击和重击（所有武器都有）
-    attacks.push(BasicAttacks.unarmed.lightAttack);
-    attacks.push(BasicAttacks.unarmed.heavyAttack);
+    // 装备武器时，只返回武器相关的特殊攻击，不包含徒手轻击重击
     
     // 添加大类共享攻击
     if (categoryAttacks.shared) {

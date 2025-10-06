@@ -8,21 +8,21 @@ class EnemyTemplates {
 
     initializeTypeMultipliers() {
         return {
-            "minion": { 
-                hp: 0.8, attack: 0.8, physicalPower: 0.8, magicPower: 0.8, 
-                physicalResistance: 0, magicResistance: 0, agility: 1.0, weight: 0.9, criticalChance: 2 
+            "minion": {
+                hp: 1.0, attack: 0.9, physicalPower: 0.9, magicPower: 0.9,
+                physicalResistance: 2, magicResistance: 2, agility: 1.0, weight: 0.9, criticalChance: 5
             },
-            "elite": { 
-                hp: 1.3, attack: 1.1, physicalPower: 1.1, magicPower: 1.1, 
-                physicalResistance: 5, magicResistance: 5, agility: 1.1, weight: 1.1, criticalChance: 8 
+            "elite": {
+                hp: 1.6, attack: 1.3, physicalPower: 1.3, magicPower: 1.3,
+                physicalResistance: 10, magicResistance: 8, agility: 1.2, weight: 1.1, criticalChance: 12
             },
-            "elite_advanced": { 
-                hp: 1.8, attack: 1.4, physicalPower: 1.4, magicPower: 1.4, 
-                physicalResistance: 15, magicResistance: 10, agility: 1.2, weight: 1.2, criticalChance: 15 
+            "elite_advanced": {
+                hp: 2.2, attack: 1.6, physicalPower: 1.6, magicPower: 1.6,
+                physicalResistance: 20, magicResistance: 15, agility: 1.3, weight: 1.2, criticalChance: 18
             },
-            "boss": { 
-                hp: 2.5, attack: 1.6, physicalPower: 1.6, magicPower: 1.6, 
-                physicalResistance: 25, magicResistance: 20, agility: 1.0, weight: 1.5, criticalChance: 20 
+            "boss": {
+                hp: 3.0, attack: 1.9, physicalPower: 1.9, magicPower: 1.9,
+                physicalResistance: 30, magicResistance: 25, agility: 1.2, weight: 1.5, criticalChance: 25
             }
         };
     }
@@ -93,9 +93,9 @@ class EnemyTemplates {
                     name: "撕咬",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(15 + level * 2),
+                    baseDamage: Math.floor(18 + level * 2.5),
                     specialEffects: {
-                        dot: { type: "bleed", damage: Math.floor(3 + level * 0.5), duration: 2 }
+                        dot: { type: "bleed", damage: Math.floor(4 + level * 0.6), duration: 3 }
                     },
                     cooldown: 2,
                     priority: 40
@@ -104,8 +104,8 @@ class EnemyTemplates {
                     name: "冲锋攻击",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(12 + level * 1.5),
-                    hitBonus: Math.floor(8 + level * 0.2),
+                    baseDamage: Math.floor(15 + level * 2.0),
+                    hitBonus: Math.floor(10 + level * 0.3),
                     cooldown: 3,
                     priority: 30
                 }
@@ -140,9 +140,9 @@ class EnemyTemplates {
                     name: "火球术",
                     type: "magic",
                     target: "single",
-                    baseDamage: Math.floor(18 + level * 2.2),
+                    baseDamage: Math.floor(22 + level * 2.8),
                     specialEffects: {
-                        dot: { type: "burn", damage: Math.floor(4 + level * 0.6), duration: 2 }
+                        dot: { type: "burn", damage: Math.floor(5 + level * 0.8), duration: 3 }
                     },
                     cooldown: 2,
                     priority: 45
@@ -151,9 +151,9 @@ class EnemyTemplates {
                     name: "冰锥术",
                     type: "magic",
                     target: "single",
-                    baseDamage: Math.floor(14 + level * 1.8),
+                    baseDamage: Math.floor(17 + level * 2.2),
                     specialEffects: {
-                        cc: { type: "slow", duration: 2, chance: 0.6 }
+                        cc: { type: "slow", duration: 2, chance: 0.7 }
                     },
                     cooldown: 1,
                     priority: 35
@@ -190,7 +190,7 @@ class EnemyTemplates {
                     type: "support",
                     target: "aoe",
                     specialEffects: {
-                        cc: { type: "slow", duration: 2, chance: 0.7 }
+                        cc: { type: "slow", duration: 3, chance: 0.8 }
                     },
                     cooldown: 4,
                     priority: 55
@@ -199,9 +199,9 @@ class EnemyTemplates {
                     name: "连击斩",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(25 + level * 2),
+                    baseDamage: Math.floor(30 + level * 2.5),
                     specialEffects: {
-                        multiHit: { count: Math.min(4, Math.floor(2 + level / 25)) }
+                        multiHit: { count: Math.min(5, Math.floor(2 + level / 20)) }
                     },
                     cooldown: 4,
                     priority: 70
@@ -210,9 +210,9 @@ class EnemyTemplates {
                     name: "重击突破",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(35 + level * 2.5),
+                    baseDamage: Math.floor(42 + level * 3.0),
                     specialEffects: {
-                        penetration: { physical: Math.min(30, Math.floor(10 + level * 0.4)) }
+                        penetration: { physical: Math.min(35, Math.floor(15 + level * 0.5)) }
                     },
                     cooldown: 5,
                     priority: 80
@@ -248,10 +248,10 @@ class EnemyTemplates {
                     name: "暗影突袭",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(45 + level * 3),
+                    baseDamage: Math.floor(55 + level * 3.5),
                     specialEffects: {
-                        multiHit: { count: 3 },
-                        lifesteal: { percent: Math.min(0.8, 0.3 + level * 0.01) }
+                        multiHit: { count: 4 },
+                        lifesteal: { percent: Math.min(0.9, 0.4 + level * 0.01) }
                     },
                     cooldown: 5,
                     priority: 85
@@ -260,10 +260,10 @@ class EnemyTemplates {
                     name: "元素风暴",
                     type: "magic",
                     target: "aoe",
-                    baseDamage: Math.floor(35 + level * 2.5),
+                    baseDamage: Math.floor(45 + level * 3.0),
                     specialEffects: {
-                        dot: { type: "burn", damage: Math.floor(8 + level), duration: 3 },
-                        cc: { type: "slow", duration: 3, chance: 0.8 }
+                        dot: { type: "burn", damage: Math.floor(10 + level * 1.2), duration: 4 },
+                        cc: { type: "slow", duration: 3, chance: 0.85 }
                     },
                     cooldown: 6,
                     priority: 75
@@ -273,7 +273,7 @@ class EnemyTemplates {
                     type: "support",
                     target: "single",
                     specialEffects: {
-                        mark: { damageBonus: Math.min(1.0, 0.4 + level * 0.01), duration: 4 }
+                        mark: { damageBonus: Math.min(1.2, 0.5 + level * 0.012), duration: 5 }
                     },
                     cooldown: 5,
                     priority: 70
@@ -282,10 +282,10 @@ class EnemyTemplates {
                     name: "终极重击",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(70 + level * 4),
+                    baseDamage: Math.floor(85 + level * 5),
                     specialEffects: {
-                        penetration: { physical: Math.min(40, Math.floor(15 + level * 0.5)) },
-                        execute: { threshold: Math.min(0.35, 0.15 + level * 0.002) }
+                        penetration: { physical: Math.min(50, Math.floor(20 + level * 0.6)) },
+                        execute: { threshold: Math.min(0.40, 0.20 + level * 0.002) }
                     },
                     cooldown: 7,
                     priority: 90
@@ -321,10 +321,10 @@ class EnemyTemplates {
                     name: "龙息吐息",
                     type: "magic",
                     target: "aoe",
-                    baseDamage: Math.floor(80 + level * 4),
+                    baseDamage: Math.floor(100 + level * 5),
                     specialEffects: {
-                        dot: { type: "burn", damage: Math.floor(15 + level * 1.5), duration: 4 },
-                        penetration: { magic: Math.min(50, Math.floor(20 + level * 0.6)) }
+                        dot: { type: "burn", damage: Math.floor(18 + level * 1.8), duration: 5 },
+                        penetration: { magic: Math.min(60, Math.floor(25 + level * 0.7)) }
                     },
                     cooldown: 6,
                     priority: 85
@@ -334,7 +334,7 @@ class EnemyTemplates {
                     type: "support",
                     target: "aoe",
                     specialEffects: {
-                        cc: { type: "stun", duration: 2, chance: Math.min(0.8, 0.5 + level * 0.005) }
+                        cc: { type: "stun", duration: 2, chance: Math.min(0.85, 0.6 + level * 0.005) }
                     },
                     cooldown: 7,
                     priority: 80
@@ -344,7 +344,7 @@ class EnemyTemplates {
                     type: "support",
                     target: "single",
                     specialEffects: {
-                        mark: { damageBonus: Math.min(1.2, 0.6 + level * 0.01), duration: 5 }
+                        mark: { damageBonus: Math.min(1.5, 0.7 + level * 0.012), duration: 5 }
                     },
                     cooldown: 5,
                     priority: 75
@@ -353,10 +353,10 @@ class EnemyTemplates {
                     name: "毁灭重击",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(120 + level * 6),
+                    baseDamage: Math.floor(150 + level * 7),
                     specialEffects: {
-                        penetration: { physical: Math.min(60, Math.floor(25 + level * 0.7)) },
-                        execute: { threshold: Math.min(0.45, 0.2 + level * 0.0025) }
+                        penetration: { physical: Math.min(70, Math.floor(30 + level * 0.8)) },
+                        execute: { threshold: Math.min(0.50, 0.25 + level * 0.0025) }
                     },
                     cooldown: 8,
                     priority: 95
@@ -381,16 +381,16 @@ class EnemyTemplates {
     // 计算基础属性
     calculateBaseStats(level) {
         return {
-            baseHp: 80 + (level - 1) * 18,
-            baseMana: 60 + (level - 1) * 8,
-            baseStamina: 60 + (level - 1) * 8,
-            baseAttack: 10 + (level - 1) * 2.5,
-            basePhysicalPower: 10 + (level - 1) * 2.5,
-            baseMagicPower: 6 + (level - 1) * 1.8,
-            baseAgility: 6 + Math.floor(level / 5),
+            baseHp: 80 + (level - 1) * 22,
+            baseMana: 60 + (level - 1) * 10,
+            baseStamina: 60 + (level - 1) * 10,
+            baseAttack: 10 + (level - 1) * 3.0,
+            basePhysicalPower: 10 + (level - 1) * 3.0,
+            baseMagicPower: 6 + (level - 1) * 2.2,
+            baseAgility: 6 + Math.floor(level / 4),
             baseWeight: 10 + Math.floor(level / 10),
-            basePhysicalResistance: Math.floor(level / 10) * 2,
-            baseMagicResistance: Math.floor(level / 10) * 1.5
+            basePhysicalResistance: Math.floor(level / 8) * 2.5,
+            baseMagicResistance: Math.floor(level / 8) * 2
         };
     }
 
@@ -427,13 +427,13 @@ class EnemyTemplates {
         // 基础掉落
         if (level <= 20) {
             drops.push({ item: "铜币", chance: 0.8, quantity: [1, Math.floor(level * 0.8)] });
-            drops.push({ item: "小治疗药水", chance: 0.3 });
+            drops.push({ item: "小瓶治疗药水", chance: 0.3 });
         } else if (level <= 50) {
             drops.push({ item: "银币", chance: 0.8, quantity: [Math.floor(level * 0.3), Math.floor(level * 0.8)] });
-            drops.push({ item: "中治疗药水", chance: 0.4 });
+            drops.push({ item: "中瓶治疗药水", chance: 0.4 });
         } else {
             drops.push({ item: "金币", chance: 0.9, quantity: [Math.floor(level * 0.5), Math.floor(level * 1.2)] });
-            drops.push({ item: "大治疗药水", chance: 0.5 });
+            drops.push({ item: "大瓶治疗药水", chance: 0.5 });
         }
         
         // 根据类型添加特殊掉落

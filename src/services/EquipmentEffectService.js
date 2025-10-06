@@ -319,6 +319,122 @@ class EquipmentEffectService {
             sources: Array.from(stats.sources)
         };
     }
+
+    /**
+     * 获取破甲值（无视抗性）
+     * @param {string} damageType - 伤害类型 ('physical' 或 'magic')
+     * @returns {number} 破甲百分比（0-50）
+     */
+    getPenetration(damageType) {
+        let totalPenetration = 0;
+        
+        for (const [key, effectData] of this.activeEffects.entries()) {
+            for (const effect of effectData.effects) {
+                if (effect.type === 'penetration') {
+                    if (damageType === 'physical' && effect.physical) {
+                        totalPenetration += effect.physical;
+                    } else if (damageType === 'magic' && effect.magic) {
+                        totalPenetration += effect.magic;
+                    }
+                }
+            }
+        }
+        
+        return Math.min(50, totalPenetration); // 上限50%
+    }
+
+    /**
+     * 获取闪避加成
+     * @returns {number} 闪避率加成（小数，如0.06表示+6%）
+     */
+    getEvasionBonus() {
+        let totalBonus = 0;
+        
+        for (const [key, effectData] of this.activeEffects.entries()) {
+            for (const effect of effectData.effects) {
+                if (effect.type === 'evasion_bonus') {
+                    totalBonus += effect.value || 0;
+                }
+            }
+        }
+        
+        return totalBonus;
+    }
+
+    /**
+     * 获取斩杀阈值
+     * @returns {number} HP百分比阈值（0-1之间，如0.35表示35%）
+     */
+    getExecuteThreshold() {
+        let maxThreshold = 0;
+        
+        for (const [key, effectData] of this.activeEffects.entries()) {
+            for (const effect of effectData.effects) {
+                if (effect.type === 'execute') {
+                    maxThreshold = Math.max(maxThreshold, effect.threshold || 0);
+                }
+            }
+        }
+        
+        return maxThreshold;
+    }
+
+    /**
+     * 获取格挡率
+     * @returns {number} 格挡率（小数，如0.15表示15%）
+     */
+    getBlockChance() {
+        let totalChance = 0;
+        
+        for (const [key, effectData] of this.activeEffects.entries()) {
+            for (const effect of effectData.effects) {
+                if (effect.type === 'block_chance') {
+                    totalChance += effect.value || 0;
+                }
+            }
+        }
+        
+        return Math.min(0.75, totalChance); // 上限75%
+    }
+
+    /**
+     * 获取吸血百分比
+     * @returns {number} 吸血百分比（小数，如0.15表示15%）
+     */
+    getLifestealPercent() {
+        let totalPercent = 0;
+        
+        for (const [key, effectData] of this.activeEffects.entries()) {
+            for (const effect of effectData.effects) {
+                if (effect.type === 'lifesteal') {
+                    totalPercent += effect.percent || 0;
+                }
+            }
+        }
+        
+        return Math.min(0.5, totalPercent); // 上限50%
+    }
+
+    /**
+     * 检查武器是否有DOT效果并返回所有DOT效果
+     * @returns {Array} DOT效果数组
+     */
+    getWeaponDOTEffects() {
+        const dotEffects = [];
+        
+        // 只检查武器槽位
+        for (const [key, effectData] of this.activeEffects.entries()) {
+            if (effectData.slot === 'weapon1' || effectData.slot === 'weapon2') {
+                for (const effect of effectData.effects) {
+                    if (effect.type === 'dot_effect') {
+                        dotEffects.push(effect);
+                    }
+                }
+            }
+        }
+        
+        return dotEffects;
+    }
 }
 
 export default EquipmentEffectService;

@@ -179,36 +179,69 @@ class InventoryView {
     generateEquipmentTooltip(item) {
         if (!item.stats) return '';
 
+        // 获取玩家等级以检查装备需求
+        const gameStateService = window.gameCore?.getService('gameStateService');
+        const playerLevel = gameStateService?.getState()?.player?.level || 1;
+
         let statsHtml = '<div class="tooltip-stats">';
         const stats = item.stats;
 
-        if (stats.attack) statsHtml += `<div>攻击力: +${stats.attack}</div>`;
-        if (stats.physicalResistance) statsHtml += `<div>物理抗性: +${stats.physicalResistance}%</div>`;
-        if (stats.magicResistance) statsHtml += `<div>魔法抗性: +${stats.magicResistance}%</div>`;
-        if (stats.physicalPower) statsHtml += `<div>物理强度: +${stats.physicalPower}</div>`;
-        if (stats.magicPower) statsHtml += `<div>魔法强度: +${stats.magicPower}</div>`;
-        if (stats.agility) statsHtml += `<div>敏捷: ${stats.agility > 0 ? '+' : ''}${stats.agility}</div>`;
-        if (stats.weight) statsHtml += `<div>重量: ${stats.weight > 0 ? '+' : ''}${stats.weight}</div>`;
-        if (stats.maxHp) statsHtml += `<div>生命值: +${stats.maxHp}</div>`;
-        if (stats.maxMana) statsHtml += `<div>法力值: +${stats.maxMana}</div>`;
-        if (stats.maxStamina) statsHtml += `<div>耐力值: +${stats.maxStamina}</div>`;
-        if (stats.criticalChance) statsHtml += `<div>暴击率: +${stats.criticalChance}%</div>`;
-        if (stats.inventorySlots) statsHtml += `<div>背包容量: +${stats.inventorySlots}格</div>`;
+        // 需求等级（符合条件：浅绿色，不符合：红色）
+        if (item.requirements && item.requirements.level) {
+            const canEquip = playerLevel >= item.requirements.level;
+            const levelColor = canEquip ? '#66bb6a' : '#ff4444';
+            statsHtml += `<div style="color: ${levelColor}">需要等级: ${item.requirements.level}</div>`;
+        }
+
+        // 武器持握方式（蓝色）
         if (item.weaponType === 'two-handed') {
-            statsHtml += `<div>持握方式: 双手武器</div>`;
+            statsHtml += `<div style="color: #82b1ff">持握方式: 双手武器</div>`;
         } else if (item.weaponType === 'one-handed') {
-            statsHtml += `<div>持握方式: 单手武器</div>`;
+            statsHtml += `<div style="color: #82b1ff">持握方式: 单手武器</div>`;
+        }
+
+        // 基础数值（白色）
+        if (stats.attack) statsHtml += `<div style="color: #ffffff">攻击力: +${stats.attack}</div>`;
+        if (stats.physicalResistance) statsHtml += `<div style="color: #ffffff">物理抗性: +${stats.physicalResistance}%</div>`;
+        if (stats.magicResistance) statsHtml += `<div style="color: #ffffff">魔法抗性: +${stats.magicResistance}%</div>`;
+        if (stats.physicalPower) statsHtml += `<div style="color: #ffffff">物理强度: +${stats.physicalPower}</div>`;
+        if (stats.magicPower) statsHtml += `<div style="color: #ffffff">魔法强度: +${stats.magicPower}</div>`;
+        if (stats.agility) statsHtml += `<div style="color: #ffffff">敏捷: ${stats.agility > 0 ? '+' : ''}${stats.agility}</div>`;
+        if (stats.weight) statsHtml += `<div style="color: #ffffff">重量: ${stats.weight > 0 ? '+' : ''}${stats.weight}</div>`;
+        if (stats.maxHp) statsHtml += `<div style="color: #ffffff">生命值: +${stats.maxHp}</div>`;
+        if (stats.maxMana) statsHtml += `<div style="color: #ffffff">法力值: +${stats.maxMana}</div>`;
+        if (stats.maxStamina) statsHtml += `<div style="color: #ffffff">耐力值: +${stats.maxStamina}</div>`;
+        if (stats.criticalChance) statsHtml += `<div style="color: #ffffff">暴击率: +${stats.criticalChance}%</div>`;
+        if (stats.inventorySlots) statsHtml += `<div style="color: #ffffff">背包容量: +${stats.inventorySlots}格</div>`;
+
+        // 显示装备特殊效果（绿色）
+        if (item.effects && item.effects.length > 0) {
+            for (const effect of item.effects) {
+                if (effect.description) {
+                    statsHtml += `<div class="tooltip-effect" style="color: #cc2fe0ff">✨ ${effect.description}</div>`;
+                }
+            }
+        }
+
+        // 显示稀有度（保持原有稀有度颜色）
+        if (item.rarity) {
+            const rarityNames = {
+                'common': '普通',
+                'uncommon': '优秀',
+                'rare': '稀有',
+                'epic': '史诗',
+                'legendary': '传说'
+            };
+            const rarityColor = this.getRarityColor(item.rarity);
+            statsHtml += `<div class="tooltip-rarity" style="color: ${rarityColor}">⭐ 稀有度: ${rarityNames[item.rarity] || item.rarity}</div>`;
+        }
+
+        // 显示价值（黄色）
+        if (item.value) {
+            statsHtml += `<div class="tooltip-value" style="color: #ffeb3b">💰 价值: ${item.value} 铜币</div>`;
         }
 
         statsHtml += '</div>';
-
-        if (item.requirements) {
-            statsHtml += '<div class="tooltip-requirements">';
-            if (item.requirements.minLevel) {
-                statsHtml += `<div>需要等级: ${item.requirements.minLevel}</div>`;
-            }
-            statsHtml += '</div>';
-        }
 
         return statsHtml;
     }
