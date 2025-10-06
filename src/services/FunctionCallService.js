@@ -14,6 +14,8 @@ class FunctionCallService {
         this.registerFunction('start_battle', this.handleBattle.bind(this));
         this.registerFunction('start_puzzle', this.handlePuzzle.bind(this));
         this.registerFunction('search_area', this.handleSearch.bind(this));
+        // 添加函数别名，兼容LLM可能生成的不同函数名
+        this.registerFunction('explore_area', this.handleSearch.bind(this));
     }
 
     registerFunction(name, handler) {

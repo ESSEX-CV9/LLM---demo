@@ -24,6 +24,9 @@ class LLMService {
                         maxTokens: 6000
                     }
                 },
+                session: {
+                    id: 'xb1'  // 🔧 玩家对话使用主会话槽位
+                },
                 streaming: {
                     enabled: true,
                     onChunk: (chunk, acc) => {

@@ -3,6 +3,9 @@ class BattleView {
     constructor(eventBus, gameView) {
         this.eventBus = eventBus;
         this.gameView = gameView; // 引用主 GameView，用于控制输入启用/禁用
+        this.itemsUsedThisTurn = 0; // 本回合使用的物品数量
+        this.maxItemsPerTurn = 5; // 每回合最多使用5次物品
+        this.isUsingItems = false; // 是否正在使用物品状态
     }
 
     // 显示战斗界面（横版布局）
@@ -547,6 +550,9 @@ class BattleView {
             return;
         }
 
+        // 进入物品使用状态
+        this.isUsingItems = true;
+
         // 获取背包数据
         const stats = inventoryService.getInventoryStats();
         const items = inventoryService.getAllItems();
@@ -554,11 +560,12 @@ class BattleView {
         // 创建战斗专用背包界面
         const battleInventoryModal = document.createElement('div');
         battleInventoryModal.className = 'battle-inventory-overlay';
+        battleInventoryModal.id = 'battleInventoryModal';
         battleInventoryModal.innerHTML = `
             <div class="battle-inventory-modal">
                 <div class="battle-inventory-header">
-                    <h3>🎒 使用物品</h3>
-                    <button class="close-button" onclick="this.closest('.battle-inventory-overlay').remove()">×</button>
+                    <h3>🎒 使用物品 (${this.itemsUsedThisTurn}/${this.maxItemsPerTurn})</h3>
+                    <button class="close-button" id="closeBattleInventory">×</button>
                 </div>
                 <div class="battle-inventory-content">
                     <div class="battle-inventory-tabs">
@@ -570,7 +577,10 @@ class BattleView {
                     </div>
                 </div>
                 <div class="battle-inventory-footer">
-                    <p>点击物品使用，只能使用消耗品</p>
+                    <p>本回合还可使用 <span id="remainingUses" style="color: #4CAF50; font-weight: bold;">${this.maxItemsPerTurn - this.itemsUsedThisTurn}</span> 次物品</p>
+                    <button class="battle-btn finish-items-btn" id="finishUsingItems">
+                        <span class="btn-name">✓ 完成使用</span>
+                    </button>
                 </div>
             </div>
         `;
@@ -652,9 +662,9 @@ class BattleView {
         slots.forEach(slot => {
             slot.addEventListener('click', () => {
                 const itemName = slot.dataset.item;
-                this.useBattleItem(itemName, battleState);
-                // 使用后关闭背包界面
-                modal.remove();
+                if (itemName) {
+                    this.useBattleItem(itemName, battleState, modal);
+                }
             });
         });
 
@@ -666,13 +676,34 @@ class BattleView {
                 button.classList.add('active');
                 
                 const tabType = button.dataset.tab;
-                this.filterBattleInventory(modal, tabType);
+                this.filterBattleInventory(modal, tabType, battleState);
             });
         });
+
+        // 关闭按钮和完成使用按钮
+        const closeButton = modal.querySelector('#closeBattleInventory');
+        const finishButton = modal.querySelector('#finishUsingItems');
+        
+        const finishItemUsage = () => {
+            this.isUsingItems = false;
+            modal.remove();
+            // 如果使用了至少一个物品，触发回合结束
+            if (this.itemsUsedThisTurn > 0) {
+                this.executeBattleAction('完成物品使用');
+            }
+        };
+
+        if (closeButton) {
+            closeButton.addEventListener('click', finishItemUsage);
+        }
+        
+        if (finishButton) {
+            finishButton.addEventListener('click', finishItemUsage);
+        }
     }
 
     // 过滤战斗背包显示
-    filterBattleInventory(modal, filterType) {
+    filterBattleInventory(modal, filterType, battleState) {
         const inventoryService = window.gameCore?.getService('inventoryService');
         if (!inventoryService) return;
 
@@ -714,16 +745,119 @@ class BattleView {
             slot.addEventListener('click', () => {
                 const itemName = slot.dataset.item;
                 if (itemName) {
-                    this.useBattleItem(itemName);
-                    modal.remove();
+                    this.useBattleItem(itemName, battleState, modal);
                 }
             });
         });
     }
 
     // 在战斗中使用物品
-    useBattleItem(itemName, battleState) {
+    useBattleItem(itemName, battleState, modal) {
+        // 检查是否已达到使用上限
+        if (this.itemsUsedThisTurn >= this.maxItemsPerTurn) {
+            if (this.gameView) {
+                this.gameView.showNotification(`本回合最多使用${this.maxItemsPerTurn}次物品`, 'warning');
+            }
+            return;
+        }
+
+        // 使用物品（不切换回合）
         this.executeBattleAction('使用物品', null, itemName);
+        
+        // 增加使用计数
+        this.itemsUsedThisTurn++;
+        
+        // 刷新背包物品列表
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        if (inventoryService) {
+            const items = inventoryService.getAllItems();
+            const grid = modal.querySelector('#battleInventoryGrid');
+            const activeTab = modal.querySelector('.tab-button.active');
+            const tabType = activeTab ? activeTab.dataset.tab : 'consumable';
+            
+            if (grid) {
+                if (tabType === 'consumable') {
+                    grid.innerHTML = this.generateBattleInventoryGrid(items);
+                } else {
+                    // 重新生成全部物品视图
+                    grid.innerHTML = items.filter(item => item).map(item => {
+                        const isConsumable = item.type === 'consumable';
+                        const rarityColor = this.getRarityColor(item.rarity);
+                        return `
+                            <div class="battle-inventory-slot ${!isConsumable ? 'disabled' : ''}"
+                                 data-item="${isConsumable ? item.name : ''}"
+                                 style="border-color: ${rarityColor}">
+                                <div class="item-icon">
+                                    ${(() => {
+                                        const icon = item.icon || '';
+                                        const isAsset = icon.startsWith('./assets/') || icon.startsWith('assets/');
+                                        const base = (typeof window !== 'undefined' && window.CDN_BASE_URL) ? window.CDN_BASE_URL : '';
+                                        const src = isAsset && base ? (base + icon.replace(/^\.\//, '')) : icon;
+                                        return (isAsset || icon.startsWith('http://') || icon.startsWith('https://'))
+                                            ? `<img src="${src}" alt="${item.name}" style="width: 32px; height: 32px; object-fit: contain;">`
+                                            : (icon || '📦');
+                                    })()}
+                                </div>
+                                <div class="item-name">${item.name}</div>
+                                ${isConsumable ? `<div class="item-quantity">×${item.quantity}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                // 重新绑定物品点击事件
+                const slots = grid.querySelectorAll('.battle-inventory-slot:not(.disabled)');
+                slots.forEach(slot => {
+                    slot.addEventListener('click', () => {
+                        const itemName = slot.dataset.item;
+                        if (itemName) {
+                            this.useBattleItem(itemName, battleState, modal);
+                        }
+                    });
+                });
+            }
+        }
+        
+        // 更新UI显示
+        const headerTitle = modal.querySelector('.battle-inventory-header h3');
+        const remainingUses = modal.querySelector('#remainingUses');
+        
+        if (headerTitle) {
+            headerTitle.textContent = `🎒 使用物品 (${this.itemsUsedThisTurn}/${this.maxItemsPerTurn})`;
+        }
+        
+        if (remainingUses) {
+            const remaining = this.maxItemsPerTurn - this.itemsUsedThisTurn;
+            remainingUses.textContent = remaining;
+            
+            // 如果没有剩余次数，改变颜色提示
+            if (remaining === 0) {
+                remainingUses.style.color = '#f44336';
+            } else if (remaining <= 2) {
+                remainingUses.style.color = '#FF9800';
+            }
+        }
+        
+        // 如果达到上限，禁用所有物品格子并提示
+        if (this.itemsUsedThisTurn >= this.maxItemsPerTurn) {
+            const slots = modal.querySelectorAll('.battle-inventory-slot:not(.disabled)');
+            slots.forEach(slot => {
+                slot.classList.add('disabled');
+                slot.style.opacity = '0.5';
+                slot.style.cursor = 'not-allowed';
+            });
+            
+            if (this.gameView) {
+                this.gameView.showNotification('已达到本回合物品使用上限', 'warning');
+            }
+            
+            // 自动关闭背包并结束回合
+            setTimeout(() => {
+                this.isUsingItems = false;
+                modal.remove();
+                this.executeBattleAction('完成物品使用');
+            }, 1500);
+        }
     }
 
     getRarityColor(rarity) {
@@ -813,11 +947,17 @@ class BattleView {
             battleLog.scrollTop = battleLog.scrollHeight;
         }
 
-        // 更新行动按钮
-        const battleActions = battleModal.querySelector('#battleActions');
-        if (battleActions) {
-            battleActions.innerHTML = this.generateBattleActions(battleState);
-            this.setupBattleEvents(battleModal, battleState);
+        // 更新行动按钮（如果不在使用物品状态）
+        if (!this.isUsingItems) {
+            const battleActions = battleModal.querySelector('#battleActions');
+            if (battleActions) {
+                // 重置物品使用计数（新回合开始）
+                if (battleState.turn === 'player') {
+                    this.itemsUsedThisTurn = 0;
+                }
+                battleActions.innerHTML = this.generateBattleActions(battleState);
+                this.setupBattleEvents(battleModal, battleState);
+            }
         }
     }
 

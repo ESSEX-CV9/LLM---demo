@@ -63,7 +63,9 @@ class GameState {
         this.conversation = {
             history: [],
             context: '',
-            summaries: []  // 存储历史总结
+            summaries: [],  // 存储历史总结（最多保留6个）
+            distantSummary: null,  // 远历史总结（压缩后的总结）
+            actionCount: 0  // 玩家行动计数器（用于总结触发）
         };
         
         this.battle = {

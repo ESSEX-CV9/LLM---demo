@@ -22,39 +22,49 @@ class InventoryService {
     }
 
     initializeDefaultItems() {
-        // 给玩家测试装备用于验证所有战斗机制
+        // 1级可装备武器池
+        const level1Weapons = [
+            '生锈短剑',
+            '生锈小刀',
+            '简易短弓'
+        ];
         
-        // ========== 武器测试装备 ==========
-        this.addItem('[测试]中毒匕首', 1);      // DOT-中毒
-        this.addItem('[测试]灼烧剑', 1);        // DOT-灼烧
-        this.addItem('[测试]流血斧', 1);        // DOT-流血
-        this.addItem('[测试]破甲弓', 1);        // 破甲
-        this.addItem('[测试]闪避匕首', 1);      // 闪避加成
-        this.addItem('[测试]斩杀镰刀', 1);      // 斩杀
-        this.addItem('[测试]吸血剑', 1);        // 吸血
-        this.addItem('[测试]暴击匕首', 1);      // 暴击伤害
-        this.addItem('[测试]伤害加成锤', 1);    // 对特定目标伤害加成
-        this.addItem('[测试]法术消耗法杖', 1);  // 法术消耗减少
+        // 基础消耗药剂池
+        const basicPotions = [
+            '小瓶治疗药水',
+            '中瓶治疗药水',
+            '小瓶法力药水',
+            '中瓶法力药水',
+            '小瓶耐力药水',
+            '中瓶耐力药水'
+        ];
         
-        // ========== 盾牌测试装备 ==========
-        this.addItem('[测试]格挡盾', 1);        // 格挡
-        this.addItem('[测试]全抗盾', 1);        // 全抗性
+        // 5级以内的随机装备池
+        const level1to5Equipment = [
+            // 2-5级武器
+            '手斧', '铁剑', '木棒', '铁匕首', '猎弓',
+            '锻铁剑', '锋利匕首', '铁斧', '橡木魔杖', '紫杉法杖',
+            // 1级护甲
+            '粗皮甲'
+        ];
         
-        // ========== 防具测试装备 ==========
-        this.addItem('[测试]HP回复胸甲', 1);    // HP回复
-        this.addItem('[测试]伤害减免头盔', 1);  // 伤害减免
-        this.addItem('[测试]MP回复护腿', 1);    // MP回复
-        this.addItem('[测试]SP回复靴子', 1);    // SP回复
-        this.addItem('[测试]元素抗性胸甲', 1);  // 元素抗性
+        // 1. 随机选择一把1级武器
+        const randomWeapon = level1Weapons[Math.floor(Math.random() * level1Weapons.length)];
+        this.addItem(randomWeapon, 1);
         
-        // ========== 饰品测试装备 ==========
-        this.addItem('[测试]技能消耗戒指', 1);  // 技能消耗减少
-        this.addItem('[测试]属性加成护符', 1);  // 属性加成
-        this.addItem('[测试]元素伤害戒指', 1);  // 元素附加伤害
+        // 2. 随机选择3-5瓶基础药剂
+        const potionCount = 3 + Math.floor(Math.random() * 3); // 3-5瓶
+        for (let i = 0; i < potionCount; i++) {
+            const randomPotion = basicPotions[Math.floor(Math.random() * basicPotions.length)];
+            this.addItem(randomPotion, 1);
+        }
         
-        // ========== 组合测试装备 ==========
-        this.addItem('[测试]组合武器', 1);      // 多重效果组合武器
-        this.addItem('[测试]组合铠甲', 1);      // 多重防御效果组合
+        // 3. 添加基础布衣
+        this.addItem('布衣', 1);
+        
+        // 4. 随机选择一件5级以内的装备
+        const randomEquipment = level1to5Equipment[Math.floor(Math.random() * level1to5Equipment.length)];
+        this.addItem(randomEquipment, 1);
     }
 
     addItem(itemName, quantity = 1) {

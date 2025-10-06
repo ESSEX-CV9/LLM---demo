@@ -199,6 +199,25 @@ class BattleService {
                 return await this.endBattle('victory');
             }
             
+            // 🆕 使用物品不结束回合，只更新界面
+            if (action === '使用物品') {
+                this.eventBus.emit('ui:battle:update', this.battleState, 'game');
+                return result;
+            }
+            
+            // 🆕 完成物品使用后结束回合
+            if (action === '完成物品使用') {
+                this.battleState.turn = 'enemy';
+                this.eventBus.emit('ui:battle:update', this.battleState, 'game');
+                
+                // 延迟执行敌人行动
+                setTimeout(() => {
+                    this.executeEnemyTurn();
+                }, 1500);
+                
+                return result;
+            }
+            
             // 如果是特殊攻击或技能，在检查战斗结束后再处理回合逻辑
             if (action === '特殊攻击' || action === '技能') {
                 // 技能/特殊攻击后仍需切换回合（如果战斗未结束）
@@ -363,6 +382,11 @@ class BattleService {
                     const itemResult = await this.useItem(item);
                     logMessage = itemResult.message;
                 }
+                break;
+            
+            case '完成物品使用':
+                // 完成物品使用，准备切换到敌人回合
+                logMessage = '';
                 break;
                 
             case '逃跑':
