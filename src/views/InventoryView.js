@@ -49,6 +49,24 @@ class InventoryView {
                         <div class="inventory-grid" id="inventoryGrid">
                             ${this.generateInventoryGrid(items, maxSlots)}
                         </div>
+                        <div class="discard-zone" id="discardZone" style="
+                            margin-top: 16px;
+                            padding: 20px;
+                            background: rgba(255, 68, 68, 0.1);
+                            border: 2px dashed rgba(255, 68, 68, 0.5);
+                            border-radius: 8px;
+                            text-align: center;
+                            transition: all 0.3s ease;
+                            min-height: 80px;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                        ">
+                            <div style="font-size: 32px; margin-bottom: 8px;">🗑️</div>
+                            <div style="font-size: 14px; opacity: 0.8; font-weight: bold; color: #ff4444;">抛弃槽</div>
+                            <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">拖拽物品到此处将永久丢弃</div>
+                        </div>
                     </div>
                 </div>
                 <div class="inventory-footer">
@@ -63,6 +81,7 @@ class InventoryView {
         this.setupInventoryEvents(inventoryModal);
         this.setupEquipmentEvents(inventoryModal);
         this.setupInventoryTabs(inventoryModal);
+        this.setupDiscardZoneEvents(inventoryModal);
     }
 
     // 刷新界面（不移除模态框）
@@ -627,6 +646,235 @@ class InventoryView {
 
             slot.style.display = shouldShow ? 'block' : 'none';
         });
+    }
+
+    // 设置抛弃槽事件
+    setupDiscardZoneEvents(modal) {
+        const discardZone = modal.querySelector('#discardZone');
+        if (!discardZone) return;
+
+        // 拖拽悬浮
+        discardZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            discardZone.style.background = 'rgba(255, 68, 68, 0.3)';
+            discardZone.style.borderColor = 'rgba(255, 68, 68, 0.8)';
+            discardZone.style.transform = 'scale(1.05)';
+        });
+
+        // 拖拽离开
+        discardZone.addEventListener('dragleave', (e) => {
+            if (!discardZone.contains(e.relatedTarget)) {
+                discardZone.style.background = 'rgba(255, 68, 68, 0.1)';
+                discardZone.style.borderColor = 'rgba(255, 68, 68, 0.5)';
+                discardZone.style.transform = 'scale(1)';
+            }
+        });
+
+        // 拖拽放置
+        discardZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            discardZone.style.background = 'rgba(255, 68, 68, 0.1)';
+            discardZone.style.borderColor = 'rgba(255, 68, 68, 0.5)';
+            discardZone.style.transform = 'scale(1)';
+
+            try {
+                const jsonData = e.dataTransfer.getData('application/json');
+                const textData = e.dataTransfer.getData('text/plain');
+
+                let itemName;
+                if (jsonData) {
+                    const data = JSON.parse(jsonData);
+                    itemName = data.itemName;
+                } else if (textData) {
+                    itemName = textData;
+                } else {
+                    throw new Error('无法获取拖拽数据');
+                }
+
+                // 确认抛弃
+                const confirmed = await this.confirmDiscard(itemName);
+                if (confirmed) {
+                    this.discardItem(itemName);
+                }
+            } catch (error) {
+                console.error('[抛弃] 失败:', error);
+                this._notify('抛弃物品失败: ' + error.message, 'error');
+            }
+        });
+    }
+
+    // 确认抛弃对话框
+    async confirmDiscard(itemName) {
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        const item = inventoryService?.getItem(itemName);
+        
+        if (!item) {
+            this._notify('物品不存在', 'error');
+            return false;
+        }
+
+        return new Promise((resolve) => {
+            const dialog = document.createElement('div');
+            dialog.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000002;
+                animation: fadeIn 0.2s ease-out;
+            `;
+
+            const rarityColor = this.getRarityColor(item.rarity);
+            
+            dialog.innerHTML = `
+                <div style="
+                    background: linear-gradient(135deg, #2a3142 0%, #1e2533 100%);
+                    border-radius: 12px;
+                    padding: 24px;
+                    width: 90%;
+                    max-width: 400px;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+                    border: 2px solid rgba(255, 68, 68, 0.8);
+                    color: white;
+                    text-align: center;
+                    animation: slideUp 0.3s ease-out;
+                ">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                    <h3 style="color: #ff4444; margin: 0 0 12px 0;">确认抛弃物品？</h3>
+                    <div style="margin: 16px 0;">
+                        <div style="color: ${rarityColor}; font-weight: bold; font-size: 16px; margin-bottom: 8px;">
+                            ${item.name}
+                        </div>
+                        <div style="opacity: 0.8; font-size: 13px; margin-bottom: 8px;">
+                            ${item.description || ''}
+                        </div>
+                        <div style="opacity: 0.7; font-size: 12px;">
+                            数量: x${item.quantity}
+                        </div>
+                    </div>
+                    <div style="
+                        background: rgba(255, 68, 68, 0.2);
+                        padding: 12px;
+                        border-radius: 6px;
+                        border: 1px solid rgba(255, 68, 68, 0.4);
+                        margin-bottom: 20px;
+                        font-size: 13px;
+                        opacity: 0.9;
+                    ">
+                        ⚠️ 此操作不可撤销！物品将永久消失！
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button id="cancelDiscardBtn" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #666;
+                            border: none;
+                            color: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-weight: bold;
+                            transition: all 0.2s;
+                        ">取消</button>
+                        <button id="confirmDiscardBtn" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #ff4444;
+                            border: none;
+                            color: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-weight: bold;
+                            transition: all 0.2s;
+                        ">确认抛弃</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(dialog);
+
+            const cancelBtn = dialog.querySelector('#cancelDiscardBtn');
+            const confirmBtn = dialog.querySelector('#confirmDiscardBtn');
+
+            const cleanup = () => {
+                dialog.remove();
+            };
+
+            cancelBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(false);
+            });
+
+            confirmBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(true);
+            });
+
+            // 悬浮效果
+            cancelBtn.addEventListener('mouseenter', () => {
+                cancelBtn.style.background = '#555';
+            });
+            cancelBtn.addEventListener('mouseleave', () => {
+                cancelBtn.style.background = '#666';
+            });
+
+            confirmBtn.addEventListener('mouseenter', () => {
+                confirmBtn.style.background = '#cc0000';
+            });
+            confirmBtn.addEventListener('mouseleave', () => {
+                confirmBtn.style.background = '#ff4444';
+            });
+
+            // 点击背景关闭（取消）
+            dialog.addEventListener('click', (e) => {
+                if (e.target === dialog) {
+                    cleanup();
+                    resolve(false);
+                }
+            });
+
+            // ESC键取消
+            const escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    cleanup();
+                    resolve(false);
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+        });
+    }
+
+    // 抛弃物品
+    discardItem(itemName) {
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        if (!inventoryService) {
+            this._notify('背包系统不可用', 'error');
+            return;
+        }
+
+        const item = inventoryService.getItem(itemName);
+        if (!item) {
+            this._notify('物品不存在', 'error');
+            return;
+        }
+
+        // 移除所有该物品
+        const removed = inventoryService.removeItem(itemName, item.quantity);
+        
+        if (removed) {
+            this._notify(`已抛弃 ${itemName} x${item.quantity}`, 'info');
+            this.refresh();
+        } else {
+            this._notify('抛弃物品失败', 'error');
+        }
     }
 
     // 检查是否能装备到槽位

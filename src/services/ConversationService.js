@@ -176,12 +176,15 @@ class ConversationService {
 
     // 生成内容总结
     async generateSummary(historyItems) {
+        // 构建历史记录文本
+        const historyText = historyItems.map(item => {
+            const time = new Date(item.timestamp).toLocaleTimeString();
+            return `[${time}] ${item.type}: ${item.content}`;
+        }).join('\n');
+
         const summaryPrompt = `请为以下RPG游戏对话历史生成一个简洁的总结，保留关键的剧情发展、角色状态变化和重要事件：
 
-${historyItems.map(item => {
-    const time = new Date(item.timestamp).toLocaleTimeString();
-    return `[${time}] ${item.type}: ${item.content}`;
-}).join('\n')}
+${historyText}
 
 请生成一个不超过3000字的详细剧情总结，重点关注：
 1. 主要剧情发展和故事线索
@@ -195,21 +198,24 @@ ${historyItems.map(item => {
 
 总结格式：详细的叙述性文字，保持故事的连贯性和丰富性，确保GM能够基于这些信息继续创作连贯的剧情。`;
 
-        // 调用LLM生成总结
-        const llmService = window.gameCore?.getService('llmService');
-        if (!llmService) {
-            throw new Error('LLM服务不可用');
-        }
-
-        const response = await llmService.generateResponse(summaryPrompt, {
+        // 🔧 直接调用 callGenerate，使用 userInput 参数
+        // 根据小白X文档，userInput 是标准参数，应该包含在每个请求中
+        const response = await window.callGenerate({
+            components: {
+                list: ['ALL_PREON'] // 使用预设中启用的组件作为基座
+            },
+            userInput: summaryPrompt, // 将总结提示作为用户输入
             api: {
                 inherit: true,
                 overrides: {
                     temperature: 0.3, // 较低的温度确保总结的一致性
                     maxTokens: 6000 // 增加到6000 tokens以支持4000字的详细总结
                 }
-            }
-            // 🔧 使用默认的流式输出，避免非流式模式的兼容性问题
+            },
+            streaming: {
+                enabled: true
+            },
+            debug: { enabled: true }
         });
 
         if (!response.success) {

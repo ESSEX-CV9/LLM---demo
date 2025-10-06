@@ -176,7 +176,26 @@ class MerchantView {
                         欢迎光临！我的货物都是从各地精心搜罗来的。
                         <br><br>
                         你看中了什么就告诉我，价格公道，童叟无欺！
+                        <br><br>
+                        如果你有不需要的东西，我也愿意收购。
                     </p>
+                    
+                    <!-- 出售物品按钮 -->
+                    <button id="sellItemBtn" class="quick-action-button" style="
+                        padding: 10px 20px;
+                        font-size: 14px;
+                        background: #4CAF50;
+                        border: none;
+                        color: white;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        width: 100%;
+                        margin-bottom: 12px;
+                    ">
+                        💰 出售物品
+                    </button>
+                    
                     <div style="
                         background: rgba(255, 215, 0, 0.1);
                         padding: 12px;
@@ -187,7 +206,8 @@ class MerchantView {
                         margin-top: auto;
                     ">
                         💡 提示：点击商品卡片查看详情<br>
-                        点击购买按钮即可交易
+                        点击购买按钮即可交易<br>
+                        点击"出售物品"可以卖给商人
                     </div>
                 </div>
 
@@ -400,6 +420,20 @@ class MerchantView {
             });
             closeBtn.addEventListener('mouseleave', () => {
                 closeBtn.style.background = '#666';
+            });
+        }
+
+        // 出售物品按钮
+        const sellBtn = modal.querySelector('#sellItemBtn');
+        if (sellBtn) {
+            sellBtn.addEventListener('click', () => {
+                this.showSellItemDialog();
+            });
+            sellBtn.addEventListener('mouseenter', () => {
+                sellBtn.style.background = '#45a049';
+            });
+            sellBtn.addEventListener('mouseleave', () => {
+                sellBtn.style.background = '#4CAF50';
             });
         }
 
@@ -729,6 +763,356 @@ class MerchantView {
     }
 
     /**
+     * 显示出售物品对话框
+     */
+    showSellItemDialog() {
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        if (!inventoryService) {
+            this.eventBus.emit('ui:notification', {
+                message: '背包系统不可用',
+                type: 'error'
+            }, 'game');
+            return;
+        }
+
+        const allItems = inventoryService.getAllItems();
+        if (allItems.length === 0) {
+            this.eventBus.emit('ui:notification', {
+                message: '你没有任何可以出售的物品',
+                type: 'warning'
+            }, 'game');
+            return;
+        }
+
+        // 创建出售对话框
+        const dialog = document.createElement('div');
+        dialog.className = 'sell-dialog-overlay';
+        dialog.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            animation: fadeIn 0.2s ease-out;
+        `;
+
+        const dialogContent = document.createElement('div');
+        dialogContent.className = 'sell-dialog-content';
+        dialogContent.style.cssText = `
+            background: linear-gradient(135deg, #2a3142 0%, #1e2533 100%);
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(76, 175, 80, 0.5);
+            color: white;
+            animation: slideUp 0.3s ease-out;
+        `;
+
+        dialogContent.innerHTML = `
+            <div style="margin-bottom: 20px;">
+                <h3 style="color: #4CAF50; margin: 0 0 8px 0;">💰 出售物品</h3>
+                <p style="opacity: 0.8; font-size: 13px; margin: 0;">选择要出售给商人的物品（出售价格为物品价值的50%）</p>
+            </div>
+            <div id="sellItemsGrid" style="
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 12px;
+                margin-bottom: 20px;
+            ">
+                ${this.generateSellItemsGrid(allItems)}
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button id="cancelSellBtn" style="
+                    flex: 1;
+                    padding: 12px;
+                    background: #666;
+                    border: none;
+                    color: white;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 14px;
+                ">取消</button>
+            </div>
+        `;
+
+        dialog.appendChild(dialogContent);
+        document.body.appendChild(dialog);
+
+        // 设置事件
+        const cancelBtn = dialogContent.querySelector('#cancelSellBtn');
+        cancelBtn.addEventListener('click', () => {
+            dialog.remove();
+        });
+
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) {
+                dialog.remove();
+            }
+        });
+
+        // ESC关闭
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                dialog.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+
+        // 绑定物品卡片点击事件
+        this.setupSellItemCardEvents(dialogContent);
+    }
+
+    /**
+     * 生成出售物品网格
+     */
+    generateSellItemsGrid(items) {
+        if (items.length === 0) {
+            return '<div style="text-align: center; padding: 20px; opacity: 0.6;">没有可出售的物品</div>';
+        }
+
+        return items.map(item => {
+            const rarityColor = this.gameView?.getRarityColor(item.rarity) || '#ffffff';
+            const icon = item.icon || '📦';
+            const sellPrice = Math.floor((item.value || 1) * 0.5);
+
+            let iconHTML;
+            if (icon.startsWith('./assets/') || icon.startsWith('assets/')) {
+                const base = window.CDN_BASE_URL || '';
+                const src = base + icon.replace(/^\.\//, '');
+                iconHTML = `<img src="${src}" alt="${item.name}" style="width: 48px; height: 48px; object-fit: contain;">`;
+            } else {
+                iconHTML = `<span style="font-size: 48px;">${icon}</span>`;
+            }
+
+            return `
+                <div class="sell-item-card" data-item="${item.name}" style="
+                    background: rgba(255, 255, 255, 0.05);
+                    border: 2px solid ${rarityColor}40;
+                    border-radius: 8px;
+                    padding: 8px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    text-align: center;
+                ">
+                    <div style="margin-bottom: 4px;">${iconHTML}</div>
+                    <div style="color: ${rarityColor}; font-size: 11px; font-weight: bold; margin-bottom: 2px;">
+                        ${item.name}
+                    </div>
+                    <div style="font-size: 10px; opacity: 0.6; margin-bottom: 2px;">
+                        x${item.quantity}
+                    </div>
+                    <div style="color: #4CAF50; font-size: 10px; font-weight: bold;">
+                        💰 ${this.formatPrice(sellPrice)}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * 设置出售物品卡片事件
+     */
+    setupSellItemCardEvents(dialogContent) {
+        const cards = dialogContent.querySelectorAll('.sell-item-card');
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.background = 'rgba(76, 175, 80, 0.2)';
+                card.style.transform = 'translateY(-2px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.background = 'rgba(255, 255, 255, 0.05)';
+                card.style.transform = 'translateY(0)';
+            });
+            card.addEventListener('click', () => {
+                const itemName = card.dataset.item;
+                this.showSellQuantityDialog(itemName);
+            });
+        });
+    }
+
+    /**
+     * 显示出售数量选择对话框
+     */
+    showSellQuantityDialog(itemName) {
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        const item = inventoryService.getItem(itemName);
+        
+        if (!item) return;
+
+        const sellPrice = Math.floor((item.value || 1) * 0.5);
+        const rarityColor = this.gameView?.getRarityColor(item.rarity) || '#ffffff';
+
+        const dialog = document.createElement('div');
+        dialog.className = 'sell-quantity-dialog-overlay';
+        dialog.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10002;
+            animation: fadeIn 0.2s ease-out;
+        `;
+
+        const dialogContent = document.createElement('div');
+        dialogContent.style.cssText = `
+            background: linear-gradient(135deg, #2a3142 0%, #1e2533 100%);
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 2px solid ${rarityColor}80;
+            color: white;
+            animation: slideUp 0.3s ease-out;
+        `;
+
+        dialogContent.innerHTML = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h3 style="color: ${rarityColor}; margin: 0 0 8px 0;">出售 ${item.name}</h3>
+                <p style="opacity: 0.8; font-size: 13px; margin: 0;">单价: ${this.formatPrice(sellPrice)} (原价的50%)</p>
+            </div>
+            <div style="background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span>拥有数量:</span>
+                    <span>📦 ${item.quantity}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+                    <span>出售数量:</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button id="decreaseSellBtn" style="
+                            width: 32px; height: 32px;
+                            background: rgba(255, 255, 255, 0.1);
+                            border: 1px solid rgba(255, 255, 255, 0.3);
+                            color: white; border-radius: 4px;
+                            cursor: pointer; font-size: 18px;
+                        ">-</button>
+                        <input type="number" id="sellQuantityInput" value="1" min="1" max="${item.quantity}" style="
+                            width: 60px; text-align: center; padding: 6px;
+                            background: rgba(255, 255, 255, 0.1);
+                            border: 1px solid rgba(255, 255, 255, 0.3);
+                            color: white; border-radius: 4px; font-size: 16px;
+                        ">
+                        <button id="increaseSellBtn" style="
+                            width: 32px; height: 32px;
+                            background: rgba(255, 255, 255, 0.1);
+                            border: 1px solid rgba(255, 255, 255, 0.3);
+                            color: white; border-radius: 4px;
+                            cursor: pointer; font-size: 18px;
+                        ">+</button>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.2);">
+                    <span style="font-weight: bold;">获得金币:</span>
+                    <span id="sellTotalPrice" style="color: #4CAF50; font-weight: bold;">💰 ${this.formatPrice(sellPrice)}</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button id="cancelSellQuantityBtn" style="
+                    flex: 1; padding: 12px;
+                    background: #666; border: none;
+                    color: white; border-radius: 6px;
+                    cursor: pointer; font-size: 14px;
+                ">取消</button>
+                <button id="confirmSellBtn" style="
+                    flex: 1; padding: 12px;
+                    background: #4CAF50; border: none;
+                    color: white; border-radius: 6px;
+                    cursor: pointer; font-size: 14px; font-weight: bold;
+                ">确认出售</button>
+            </div>
+        `;
+
+        dialog.appendChild(dialogContent);
+        document.body.appendChild(dialog);
+
+        // 设置事件
+        const quantityInput = dialogContent.querySelector('#sellQuantityInput');
+        const totalPriceEl = dialogContent.querySelector('#sellTotalPrice');
+        const decreaseBtn = dialogContent.querySelector('#decreaseSellBtn');
+        const increaseBtn = dialogContent.querySelector('#increaseSellBtn');
+        const cancelBtn = dialogContent.querySelector('#cancelSellQuantityBtn');
+        const confirmBtn = dialogContent.querySelector('#confirmSellBtn');
+
+        const updateTotalPrice = () => {
+            const quantity = parseInt(quantityInput.value) || 1;
+            const total = sellPrice * quantity;
+            totalPriceEl.textContent = `💰 ${this.formatPrice(total)}`;
+        };
+
+        quantityInput.addEventListener('input', () => {
+            let val = parseInt(quantityInput.value) || 1;
+            val = Math.max(1, Math.min(item.quantity, val));
+            quantityInput.value = val;
+            updateTotalPrice();
+        });
+
+        decreaseBtn.addEventListener('click', () => {
+            let val = parseInt(quantityInput.value) || 1;
+            if (val > 1) {
+                quantityInput.value = val - 1;
+                updateTotalPrice();
+            }
+        });
+
+        increaseBtn.addEventListener('click', () => {
+            let val = parseInt(quantityInput.value) || 1;
+            if (val < item.quantity) {
+                quantityInput.value = val + 1;
+                updateTotalPrice();
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            dialog.remove();
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            const quantity = parseInt(quantityInput.value) || 1;
+            this.handleSell(itemName, quantity);
+            dialog.remove();
+            // 同时关闭出售物品选择对话框
+            document.querySelector('.sell-dialog-overlay')?.remove();
+        });
+
+        dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) {
+                dialog.remove();
+            }
+        });
+    }
+
+    /**
+     * 处理出售
+     */
+    handleSell(itemName, quantity) {
+        const merchantService = window.gameCore?.getService('merchantService');
+        if (!merchantService) {
+            this.eventBus.emit('ui:notification', {
+                message: '商人服务不可用',
+                type: 'error'
+            }, 'game');
+            return;
+        }
+
+        merchantService.sellItem(itemName, quantity);
+    }
+
+    /**
      * 更新库存显示
      */
     updateInventory(data) {
@@ -772,6 +1156,15 @@ class MerchantView {
      * 隐藏商人界面
      */
     hide() {
+        // 防止重复调用
+        if (this.isHiding) {
+            console.log('[MerchantView] 正在关闭中，忽略重复调用');
+            return;
+        }
+        
+        this.isHiding = true;
+        console.log('[MerchantView] 开始关闭商人界面');
+        
         const modal = document.getElementById('merchantModal');
         if (modal) {
             modal.style.animation = 'fadeOut 0.3s ease-out';
@@ -779,7 +1172,17 @@ class MerchantView {
                 if (modal.parentNode) {
                     modal.parentNode.removeChild(modal);
                 }
+                
+                // 在动画完成并移除模态框后触发关闭事件
+                console.log('[MerchantView] 商人界面已关闭，触发ui:merchant:hide事件');
+                this.eventBus.emit('ui:merchant:hide', {}, 'game');
+                // 重置标志
+                this.isHiding = false;
             }, 300);
+        } else {
+            // 如果没有模态框，说明已经关闭了，不需要再emit事件
+            console.log('[MerchantView] 没有找到商人模态框，不触发事件（已经关闭）');
+            this.isHiding = false;
         }
 
         // 移除ESC键监听

@@ -11,6 +11,7 @@ class MerchantService {
     setupEventListeners() {
         this.eventBus.on('merchant:encounter', this.encounterMerchant.bind(this), 'game');
         this.eventBus.on('merchant:buy', this.buyItem.bind(this), 'game');
+        this.eventBus.on('merchant:sell', this.sellItem.bind(this), 'game');
         this.eventBus.on('merchant:close', this.closeShop.bind(this), 'game');
     }
 
@@ -277,6 +278,81 @@ class MerchantService {
             message: `成功购买 ${itemName} x${quantity}`,
             remainingQuantity: merchantItem.quantity
         };
+    }
+
+    /**
+     * 向商人出售物品
+     * @param {string} itemName - 物品名称
+     * @param {number} quantity - 出售数量
+     */
+    sellItem(itemName, quantity = 1) {
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        const currencyService = window.gameCore?.getService('currencyService');
+        
+        if (!inventoryService || !currencyService) {
+            return { success: false, message: '系统服务不可用' };
+        }
+
+        // 检查玩家是否拥有该物品
+        const item = inventoryService.getItem(itemName);
+        if (!item) {
+            this.eventBus.emit('ui:notification', {
+                message: '你没有这个物品',
+                type: 'warning'
+            }, 'game');
+            return { success: false, message: '没有该物品' };
+        }
+
+        // 检查数量
+        if (item.quantity < quantity) {
+            this.eventBus.emit('ui:notification', {
+                message: `物品数量不足！你只有 ${item.quantity} 个`,
+                type: 'warning'
+            }, 'game');
+            return { success: false, message: '物品数量不足' };
+        }
+
+        // 计算出售价格（物品价值的50%）
+        const itemValue = item.value || 1;
+        const sellPrice = Math.floor(itemValue * 0.5);
+        const totalPrice = sellPrice * quantity;
+
+        // 从背包移除物品
+        const removeResult = inventoryService.removeItem(itemName, quantity);
+        if (!removeResult) {
+            return { success: false, message: '移除物品失败' };
+        }
+
+        // 增加金币
+        currencyService.addCurrency(totalPrice);
+
+        // 显示成功消息
+        this.eventBus.emit('ui:notification', {
+            message: `成功出售 ${itemName} x${quantity}，获得 ${this.formatCurrency(totalPrice)}`,
+            type: 'success'
+        }, 'game');
+
+        return {
+            success: true,
+            message: `成功出售 ${itemName} x${quantity}`,
+            earnedMoney: totalPrice
+        };
+    }
+
+    /**
+     * 格式化货币显示
+     */
+    formatCurrency(copperAmount) {
+        const gold = Math.floor(copperAmount / 10000);
+        const silver = Math.floor((copperAmount % 10000) / 100);
+        const copper = copperAmount % 100;
+
+        const parts = [];
+        if (gold > 0) parts.push(`${gold}金`);
+        if (silver > 0) parts.push(`${silver}银`);
+        if (copper > 0 || parts.length === 0) parts.push(`${copper}铜`);
+
+        return parts.join(' ');
     }
 
     /**

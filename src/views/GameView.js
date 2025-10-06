@@ -11,6 +11,8 @@ class GameView {
         this.loadingMessageElement = null; // 加载消息元素
         this.completedBattles = new Set(); // 跟踪已完成的战斗ID
         this.battleIdCounter = 0; // 战斗ID计数器
+        this.completedMerchantTrades = new Set(); // 跟踪已完成的商人交易ID
+        this.merchantTradeIdCounter = 0; // 商人交易ID计数器
 
         // 解耦视图：实例化战斗与背包视图（最小侵入）
         this.battleView = new BattleView(this.eventBus, this);
@@ -30,6 +32,7 @@ class GameView {
         this.eventBus.on('ui:display:error', this.displayError.bind(this), 'game');
         this.eventBus.on('state:player:updated', this.updatePlayerStats.bind(this), 'game');
         this.eventBus.on('core:initialized', this.hideLoadingScreen.bind(this), 'system');
+        this.eventBus.on('ui:merchant:hide', this.handleMerchantClosed.bind(this), 'game');
         
         // 监听游戏状态变化，更新调试面板
         this.eventBus.on('state:player:updated', this.updateDebugGameState.bind(this), 'game');
@@ -147,13 +150,10 @@ class GameView {
                             <button class="quick-action-button" onclick="window.gameView.quickAction('搜索房间')">
                                 🔍 搜索房间
                             </button>
-                            <button class="quick-action-button" onclick="window.gameView.quickAction('查看状态')">
-                                📊 查看状态
-                            </button>
-                            <button class="quick-action-button" onclick="window.gameView.handleRest()">
+                            <button class="quick-action-button" onclick="window.gameView.handleRest()" style="background: linear-gradient(135deg, #2e7d32, #388e3c); border-color: #4caf50;">
                                 💤 休息
                             </button>
-                            <button class="quick-action-button" onclick="window.gameView.showSkills()">
+                            <button class="quick-action-button" onclick="window.gameView.showSkills()" style="background: linear-gradient(135deg, #7b1fa2, #9c27b0); border-color: #ba68c8;">
                                 🧠 技能
                             </button>
                             <button class="quick-action-button inventory-button" onclick="window.gameView.showInventory()" title="打开装备与背包界面">
@@ -2021,9 +2021,11 @@ class GameView {
 // 从存档恢复叙述区历史
 restoreNarrativeFromHistory(data) {
     try {
-        console.log('[GameView] 开始恢复叙述历史，当前已完成战斗:', {
+        console.log('[GameView] 开始恢复叙述历史，当前已完成战斗和商人交易:', {
             completedBattles: Array.from(this.completedBattles || []),
             battleIdCounter: this.battleIdCounter,
+            completedMerchantTrades: Array.from(this.completedMerchantTrades || []),
+            merchantTradeIdCounter: this.merchantTradeIdCounter,
             dataReceived: data
         });
         
@@ -2031,8 +2033,9 @@ restoreNarrativeFromHistory(data) {
         const history = gs?.getState()?.conversation?.history || [];
         const narrativeArea = document.getElementById('narrativeArea');
         if (!narrativeArea) return;
-        // 按历史顺序为每个战斗准备消息分配稳定ID
+        // 按历史顺序为每个战斗准备消息和商人交易分配稳定ID
         let restoreAssignedId = 0;
+        let restoreAssignedMerchantTradeId = 0;
 
         // 清空当前叙述区（移除欢迎提示），用存档历史重建
         narrativeArea.innerHTML = '';
@@ -2100,6 +2103,19 @@ restoreNarrativeFromHistory(data) {
                         }
                     }
                 }
+                
+                // 如果是商人交易准备状态，需要修复内容和类型以匹配原始显示样式
+                if (type === 'merchant_encounter' && entry.merchantTradeId) {
+                    // 修复内容为原始显示的内容
+                    content = '💰 商人正等待着你的回应...';
+                    // 修复类型为function_result以匹配原始的CSS样式
+                    type = 'function_result';
+                    
+                    // 延迟处理，确保消息已添加到DOM后再添加按钮
+                    setTimeout(() => {
+                        this.restoreMerchantTradeButton(entry, ++restoreAssignedMerchantTradeId);
+                    }, 100);
+                }
 
                 this.addMessage({
                     content,
@@ -2111,15 +2127,19 @@ restoreNarrativeFromHistory(data) {
             });
         }
 
-        // 在历史恢复完成后，更新所有已完成战斗的按钮状态
+        // 在历史恢复完成后，更新所有已完成战斗和商人交易的按钮状态
         // 确保计数器不小于已分配的ID数
         this.battleIdCounter = Math.max(this.battleIdCounter, restoreAssignedId);
+        this.merchantTradeIdCounter = Math.max(this.merchantTradeIdCounter, restoreAssignedMerchantTradeId);
         setTimeout(() => {
-            console.log('[GameView] 准备更新所有已完成战斗按钮，当前状态:', {
+            console.log('[GameView] 准备更新所有已完成战斗和商人交易按钮，当前状态:', {
                 completedBattles: Array.from(this.completedBattles || []),
-                battleIdCounter: this.battleIdCounter
+                battleIdCounter: this.battleIdCounter,
+                completedMerchantTrades: Array.from(this.completedMerchantTrades || []),
+                merchantTradeIdCounter: this.merchantTradeIdCounter
             });
             this.updateAllCompletedBattleButtons();
+            this.updateAllCompletedMerchantTradeButtons();
             
             // 历史加载默认禁用所有“进入战斗”按钮，只有在存在准备中的战斗时保留最后一个可用
             try {
@@ -2174,7 +2194,11 @@ restoreNarrativeFromHistory(data) {
                 completedBattlesSize: this.completedBattles?.size || 0,
                 completedBattlesList: Array.from(this.completedBattles || []),
                 battleIdCounter: this.battleIdCounter,
-                allBattleButtons: document.querySelectorAll('.battle-start-button').length
+                allBattleButtons: document.querySelectorAll('.battle-start-button').length,
+                completedMerchantTradesSize: this.completedMerchantTrades?.size || 0,
+                completedMerchantTradesList: Array.from(this.completedMerchantTrades || []),
+                merchantTradeIdCounter: this.merchantTradeIdCounter,
+                allMerchantTradeButtons: document.querySelectorAll('.merchant-trade-button').length
             });
         }, 200);
 
@@ -2351,6 +2375,142 @@ updateAllCompletedBattleButtons() {
         console.log('[UI] 已更新所有已完成战斗的按钮状态');
     } catch (e) {
         console.warn('[UI] updateAllCompletedBattleButtons error:', e);
+    }
+}
+
+// 恢复商人交易按钮（从存档恢复时使用）
+restoreMerchantTradeButton(historyEntry, forcedMerchantTradeId = null) {
+    try {
+        console.log('[GameView] 恢复商人交易按钮:', {
+            historyEntry,
+            currentCompletedMerchantTrades: Array.from(this.completedMerchantTrades || [])
+        });
+        
+        // 优先通过时间戳精确定位消息
+        let targetMessage = null;
+        if (historyEntry && historyEntry.timestamp !== undefined) {
+            targetMessage = document.querySelector(`.narrative-message[data-ts="${historyEntry.timestamp}"]`);
+        }
+        
+        // 回退：找最后一个 merchant_encounter 类型的消息
+        if (!targetMessage) {
+            const narrativeArea = document.getElementById('narrativeArea');
+            const messages = narrativeArea.querySelectorAll('.narrative-message');
+            for (let i = messages.length - 1; i >= 0; i--) {
+                const msg = messages[i];
+                if (msg.textContent.includes('商人正等待着你的回应')) {
+                    targetMessage = msg;
+                    break;
+                }
+            }
+        }
+        
+        if (targetMessage) {
+            // 检查是否已经有按钮
+            if (targetMessage.querySelector('.merchant-trade-button') || targetMessage.getAttribute('data-merchant-trade-btn-bound') === '1') {
+                console.log('[GameView] 商人交易按钮已存在，跳过恢复');
+                return;
+            }
+            
+            // 尝试从历史条目或强制参数中获取商人交易ID
+            let merchantTradeId;
+            if (typeof forcedMerchantTradeId === 'number') {
+                merchantTradeId = forcedMerchantTradeId;
+                console.log('[GameView] 使用强制指定的商人交易ID:', merchantTradeId);
+            } else if (historyEntry && historyEntry.merchantTradeId !== undefined) {
+                merchantTradeId = historyEntry.merchantTradeId;
+                console.log('[GameView] 使用历史记录中的商人交易ID:', merchantTradeId);
+            } else {
+                console.log('[GameView] 缺少 merchantTradeId，跳过按钮恢复');
+                return;
+            }
+            
+            targetMessage.setAttribute('data-merchant-trade-id', merchantTradeId);
+            targetMessage.setAttribute('data-merchant-trade-btn-bound', '1');
+            
+            // 添加与商人交易按钮
+            const buttonWrapper = document.createElement('div');
+            buttonWrapper.style.marginTop = '10px';
+            const tradeBtn = document.createElement('button');
+            tradeBtn.className = 'primary-button merchant-trade-button';
+            tradeBtn.setAttribute('data-merchant-trade-id', merchantTradeId);
+            
+            // 检查交易是否已完成（在存档中已经完成的交易）
+            const isCompleted = this.completedMerchantTrades.has(merchantTradeId);
+            console.log('[GameView] 检查商人交易完成状态:', {
+                merchantTradeId,
+                isCompleted,
+                completedMerchantTrades: Array.from(this.completedMerchantTrades || [])
+            });
+            
+            if (isCompleted) {
+                tradeBtn.textContent = '交易已结束';
+                tradeBtn.disabled = true;
+                tradeBtn.style.opacity = '0.5';
+                tradeBtn.style.cursor = 'not-allowed';
+                tradeBtn.style.background = '#666';
+                targetMessage.classList.add('merchant-trade-completed');
+                console.log('[GameView] 设置按钮为已完成状态');
+            } else {
+                tradeBtn.textContent = '与商人交易';
+                tradeBtn.disabled = false;
+                tradeBtn.style.opacity = '1';
+                tradeBtn.style.cursor = 'pointer';
+                tradeBtn.onclick = () => {
+                    // 再次检查交易是否已完成（防止竞态条件）
+                    if (this.completedMerchantTrades.has(merchantTradeId)) {
+                        this.showNotification('交易已经结束了', 'warning');
+                        return;
+                    }
+                    
+                    // 点击进入商人界面
+                    this.eventBus.emit('merchant:encounter', {}, 'game');
+                    tradeBtn.disabled = true;
+                    tradeBtn.textContent = '交易中...';
+                    tradeBtn.style.opacity = '0.6';
+                    tradeBtn.style.cursor = 'not-allowed';
+                    
+                    // 保存当前交易ID
+                    this.currentMerchantTradeId = merchantTradeId;
+                    
+                    this.enableInput();
+                    this.setStatus('ready', '就绪');
+                };
+                console.log('[GameView] 设置按钮为可交易状态');
+            }
+            
+            buttonWrapper.appendChild(tradeBtn);
+            targetMessage.appendChild(buttonWrapper);
+            
+            console.log('[UI] 恢复了商人交易按钮，ID:', merchantTradeId, '已完成:', isCompleted);
+        }
+    } catch (e) {
+        console.warn('[UI] restoreMerchantTradeButton error:', e);
+    }
+}
+
+// 更新所有已完成商人交易的按钮状态
+updateAllCompletedMerchantTradeButtons() {
+    try {
+        const allMerchantButtons = document.querySelectorAll('.merchant-trade-button');
+        console.log('[GameView] 更新商人交易按钮状态:', {
+            totalButtons: allMerchantButtons.length,
+            completedMerchantTrades: Array.from(this.completedMerchantTrades || []),
+            completedMerchantTradesSize: this.completedMerchantTrades?.size || 0
+        });
+        
+        allMerchantButtons.forEach((button, index) => {
+            const merchantTradeId = parseInt(button.getAttribute('data-merchant-trade-id'));
+            const isCompleted = !isNaN(merchantTradeId) && this.completedMerchantTrades.has(merchantTradeId);
+            console.log(`[GameView] 商人交易按钮 ${index}: ID=${merchantTradeId}, 已完成=${isCompleted}`);
+            
+            if (isCompleted) {
+                this.updateMerchantTradeButtonState(merchantTradeId);
+            }
+        });
+        console.log('[UI] 已更新所有已完成商人交易的按钮状态');
+    } catch (e) {
+        console.warn('[UI] updateAllCompletedMerchantTradeButtons error:', e);
     }
 }
 
@@ -2564,16 +2724,20 @@ hideGlobalTooltip() {
         console.log('[GameView] 新游戏开始，重置UI状态', {
             currentCompletedBattles: Array.from(this.completedBattles || []),
             currentBattleIdCounter: this.battleIdCounter,
+            currentCompletedMerchantTrades: Array.from(this.completedMerchantTrades || []),
+            currentMerchantTradeIdCounter: this.merchantTradeIdCounter,
             data
         });
         
-        // 只有在明确是新游戏时才重置战斗状态跟踪
+        // 只有在明确是新游戏时才重置战斗和商人交易状态跟踪
         if (data && data.resetUI !== false) {
-            console.log('[GameView] 重置战斗状态跟踪');
+            console.log('[GameView] 重置战斗和商人交易状态跟踪');
             this.completedBattles.clear();
             this.battleIdCounter = 0;
+            this.completedMerchantTrades.clear();
+            this.merchantTradeIdCounter = 0;
         } else {
-            console.log('[GameView] 跳过战斗状态重置');
+            console.log('[GameView] 跳过战斗和商人交易状态重置');
         }
         
         // 强制启用输入，清除任何禁用状态
@@ -3143,12 +3307,194 @@ hideGlobalTooltip() {
             gs.actionsSinceLastRest = 0;
         }
 
-        // 触发商人遇到事件
+        // 显示"与商人交易"按钮，类似战斗准备状态
         setTimeout(() => {
+            this.showMerchantTradeButton();
+        }, 500);
+    }
+
+    /**
+     * 显示商人交易按钮
+     */
+    showMerchantTradeButton() {
+        const narrativeArea = document.getElementById('narrativeArea');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'narrative-message function_result slide-up';
+
+        // 生成唯一的商人交易ID
+        const merchantTradeId = ++this.merchantTradeIdCounter;
+        messageDiv.setAttribute('data-merchant-trade-id', merchantTradeId);
+
+        // 时间戳
+        const timestamp = new Date().toLocaleTimeString();
+        const timeElement = document.createElement('div');
+        timeElement.style.fontSize = '10px';
+        timeElement.style.opacity = '0.6';
+        timeElement.style.marginBottom = '5px';
+        timeElement.textContent = timestamp;
+
+        // 内容
+        const contentElement = document.createElement('div');
+        contentElement.textContent = '💰 商人正等待着你的回应...';
+
+        // 交易按钮
+        const buttonWrapper = document.createElement('div');
+        buttonWrapper.style.marginTop = '10px';
+        const tradeBtn = document.createElement('button');
+        tradeBtn.className = 'primary-button merchant-trade-button';
+        tradeBtn.textContent = '与商人交易';
+        tradeBtn.disabled = false;
+        tradeBtn.style.opacity = '1';
+        tradeBtn.style.cursor = 'pointer';
+        tradeBtn.setAttribute('data-merchant-trade-id', merchantTradeId);
+        tradeBtn.onclick = () => {
+            // 检查交易是否已完成
+            if (this.completedMerchantTrades.has(merchantTradeId)) {
+                this.showNotification('交易已经结束了', 'warning');
+                return;
+            }
+            
+            // 点击后进入商人界面
             this.eventBus.emit('merchant:encounter', {}, 'game');
+            // 禁用按钮防止重复点击
+            tradeBtn.disabled = true;
+            tradeBtn.textContent = '交易中...';
+            tradeBtn.style.opacity = '0.6';
+            tradeBtn.style.cursor = 'not-allowed';
+            
+            // 保存当前交易ID到全局，供关闭时使用
+            this.currentMerchantTradeId = merchantTradeId;
+            
+            // 启用输入
             this.enableInput();
             this.setStatus('ready', '就绪');
-        }, 500);
+        };
+
+        buttonWrapper.appendChild(tradeBtn);
+        messageDiv.appendChild(timeElement);
+        messageDiv.appendChild(contentElement);
+        messageDiv.appendChild(buttonWrapper);
+
+        narrativeArea.appendChild(messageDiv);
+        narrativeArea.scrollTop = narrativeArea.scrollHeight;
+
+        // 将商人交易ID保存到历史记录中，以便存档恢复时使用
+        try {
+            const gsService = window.gameCore?.getService('gameStateService');
+            if (gsService && typeof gsService.addConversationEntry === 'function') {
+                gsService.addConversationEntry({
+                    role: 'system',
+                    content: '商人交易准备',
+                    type: 'merchant_encounter',
+                    merchantTradeId: merchantTradeId // 保存商人交易ID
+                });
+                console.log('[GameView] 已保存商人交易ID到历史记录:', merchantTradeId);
+            }
+        } catch (e) {
+            console.warn('[UI] 保存商人交易ID到历史记录失败:', e);
+        }
+
+        // 在等待期间禁止其他输入，但允许打开装备界面
+        this.disableInputExceptInventory();
+        this.setStatus('processing', '等待与商人交易...');
+    }
+
+    /**
+     * 处理商人界面关闭
+     */
+    handleMerchantClosed() {
+        console.log('[GameView] 商人界面关闭，更新按钮状态');
+        
+        // 获取当前交易ID
+        const merchantTradeId = this.currentMerchantTradeId;
+        
+        if (merchantTradeId) {
+            // 标记交易为已完成
+            this.completedMerchantTrades.add(merchantTradeId);
+            console.log('[GameView] 已将商人交易ID添加到完成列表:', {
+                merchantTradeId,
+                newCompletedTrades: Array.from(this.completedMerchantTrades)
+            });
+            
+            // 更新对应的交易按钮状态
+            this.updateMerchantTradeButtonState(merchantTradeId);
+            
+            // 清除当前交易ID
+            this.currentMerchantTradeId = null;
+        }
+    }
+
+    /**
+     * 更新商人交易按钮状态
+     */
+    updateMerchantTradeButtonState(merchantTradeId) {
+        const button = document.querySelector(`.merchant-trade-button[data-merchant-trade-id="${merchantTradeId}"]`);
+        console.log(`[GameView] 尝试更新商人交易按钮状态 ID: ${merchantTradeId}`, {
+            buttonFound: !!button,
+            buttonText: button?.textContent,
+            buttonDisabled: button?.disabled
+        });
+        
+        if (button) {
+            button.disabled = true;
+            button.textContent = '交易已结束';
+            button.style.opacity = '0.5';
+            button.style.cursor = 'not-allowed';
+            button.style.background = '#666';
+            
+            // 添加已完成的样式类
+            const messageDiv = button.closest('.narrative-message');
+            if (messageDiv) {
+                messageDiv.classList.add('merchant-trade-completed');
+            }
+            
+            console.log(`[GameView] 已禁用商人交易按钮 ID: ${merchantTradeId}`);
+        } else {
+            console.warn(`[GameView] 未找到商人交易按钮 ID: ${merchantTradeId}`);
+        }
+    }
+
+    /**
+     * 禁用输入但允许打开装备界面
+     */
+    disableInputExceptInventory() {
+        console.log('[DEBUG] 禁用用户输入（装备界面除外）');
+        this.isInputDisabled = true;
+        
+        const actionArea = document.querySelector('.action-area');
+        const input = document.getElementById('actionInput');
+        const mainActionButton = actionArea ? actionArea.querySelector('.primary-button') : null;
+        const quickButtons = actionArea ? actionArea.querySelectorAll('.quick-action-button') : [];
+        
+        if (input) {
+            input.disabled = true;
+            input.placeholder = '请先与商人交易或等待...';
+            input.style.opacity = '0.6';
+        }
+        
+        if (mainActionButton) {
+            mainActionButton.disabled = true;
+            mainActionButton.style.opacity = '0.6';
+            mainActionButton.style.cursor = 'not-allowed';
+        }
+        
+        quickButtons.forEach(btn => {
+            // 检查是否是装备按钮（inventory-button）
+            const isInventoryBtn = btn.classList.contains('inventory-button');
+            if (!isInventoryBtn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+                btn.style.cursor = 'not-allowed';
+            }
+            // 装备按钮保持可用
+        });
+
+        // 保持商人交易按钮可用
+        document.querySelectorAll('.merchant-trade-button').forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        });
     }
 
     /**
