@@ -133,6 +133,8 @@ class GameStateService {
             this.handleBattleResult(result);
         } else if (name === 'search_area') {
             this.handleSearchResult(result);
+        } else if (name === 'start_puzzle') {
+            this.handlePuzzleResult(result);
         }
         
         // 对于交互式战斗（准备或开始），避免写入重复的函数结果到历史。
@@ -224,9 +226,70 @@ class GameStateService {
 
     handleSearchResult(result) {
         // 搜索结果中的物品已经在FunctionCallService中处理了
-        // 这里可以处理其他搜索相关的状态更新
+        // 这里处理经验值奖励
         if (result.foundItems && result.foundItems.length > 0) {
             console.log('[DEBUG] 搜索发现物品:', result.foundItems);
+        }
+        
+        // 处理搜索经验值
+        if (result.experience > 0) {
+            const updates = {};
+            const newExp = this.gameState.player.experience + result.experience;
+            updates.experience = newExp;
+            
+            console.log('[DEBUG] 搜索获得经验值:', { 原经验: this.gameState.player.experience, 获得: result.experience, 新经验: newExp });
+            
+            // 检查是否升级
+            const newLevel = this.calculateLevel(newExp);
+            if (newLevel > this.gameState.player.level) {
+                const levelDiff = newLevel - this.gameState.player.level;
+                updates.level = newLevel;
+                updates.maxHp = this.gameState.player.maxHp + levelDiff * 20;
+                updates.hp = updates.maxHp;
+                updates.skillPoints = (this.gameState.player.skillPoints || 0) + levelDiff;
+                updates.maxMana = (this.gameState.player.maxMana || 0) + levelDiff * 10;
+                updates.maxStamina = (this.gameState.player.maxStamina || 0) + levelDiff * 10;
+                updates.mana = updates.maxMana;
+                updates.stamina = updates.maxStamina;
+                
+                console.log('[DEBUG] 搜索触发升级!', { 原等级: this.gameState.player.level, 新等级: newLevel });
+            }
+            
+            if (Object.keys(updates).length > 0) {
+                this.updatePlayerStats(updates);
+            }
+        }
+    }
+
+    handlePuzzleResult(result) {
+        // 解谜结果中的物品已经在FunctionCallService中处理了
+        // 这里处理经验值奖励
+        if (result.success && result.experience > 0) {
+            const updates = {};
+            const newExp = this.gameState.player.experience + result.experience;
+            updates.experience = newExp;
+            
+            console.log('[DEBUG] 解谜获得经验值:', { 原经验: this.gameState.player.experience, 获得: result.experience, 新经验: newExp });
+            
+            // 检查是否升级
+            const newLevel = this.calculateLevel(newExp);
+            if (newLevel > this.gameState.player.level) {
+                const levelDiff = newLevel - this.gameState.player.level;
+                updates.level = newLevel;
+                updates.maxHp = this.gameState.player.maxHp + levelDiff * 20;
+                updates.hp = updates.maxHp;
+                updates.skillPoints = (this.gameState.player.skillPoints || 0) + levelDiff;
+                updates.maxMana = (this.gameState.player.maxMana || 0) + levelDiff * 10;
+                updates.maxStamina = (this.gameState.player.maxStamina || 0) + levelDiff * 10;
+                updates.mana = updates.maxMana;
+                updates.stamina = updates.maxStamina;
+                
+                console.log('[DEBUG] 解谜触发升级!', { 原等级: this.gameState.player.level, 新等级: newLevel });
+            }
+            
+            if (Object.keys(updates).length > 0) {
+                this.updatePlayerStats(updates);
+            }
         }
     }
 
