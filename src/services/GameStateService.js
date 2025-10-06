@@ -200,12 +200,19 @@ class GameStateService {
             }
         }
         
-        // 处理掉落物品
+        // 处理掉落物品 - 先统计数量再合并添加，避免重复通知
         if (result.loot && result.loot.length > 0) {
             const inventoryService = window.gameCore?.getService('inventoryService');
             if (inventoryService) {
+                // 统计每种物品的数量
+                const itemCounts = new Map();
                 result.loot.forEach(itemName => {
-                    inventoryService.addItem(itemName, 1);
+                    itemCounts.set(itemName, (itemCounts.get(itemName) || 0) + 1);
+                });
+                
+                // 合并添加
+                itemCounts.forEach((count, itemName) => {
+                    inventoryService.addItem(itemName, count);
                 });
             }
         }
@@ -264,12 +271,19 @@ class GameStateService {
             }
         }
         
-        // 处理掉落物品
+        // 处理掉落物品 - 先统计数量再合并添加，避免重复通知
         if (battleResult.loot && battleResult.loot.length > 0) {
             const inventoryService = window.gameCore?.getService('inventoryService');
             if (inventoryService) {
+                // 统计每种物品的数量
+                const itemCounts = new Map();
                 battleResult.loot.forEach(itemName => {
-                    inventoryService.addItem(itemName, 1);
+                    itemCounts.set(itemName, (itemCounts.get(itemName) || 0) + 1);
+                });
+                
+                // 合并添加
+                itemCounts.forEach((count, itemName) => {
+                    inventoryService.addItem(itemName, count);
                 });
             }
         }
@@ -287,8 +301,24 @@ class GameStateService {
 
     // 等级计算函数
     calculateLevel(experience) {
-        // 简单的等级计算：每100经验值升1级
-        return Math.floor(experience / 100) + 1;
+        // 递增经验需求系统：
+        // 1->2级: 350经验
+        // 2->3级: 425经验
+        // 3->4级: 500经验
+        // 每级额外增加75经验需求
+        
+        let level = 1;
+        let requiredExp = 0;
+        let baseExpForNextLevel = 350; // 第一级需要350经验
+        
+        while (experience >= requiredExp + baseExpForNextLevel) {
+            requiredExp += baseExpForNextLevel;
+            level++;
+            // 每级增加75经验需求
+            baseExpForNextLevel = 350 + (level - 1) * 75;
+        }
+        
+        return level;
     }
 
     generateGamePrompt() {

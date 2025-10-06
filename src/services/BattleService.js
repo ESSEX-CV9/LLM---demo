@@ -927,20 +927,50 @@ class BattleService {
             if (enemy.dropTable && enemy.dropTable.length > 0) {
                 enemy.dropTable.forEach(drop => {
                     if (Math.random() < drop.chance) {
-                        loot.push(drop.item);
+                        // 处理数量
+                        let quantity = 1;
+                        if (drop.quantity) {
+                            if (Array.isArray(drop.quantity)) {
+                                // 数量是范围 [min, max]
+                                const min = drop.quantity[0];
+                                const max = drop.quantity[1];
+                                quantity = Math.floor(Math.random() * (max - min + 1)) + min;
+                            } else {
+                                // 数量是固定值
+                                quantity = drop.quantity;
+                            }
+                        }
+                        
+                        // 将物品添加quantity次到掉落列表
+                        for (let i = 0; i < quantity; i++) {
+                            loot.push(drop.item);
+                        }
                     }
                 });
             } else {
                 // 使用默认掉落表
                 const defaultLootTable = [
-                    { name: '治疗药水', rarity: 0.4 },
-                    { name: '铜币', rarity: 0.7 },
+                    { name: '小瓶治疗药水', rarity: 0.4 },
+                    { name: '铜币', rarity: 0.7, quantity: [1, 3] },
                     { name: '面包', rarity: 0.3 }
                 ];
                 
                 defaultLootTable.forEach(item => {
                     if (Math.random() < item.rarity) {
-                        loot.push(item.name);
+                        let quantity = 1;
+                        if (item.quantity) {
+                            if (Array.isArray(item.quantity)) {
+                                const min = item.quantity[0];
+                                const max = item.quantity[1];
+                                quantity = Math.floor(Math.random() * (max - min + 1)) + min;
+                            } else {
+                                quantity = item.quantity;
+                            }
+                        }
+                        
+                        for (let i = 0; i < quantity; i++) {
+                            loot.push(item.name);
+                        }
                     }
                 });
             }

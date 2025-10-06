@@ -104,10 +104,11 @@ class EquipmentService {
             equipment: equipmentData
         }, 'game');
 
-        this.eventBus.emit('ui:notification', {
-            message: `装备了 ${equipmentData.name}`,
-            type: 'success'
-        }, 'game');
+        // 已取消装备通知
+        // this.eventBus.emit('ui:notification', {
+        //     message: `装备了 ${equipmentData.name}`,
+        //     type: 'success'
+        // }, 'game');
 
         return {
             success: true,
@@ -173,10 +174,11 @@ class EquipmentService {
             isTwoHanded: true
         }, 'game');
         
-        this.eventBus.emit('ui:notification', {
-            message: `装备了双手武器 ${equipmentData.name}`,
-            type: 'success'
-        }, 'game');
+        // 已取消装备通知
+        // this.eventBus.emit('ui:notification', {
+        //     message: `装备了双手武器 ${equipmentData.name}`,
+        //     type: 'success'
+        // }, 'game');
         
         return {
             success: true,
@@ -248,12 +250,13 @@ class EquipmentService {
             isTwoHanded: isTwoHandedWeapon
         }, 'game');
 
-        if (returnToInventory) {
-            this.eventBus.emit('ui:notification', {
-                message: `卸下了 ${isTwoHandedWeapon ? '双手武器 ' : ''}${currentEquipment.name}`,
-                type: 'info'
-            }, 'game');
-        }
+        // 已取消卸下装备通知
+        // if (returnToInventory) {
+        //     this.eventBus.emit('ui:notification', {
+        //         message: `卸下了 ${isTwoHandedWeapon ? '双手武器 ' : ''}${currentEquipment.name}`,
+        //         type: 'info'
+        //     }, 'game');
+        // }
 
         return {
             success: true,

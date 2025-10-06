@@ -1,9 +1,26 @@
 // data/EnemyTemplates.js - 敌人模板系统（完整1-100级，基于现有机制）
+
+// 动态导入装备数据库
+let ItemsDB = null;
+
 class EnemyTemplates {
     constructor() {
         // 先初始化类型系数，后生成模板，避免未定义访问
         this.typeMultipliers = this.initializeTypeMultipliers();
         this.templates = this.initializeTemplates();
+        
+        // 异步加载装备数据库
+        this.loadItemsDB();
+    }
+    
+    async loadItemsDB() {
+        try {
+            const module = await import('./Items/index.js');
+            ItemsDB = module.default;
+            console.log('[EnemyTemplates] 装备数据库加载成功');
+        } catch (error) {
+            console.warn('[EnemyTemplates] 装备数据库加载失败，装备掉落将使用默认值', error);
+        }
     }
 
     initializeTypeMultipliers() {
@@ -419,36 +436,307 @@ class EnemyTemplates {
             criticalChance: multipliers.criticalChance
         };
     }
+    
+    /**
+     * 从装备数据库中随机选择合适的装备
+     * @param {number} level - 敌人等级
+     * @param {string} category - 敌人类型
+     * @returns {string|null} 装备名称
+     */
+    getRandomEquipmentDrop(level, category) {
+        if (!ItemsDB) {
+            return null;
+        }
+        
+        // 根据敌人类型确定稀有度权重
+        const rarityWeights = {
+            minion: {
+                common: 0.70,      // 70% 普通
+                uncommon: 0.25,    // 25% 非凡
+                rare: 0.05,        // 5% 稀有
+                epic: 0,
+                legendary: 0
+            },
+            elite: {
+                common: 0.15,      // 15% 普通
+                uncommon: 0.50,    // 50% 非凡
+                rare: 0.30,        // 30% 稀有
+                epic: 0.05,        // 5% 史诗
+                legendary: 0
+            },
+            elite_advanced: {
+                common: 0,
+                uncommon: 0.20,    // 20% 非凡
+                rare: 0.50,        // 50% 稀有
+                epic: 0.28,        // 28% 史诗
+                legendary: 0.02    // 2% 传说
+            },
+            boss: {
+                common: 0,
+                uncommon: 0,
+                rare: 0.25,        // 25% 稀有
+                epic: 0.60,        // 60% 史诗
+                legendary: 0.15    // 15% 传说
+            }
+        };
+        
+        const weights = rarityWeights[category] || rarityWeights.minion;
+        
+        // 随机选择稀有度
+        const rand = Math.random();
+        let cumulativeWeight = 0;
+        let selectedRarity = 'common';
+        
+        for (const [rarity, weight] of Object.entries(weights)) {
+            cumulativeWeight += weight;
+            if (rand <= cumulativeWeight) {
+                selectedRarity = rarity;
+                break;
+            }
+        }
+        
+        // 获取等级范围内的装备（±5级）
+        const minLevel = Math.max(1, level - 5);
+        const maxLevel = Math.min(100, level + 5);
+        
+        try {
+            // 获取符合等级和稀有度的装备
+            const allEquipment = ItemsDB.getEquipment();
+            const suitableEquipment = allEquipment.filter(item =>
+                item.level >= minLevel &&
+                item.level <= maxLevel &&
+                item.rarity === selectedRarity
+            );
+            
+            if (suitableEquipment.length === 0) {
+                // 如果没有找到，放宽稀有度限制
+                const relaxedEquipment = allEquipment.filter(item =>
+                    item.level >= minLevel &&
+                    item.level <= maxLevel
+                );
+                
+                if (relaxedEquipment.length > 0) {
+                    const randomItem = relaxedEquipment[Math.floor(Math.random() * relaxedEquipment.length)];
+                    return randomItem.name;
+                }
+                
+                return null;
+            }
+            
+            // 随机选择一个装备
+            const randomItem = suitableEquipment[Math.floor(Math.random() * suitableEquipment.length)];
+            return randomItem.name;
+        } catch (error) {
+            console.warn('[EnemyTemplates] 获取装备掉落失败:', error);
+            return null;
+        }
+    }
 
     // 生成掉落表
     generateDropTable(level, category) {
         const drops = [];
         
-        // 基础掉落
-        if (level <= 20) {
-            drops.push({ item: "铜币", chance: 0.8, quantity: [1, Math.floor(level * 0.8)] });
-            drops.push({ item: "小瓶治疗药水", chance: 0.3 });
-        } else if (level <= 50) {
-            drops.push({ item: "银币", chance: 0.8, quantity: [Math.floor(level * 0.3), Math.floor(level * 0.8)] });
-            drops.push({ item: "中瓶治疗药水", chance: 0.4 });
-        } else {
-            drops.push({ item: "金币", chance: 0.9, quantity: [Math.floor(level * 0.5), Math.floor(level * 1.2)] });
-            drops.push({ item: "大瓶治疗药水", chance: 0.5 });
+        // 小怪基础掉落（1级）
+        const baseMinCopper = 5;
+        const baseMaxCopper = 15;
+        
+        // 每级增加的货币（小怪）
+        const levelBonusMin = 1;
+        const levelBonusMax = 2;
+        
+        // 计算小怪等级对应的基础掉落
+        const minionMinCopper = baseMinCopper + (level - 1) * levelBonusMin;
+        const minionMaxCopper = baseMaxCopper + (level - 1) * levelBonusMax;
+        
+        // 根据敌人类型确定倍率范围
+        let multiplierMin, multiplierMax;
+        switch (category) {
+            case 'minion':
+                multiplierMin = 1.0;
+                multiplierMax = 1.0;
+                break;
+            case 'elite':
+                multiplierMin = 3.0;
+                multiplierMax = 6.0;
+                break;
+            case 'elite_advanced':
+                multiplierMin = 8.0;
+                multiplierMax = 12.0;
+                break;
+            case 'boss':
+                multiplierMin = 20.0;
+                multiplierMax = 30.0;
+                break;
+            default:
+                multiplierMin = 1.0;
+                multiplierMax = 1.0;
         }
         
-        // 根据类型添加特殊掉落
+        // 随机选择一个倍率值
+        const multiplier = multiplierMin + Math.random() * (multiplierMax - multiplierMin);
+        
+        // 计算最终掉落范围
+        let minCopper = Math.floor(minionMinCopper * multiplier);
+        let maxCopper = Math.floor(minionMaxCopper * multiplier);
+        
+        // 确保min < max
+        if (minCopper > maxCopper) {
+            [minCopper, maxCopper] = [maxCopper, minCopper];
+        }
+        if (minCopper === maxCopper) {
+            maxCopper = minCopper + 1;
+        }
+        
+        // 将货币转换为合适的单位（铜币/银币/金币）
+        if (maxCopper < 100) {
+            // 小于1银币，直接掉铜币
+            drops.push({
+                item: "铜币",
+                chance: 0.95,
+                quantity: [Math.max(1, minCopper), Math.max(1, maxCopper)]
+            });
+        } else if (maxCopper < 1000) {
+            // 1-10银币范围，掉铜币和银币混合
+            const silverMin = Math.floor(minCopper / 100);
+            const silverMax = Math.floor(maxCopper / 100);
+            const copperMin = minCopper % 100;
+            const copperMax = maxCopper % 100;
+            
+            if (silverMax > 0) {
+                drops.push({
+                    item: "银币",
+                    chance: 0.7,
+                    quantity: [Math.max(0, silverMin), Math.max(1, silverMax)]
+                });
+            }
+            drops.push({
+                item: "铜币",
+                chance: 0.95,
+                quantity: [Math.max(10, copperMin), Math.max(20, copperMax)]
+            });
+        } else {
+            // 大于10银币，主要掉银币，偶尔掉金币
+            const silverMin = Math.floor(minCopper / 100);
+            const silverMax = Math.floor(maxCopper / 100);
+            
+            drops.push({
+                item: "银币",
+                chance: 0.9,
+                quantity: [Math.max(1, silverMin), Math.max(2, silverMax)]
+            });
+            
+            // 高等级BOSS有机会掉金币
+            if (level >= 60 && category === 'boss') {
+                const goldMin = Math.max(1, Math.floor(silverMin / 50));
+                const goldMax = Math.max(1, Math.floor(silverMax / 30));
+                drops.push({
+                    item: "金币",
+                    chance: 0.3,
+                    quantity: [goldMin, goldMax]
+                });
+            }
+        }
+        
+        // 药水掉落
+        if (level <= 20) {
+            drops.push({ item: "小瓶治疗药水", chance: 0.35 * (category === 'minion' ? 1 : 1.5), quantity: [1, category === 'minion' ? 1 : 2] });
+            if (category !== 'minion') {
+                drops.push({ item: "小瓶法力药水", chance: 0.25, quantity: [1, 2] });
+            }
+        } else if (level <= 40) {
+            drops.push({ item: "中瓶治疗药水", chance: 0.4 * (category === 'minion' ? 1 : 1.5), quantity: [1, category === 'minion' ? 1 : 2] });
+            drops.push({ item: "小瓶治疗药水", chance: 0.25, quantity: [1, 3] });
+            if (category !== 'minion') {
+                drops.push({ item: "中瓶法力药水", chance: 0.3, quantity: [1, 2] });
+            }
+        } else if (level <= 70) {
+            drops.push({ item: "大瓶治疗药水", chance: 0.45 * (category === 'minion' ? 1 : 1.5), quantity: [1, category === 'minion' ? 1 : 2] });
+            drops.push({ item: "中瓶治疗药水", chance: 0.3, quantity: [1, 3] });
+            if (category !== 'minion') {
+                drops.push({ item: "大瓶法力药水", chance: 0.35, quantity: [1, 2] });
+            }
+        } else {
+            drops.push({ item: "特大瓶治疗药水", chance: 0.5 * (category === 'minion' ? 1 : 1.5), quantity: [1, category === 'minion' ? 1 : 3] });
+            drops.push({ item: "大瓶治疗药水", chance: 0.35, quantity: [1, 3] });
+            if (category !== 'minion') {
+                drops.push({ item: "特大瓶法力药水", chance: 0.4, quantity: [1, 2] });
+            }
+        }
+        
+        // 材料掉落
+        if (level >= 5) {
+            drops.push({ item: "铁矿石", chance: 0.15 * multiplier * 0.5, quantity: [1, Math.max(1, Math.floor(level / 10))] });
+            drops.push({ item: "皮革", chance: 0.15 * multiplier * 0.5, quantity: [1, Math.max(1, Math.floor(level / 10))] });
+        }
+        if (level >= 30 && category !== 'minion') {
+            drops.push({ item: "魔法水晶", chance: 0.08 * multiplier * 0.3, quantity: [1, Math.max(1, Math.floor(level / 25))] });
+        }
+        
+        // 增益药水掉落（精英及以上）
+        if (category !== 'minion' && level >= 15) {
+            const buffPotions = ["力量药水", "防御药水", "敏捷药水"];
+            const randomBuff = buffPotions[Math.floor(Math.random() * buffPotions.length)];
+            drops.push({ item: randomBuff, chance: 0.1 * (category === 'boss' ? 2 : 1), quantity: [1, 2] });
+        }
+        
+        // 稀有药水掉落（高级精英及以上）
+        if ((category === 'elite_advanced' || category === 'boss') && level >= 25) {
+            const rarePotions = ["暴击药水", "物理强化药水", "魔法强化药水"];
+            const randomRare = rarePotions[Math.floor(Math.random() * rarePotions.length)];
+            drops.push({ item: randomRare, chance: 0.12 * (category === 'boss' ? 1.5 : 1), quantity: [1, category === 'boss' ? 2 : 1] });
+        }
+        
+        // 根据类型添加装备掉落
         switch (category) {
+            case "minion":
+                // 小怪：低概率掉落装备
+                const minionEquip = this.getRandomEquipmentDrop(level, category);
+                if (minionEquip) {
+                    drops.push({ item: minionEquip, chance: 0.08 });
+                }
+                break;
+                
             case "elite":
-                drops.push({ item: `等级${level}装备`, chance: 0.2 });
+                // 精英：中等概率掉落1件装备
+                const eliteEquip = this.getRandomEquipmentDrop(level, category);
+                if (eliteEquip) {
+                    drops.push({ item: eliteEquip, chance: 0.30 });
+                }
                 break;
+                
             case "elite_advanced":
-                drops.push({ item: `高级等级${level}装备`, chance: 0.3 });
-                drops.push({ item: "技能书", chance: 0.15 });
+                // 高级精英：高概率掉落1-2件装备
+                const advEliteEquip1 = this.getRandomEquipmentDrop(level, category);
+                const advEliteEquip2 = this.getRandomEquipmentDrop(level, category);
+                if (advEliteEquip1) {
+                    drops.push({ item: advEliteEquip1, chance: 0.45 });
+                }
+                if (advEliteEquip2) {
+                    drops.push({ item: advEliteEquip2, chance: 0.25 });
+                }
+                drops.push({ item: "技能书", chance: 0.18 });
                 break;
+                
             case "boss":
-                drops.push({ item: `传说级等级${level}装备`, chance: 0.6 });
-                drops.push({ item: "稀有材料", chance: 0.8 });
-                drops.push({ item: "高级技能书", chance: 0.3 });
+                // BOSS：必定掉落1-3件装备
+                const bossEquip1 = this.getRandomEquipmentDrop(level, category);
+                const bossEquip2 = this.getRandomEquipmentDrop(level, category);
+                const bossEquip3 = this.getRandomEquipmentDrop(level, category);
+                if (bossEquip1) {
+                    drops.push({ item: bossEquip1, chance: 0.85 });
+                }
+                if (bossEquip2) {
+                    drops.push({ item: bossEquip2, chance: 0.50 });
+                }
+                if (bossEquip3) {
+                    drops.push({ item: bossEquip3, chance: 0.25 });
+                }
+                drops.push({ item: "稀有材料", chance: 0.85 });
+                drops.push({ item: "高级技能书", chance: 0.35 });
+                // BOSS额外货币奖励
+                if (level >= 40) {
+                    drops.push({ item: "银币", chance: 0.8, quantity: [Math.floor(level * 0.5), Math.floor(level * 1.0)] });
+                }
                 break;
         }
         

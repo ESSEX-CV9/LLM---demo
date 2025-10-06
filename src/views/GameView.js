@@ -715,7 +715,7 @@ class GameView {
                 this._notifActive.forEach((entry, index) => {
                     const topOffset = 20 + 60 * index; // 每条通知垂直间距
                     entry.el.style.top = `${topOffset}px`;
-                    entry.el.style.right = '20px';
+                    entry.el.style.left = '20px';
                 });
             };
         }
@@ -742,14 +742,14 @@ class GameView {
                 notification.style.cssText = `
                     position: fixed;
                     top: ${topOffset}px;
-                    right: 20px;
+                    left: 20px;
                     background: ${lvl === 'error' ? '#ff4444' : lvl === 'warning' ? '#ffaa00' : lvl === 'success' ? '#2e7d32' : '#4488ff'};
                     color: white;
                     padding: 12px 16px;
                     border-radius: 6px;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     z-index: 1000002; /* 提升至装备界面之上 */
-                    animation: slideInRight 0.3s ease-out;
+                    animation: slideInLeft 0.3s ease-out;
                     max-width: 300px;
                     word-wrap: break-word;
                 `;
@@ -759,10 +759,10 @@ class GameView {
 
                 // 自动移除并回填队列
                 const backlog = (this._notifQueue?.length || 0) + (this._notifActive?.length || 0);
-                const baseDuration = 3000;
+                const baseDuration = 2000;
                 const duration = backlog > 10 ? Math.floor(baseDuration / 2) : baseDuration;
                 setTimeout(() => {
-                    notification.style.animation = 'slideInRight 0.3s ease-out reverse';
+                    notification.style.animation = 'slideInLeft 0.3s ease-out reverse';
                     setTimeout(() => {
                         if (notification.parentNode) {
                             notification.parentNode.removeChild(notification);
