@@ -1,28 +1,45 @@
 // data/EnemyTemplates.js - 敌人模板系统（完整1-100级，基于现有机制）
+
+// 动态导入装备数据库
+let ItemsDB = null;
+
 class EnemyTemplates {
     constructor() {
         // 先初始化类型系数，后生成模板，避免未定义访问
         this.typeMultipliers = this.initializeTypeMultipliers();
         this.templates = this.initializeTemplates();
+        
+        // 异步加载装备数据库
+        this.loadItemsDB();
+    }
+    
+    async loadItemsDB() {
+        try {
+            const module = await import('./Items/index.js');
+            ItemsDB = module.default;
+            console.log('[EnemyTemplates] 装备数据库加载成功');
+        } catch (error) {
+            console.warn('[EnemyTemplates] 装备数据库加载失败，装备掉落将使用默认值', error);
+        }
     }
 
     initializeTypeMultipliers() {
         return {
-            "minion": { 
-                hp: 0.8, attack: 0.8, physicalPower: 0.8, magicPower: 0.8, 
-                physicalResistance: 0, magicResistance: 0, agility: 1.0, weight: 0.9, criticalChance: 2 
+            "minion": {
+                hp: 1.0, attack: 0.9, physicalPower: 0.9, magicPower: 0.9,
+                physicalResistance: 2, magicResistance: 2, agility: 1.0, weight: 0.9, criticalChance: 5
             },
-            "elite": { 
-                hp: 1.3, attack: 1.1, physicalPower: 1.1, magicPower: 1.1, 
-                physicalResistance: 5, magicResistance: 5, agility: 1.1, weight: 1.1, criticalChance: 8 
+            "elite": {
+                hp: 1.6, attack: 1.3, physicalPower: 1.3, magicPower: 1.3,
+                physicalResistance: 10, magicResistance: 8, agility: 1.2, weight: 1.1, criticalChance: 12
             },
-            "elite_advanced": { 
-                hp: 1.8, attack: 1.4, physicalPower: 1.4, magicPower: 1.4, 
-                physicalResistance: 15, magicResistance: 10, agility: 1.2, weight: 1.2, criticalChance: 15 
+            "elite_advanced": {
+                hp: 2.2, attack: 1.6, physicalPower: 1.6, magicPower: 1.6,
+                physicalResistance: 20, magicResistance: 15, agility: 1.3, weight: 1.2, criticalChance: 18
             },
-            "boss": { 
-                hp: 2.5, attack: 1.6, physicalPower: 1.6, magicPower: 1.6, 
-                physicalResistance: 25, magicResistance: 20, agility: 1.0, weight: 1.5, criticalChance: 20 
+            "boss": {
+                hp: 3.0, attack: 1.9, physicalPower: 1.9, magicPower: 1.9,
+                physicalResistance: 30, magicResistance: 25, agility: 1.2, weight: 1.5, criticalChance: 25
             }
         };
     }
@@ -93,9 +110,9 @@ class EnemyTemplates {
                     name: "撕咬",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(15 + level * 2),
+                    baseDamage: Math.floor(18 + level * 2.5),
                     specialEffects: {
-                        dot: { type: "bleed", damage: Math.floor(3 + level * 0.5), duration: 2 }
+                        dot: { type: "bleed", damage: Math.floor(4 + level * 0.6), duration: 3 }
                     },
                     cooldown: 2,
                     priority: 40
@@ -104,8 +121,8 @@ class EnemyTemplates {
                     name: "冲锋攻击",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(12 + level * 1.5),
-                    hitBonus: Math.floor(8 + level * 0.2),
+                    baseDamage: Math.floor(15 + level * 2.0),
+                    hitBonus: Math.floor(10 + level * 0.3),
                     cooldown: 3,
                     priority: 30
                 }
@@ -140,9 +157,9 @@ class EnemyTemplates {
                     name: "火球术",
                     type: "magic",
                     target: "single",
-                    baseDamage: Math.floor(18 + level * 2.2),
+                    baseDamage: Math.floor(22 + level * 2.8),
                     specialEffects: {
-                        dot: { type: "burn", damage: Math.floor(4 + level * 0.6), duration: 2 }
+                        dot: { type: "burn", damage: Math.floor(5 + level * 0.8), duration: 3 }
                     },
                     cooldown: 2,
                     priority: 45
@@ -151,9 +168,9 @@ class EnemyTemplates {
                     name: "冰锥术",
                     type: "magic",
                     target: "single",
-                    baseDamage: Math.floor(14 + level * 1.8),
+                    baseDamage: Math.floor(17 + level * 2.2),
                     specialEffects: {
-                        cc: { type: "slow", duration: 2, chance: 0.6 }
+                        cc: { type: "slow", duration: 2, chance: 0.7 }
                     },
                     cooldown: 1,
                     priority: 35
@@ -190,7 +207,7 @@ class EnemyTemplates {
                     type: "support",
                     target: "aoe",
                     specialEffects: {
-                        cc: { type: "slow", duration: 2, chance: 0.7 }
+                        cc: { type: "slow", duration: 3, chance: 0.8 }
                     },
                     cooldown: 4,
                     priority: 55
@@ -199,9 +216,9 @@ class EnemyTemplates {
                     name: "连击斩",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(25 + level * 2),
+                    baseDamage: Math.floor(30 + level * 2.5),
                     specialEffects: {
-                        multiHit: { count: Math.min(4, Math.floor(2 + level / 25)) }
+                        multiHit: { count: Math.min(5, Math.floor(2 + level / 20)) }
                     },
                     cooldown: 4,
                     priority: 70
@@ -210,9 +227,9 @@ class EnemyTemplates {
                     name: "重击突破",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(35 + level * 2.5),
+                    baseDamage: Math.floor(42 + level * 3.0),
                     specialEffects: {
-                        penetration: { physical: Math.min(30, Math.floor(10 + level * 0.4)) }
+                        penetration: { physical: Math.min(35, Math.floor(15 + level * 0.5)) }
                     },
                     cooldown: 5,
                     priority: 80
@@ -248,10 +265,10 @@ class EnemyTemplates {
                     name: "暗影突袭",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(45 + level * 3),
+                    baseDamage: Math.floor(55 + level * 3.5),
                     specialEffects: {
-                        multiHit: { count: 3 },
-                        lifesteal: { percent: Math.min(0.8, 0.3 + level * 0.01) }
+                        multiHit: { count: 4 },
+                        lifesteal: { percent: Math.min(0.9, 0.4 + level * 0.01) }
                     },
                     cooldown: 5,
                     priority: 85
@@ -260,10 +277,10 @@ class EnemyTemplates {
                     name: "元素风暴",
                     type: "magic",
                     target: "aoe",
-                    baseDamage: Math.floor(35 + level * 2.5),
+                    baseDamage: Math.floor(45 + level * 3.0),
                     specialEffects: {
-                        dot: { type: "burn", damage: Math.floor(8 + level), duration: 3 },
-                        cc: { type: "slow", duration: 3, chance: 0.8 }
+                        dot: { type: "burn", damage: Math.floor(10 + level * 1.2), duration: 4 },
+                        cc: { type: "slow", duration: 3, chance: 0.85 }
                     },
                     cooldown: 6,
                     priority: 75
@@ -273,7 +290,7 @@ class EnemyTemplates {
                     type: "support",
                     target: "single",
                     specialEffects: {
-                        mark: { damageBonus: Math.min(1.0, 0.4 + level * 0.01), duration: 4 }
+                        mark: { damageBonus: Math.min(1.2, 0.5 + level * 0.012), duration: 5 }
                     },
                     cooldown: 5,
                     priority: 70
@@ -282,10 +299,10 @@ class EnemyTemplates {
                     name: "终极重击",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(70 + level * 4),
+                    baseDamage: Math.floor(85 + level * 5),
                     specialEffects: {
-                        penetration: { physical: Math.min(40, Math.floor(15 + level * 0.5)) },
-                        execute: { threshold: Math.min(0.35, 0.15 + level * 0.002) }
+                        penetration: { physical: Math.min(50, Math.floor(20 + level * 0.6)) },
+                        execute: { threshold: Math.min(0.40, 0.20 + level * 0.002) }
                     },
                     cooldown: 7,
                     priority: 90
@@ -321,10 +338,10 @@ class EnemyTemplates {
                     name: "龙息吐息",
                     type: "magic",
                     target: "aoe",
-                    baseDamage: Math.floor(80 + level * 4),
+                    baseDamage: Math.floor(100 + level * 5),
                     specialEffects: {
-                        dot: { type: "burn", damage: Math.floor(15 + level * 1.5), duration: 4 },
-                        penetration: { magic: Math.min(50, Math.floor(20 + level * 0.6)) }
+                        dot: { type: "burn", damage: Math.floor(18 + level * 1.8), duration: 5 },
+                        penetration: { magic: Math.min(60, Math.floor(25 + level * 0.7)) }
                     },
                     cooldown: 6,
                     priority: 85
@@ -334,7 +351,7 @@ class EnemyTemplates {
                     type: "support",
                     target: "aoe",
                     specialEffects: {
-                        cc: { type: "stun", duration: 2, chance: Math.min(0.8, 0.5 + level * 0.005) }
+                        cc: { type: "stun", duration: 2, chance: Math.min(0.85, 0.6 + level * 0.005) }
                     },
                     cooldown: 7,
                     priority: 80
@@ -344,7 +361,7 @@ class EnemyTemplates {
                     type: "support",
                     target: "single",
                     specialEffects: {
-                        mark: { damageBonus: Math.min(1.2, 0.6 + level * 0.01), duration: 5 }
+                        mark: { damageBonus: Math.min(1.5, 0.7 + level * 0.012), duration: 5 }
                     },
                     cooldown: 5,
                     priority: 75
@@ -353,10 +370,10 @@ class EnemyTemplates {
                     name: "毁灭重击",
                     type: "physical",
                     target: "single",
-                    baseDamage: Math.floor(120 + level * 6),
+                    baseDamage: Math.floor(150 + level * 7),
                     specialEffects: {
-                        penetration: { physical: Math.min(60, Math.floor(25 + level * 0.7)) },
-                        execute: { threshold: Math.min(0.45, 0.2 + level * 0.0025) }
+                        penetration: { physical: Math.min(70, Math.floor(30 + level * 0.8)) },
+                        execute: { threshold: Math.min(0.50, 0.25 + level * 0.0025) }
                     },
                     cooldown: 8,
                     priority: 95
@@ -381,16 +398,16 @@ class EnemyTemplates {
     // 计算基础属性
     calculateBaseStats(level) {
         return {
-            baseHp: 80 + (level - 1) * 18,
-            baseMana: 60 + (level - 1) * 8,
-            baseStamina: 60 + (level - 1) * 8,
-            baseAttack: 10 + (level - 1) * 2.5,
-            basePhysicalPower: 10 + (level - 1) * 2.5,
-            baseMagicPower: 6 + (level - 1) * 1.8,
-            baseAgility: 6 + Math.floor(level / 5),
+            baseHp: 80 + (level - 1) * 22,
+            baseMana: 60 + (level - 1) * 10,
+            baseStamina: 60 + (level - 1) * 10,
+            baseAttack: 10 + (level - 1) * 3.0,
+            basePhysicalPower: 10 + (level - 1) * 3.0,
+            baseMagicPower: 6 + (level - 1) * 2.2,
+            baseAgility: 6 + Math.floor(level / 4),
             baseWeight: 10 + Math.floor(level / 10),
-            basePhysicalResistance: Math.floor(level / 10) * 2,
-            baseMagicResistance: Math.floor(level / 10) * 1.5
+            basePhysicalResistance: Math.floor(level / 8) * 2.5,
+            baseMagicResistance: Math.floor(level / 8) * 2
         };
     }
 
@@ -419,36 +436,307 @@ class EnemyTemplates {
             criticalChance: multipliers.criticalChance
         };
     }
+    
+    /**
+     * 从装备数据库中随机选择合适的装备
+     * @param {number} level - 敌人等级
+     * @param {string} category - 敌人类型
+     * @returns {string|null} 装备名称
+     */
+    getRandomEquipmentDrop(level, category) {
+        if (!ItemsDB) {
+            return null;
+        }
+        
+        // 根据敌人类型确定稀有度权重
+        const rarityWeights = {
+            minion: {
+                common: 0.70,      // 70% 普通
+                uncommon: 0.25,    // 25% 非凡
+                rare: 0.05,        // 5% 稀有
+                epic: 0,
+                legendary: 0
+            },
+            elite: {
+                common: 0.15,      // 15% 普通
+                uncommon: 0.50,    // 50% 非凡
+                rare: 0.30,        // 30% 稀有
+                epic: 0.05,        // 5% 史诗
+                legendary: 0
+            },
+            elite_advanced: {
+                common: 0,
+                uncommon: 0.20,    // 20% 非凡
+                rare: 0.50,        // 50% 稀有
+                epic: 0.28,        // 28% 史诗
+                legendary: 0.02    // 2% 传说
+            },
+            boss: {
+                common: 0,
+                uncommon: 0,
+                rare: 0.25,        // 25% 稀有
+                epic: 0.60,        // 60% 史诗
+                legendary: 0.15    // 15% 传说
+            }
+        };
+        
+        const weights = rarityWeights[category] || rarityWeights.minion;
+        
+        // 随机选择稀有度
+        const rand = Math.random();
+        let cumulativeWeight = 0;
+        let selectedRarity = 'common';
+        
+        for (const [rarity, weight] of Object.entries(weights)) {
+            cumulativeWeight += weight;
+            if (rand <= cumulativeWeight) {
+                selectedRarity = rarity;
+                break;
+            }
+        }
+        
+        // 获取等级范围内的装备（±5级）
+        const minLevel = Math.max(1, level - 5);
+        const maxLevel = Math.min(100, level + 5);
+        
+        try {
+            // 获取符合等级和稀有度的装备
+            const allEquipment = ItemsDB.getEquipment();
+            const suitableEquipment = allEquipment.filter(item =>
+                item.level >= minLevel &&
+                item.level <= maxLevel &&
+                item.rarity === selectedRarity
+            );
+            
+            if (suitableEquipment.length === 0) {
+                // 如果没有找到，放宽稀有度限制
+                const relaxedEquipment = allEquipment.filter(item =>
+                    item.level >= minLevel &&
+                    item.level <= maxLevel
+                );
+                
+                if (relaxedEquipment.length > 0) {
+                    const randomItem = relaxedEquipment[Math.floor(Math.random() * relaxedEquipment.length)];
+                    return randomItem.name;
+                }
+                
+                return null;
+            }
+            
+            // 随机选择一个装备
+            const randomItem = suitableEquipment[Math.floor(Math.random() * suitableEquipment.length)];
+            return randomItem.name;
+        } catch (error) {
+            console.warn('[EnemyTemplates] 获取装备掉落失败:', error);
+            return null;
+        }
+    }
 
     // 生成掉落表
     generateDropTable(level, category) {
         const drops = [];
         
-        // 基础掉落
-        if (level <= 20) {
-            drops.push({ item: "铜币", chance: 0.8, quantity: [1, Math.floor(level * 0.8)] });
-            drops.push({ item: "小治疗药水", chance: 0.3 });
-        } else if (level <= 50) {
-            drops.push({ item: "银币", chance: 0.8, quantity: [Math.floor(level * 0.3), Math.floor(level * 0.8)] });
-            drops.push({ item: "中治疗药水", chance: 0.4 });
-        } else {
-            drops.push({ item: "金币", chance: 0.9, quantity: [Math.floor(level * 0.5), Math.floor(level * 1.2)] });
-            drops.push({ item: "大治疗药水", chance: 0.5 });
+        // 小怪基础掉落（1级）
+        const baseMinCopper = 5;
+        const baseMaxCopper = 15;
+        
+        // 每级增加的货币（小怪）
+        const levelBonusMin = 1;
+        const levelBonusMax = 2;
+        
+        // 计算小怪等级对应的基础掉落
+        const minionMinCopper = baseMinCopper + (level - 1) * levelBonusMin;
+        const minionMaxCopper = baseMaxCopper + (level - 1) * levelBonusMax;
+        
+        // 根据敌人类型确定倍率范围
+        let multiplierMin, multiplierMax;
+        switch (category) {
+            case 'minion':
+                multiplierMin = 1.0;
+                multiplierMax = 1.0;
+                break;
+            case 'elite':
+                multiplierMin = 3.0;
+                multiplierMax = 6.0;
+                break;
+            case 'elite_advanced':
+                multiplierMin = 8.0;
+                multiplierMax = 12.0;
+                break;
+            case 'boss':
+                multiplierMin = 20.0;
+                multiplierMax = 30.0;
+                break;
+            default:
+                multiplierMin = 1.0;
+                multiplierMax = 1.0;
         }
         
-        // 根据类型添加特殊掉落
+        // 随机选择一个倍率值
+        const multiplier = multiplierMin + Math.random() * (multiplierMax - multiplierMin);
+        
+        // 计算最终掉落范围
+        let minCopper = Math.floor(minionMinCopper * multiplier);
+        let maxCopper = Math.floor(minionMaxCopper * multiplier);
+        
+        // 确保min < max
+        if (minCopper > maxCopper) {
+            [minCopper, maxCopper] = [maxCopper, minCopper];
+        }
+        if (minCopper === maxCopper) {
+            maxCopper = minCopper + 1;
+        }
+        
+        // 将货币转换为合适的单位（铜币/银币/金币）
+        if (maxCopper < 100) {
+            // 小于1银币，直接掉铜币
+            drops.push({
+                item: "铜币",
+                chance: 0.95,
+                quantity: [Math.max(1, minCopper), Math.max(1, maxCopper)]
+            });
+        } else if (maxCopper < 1000) {
+            // 1-10银币范围，掉铜币和银币混合
+            const silverMin = Math.floor(minCopper / 100);
+            const silverMax = Math.floor(maxCopper / 100);
+            const copperMin = minCopper % 100;
+            const copperMax = maxCopper % 100;
+            
+            if (silverMax > 0) {
+                drops.push({
+                    item: "银币",
+                    chance: 0.7,
+                    quantity: [Math.max(0, silverMin), Math.max(1, silverMax)]
+                });
+            }
+            drops.push({
+                item: "铜币",
+                chance: 0.95,
+                quantity: [Math.max(10, copperMin), Math.max(20, copperMax)]
+            });
+        } else {
+            // 大于10银币，主要掉银币，偶尔掉金币
+            const silverMin = Math.floor(minCopper / 100);
+            const silverMax = Math.floor(maxCopper / 100);
+            
+            drops.push({
+                item: "银币",
+                chance: 0.9,
+                quantity: [Math.max(1, silverMin), Math.max(2, silverMax)]
+            });
+            
+            // 高等级BOSS有机会掉金币
+            if (level >= 60 && category === 'boss') {
+                const goldMin = Math.max(1, Math.floor(silverMin / 50));
+                const goldMax = Math.max(1, Math.floor(silverMax / 30));
+                drops.push({
+                    item: "金币",
+                    chance: 0.3,
+                    quantity: [goldMin, goldMax]
+                });
+            }
+        }
+        
+        // 药水掉落
+        if (level <= 20) {
+            drops.push({ item: "小瓶治疗药水", chance: 0.35 * (category === 'minion' ? 1 : 1.5), quantity: [1, category === 'minion' ? 1 : 2] });
+            if (category !== 'minion') {
+                drops.push({ item: "小瓶法力药水", chance: 0.25, quantity: [1, 2] });
+            }
+        } else if (level <= 40) {
+            drops.push({ item: "中瓶治疗药水", chance: 0.4 * (category === 'minion' ? 1 : 1.5), quantity: [1, category === 'minion' ? 1 : 2] });
+            drops.push({ item: "小瓶治疗药水", chance: 0.25, quantity: [1, 3] });
+            if (category !== 'minion') {
+                drops.push({ item: "中瓶法力药水", chance: 0.3, quantity: [1, 2] });
+            }
+        } else if (level <= 70) {
+            drops.push({ item: "大瓶治疗药水", chance: 0.45 * (category === 'minion' ? 1 : 1.5), quantity: [1, category === 'minion' ? 1 : 2] });
+            drops.push({ item: "中瓶治疗药水", chance: 0.3, quantity: [1, 3] });
+            if (category !== 'minion') {
+                drops.push({ item: "大瓶法力药水", chance: 0.35, quantity: [1, 2] });
+            }
+        } else {
+            drops.push({ item: "特大瓶治疗药水", chance: 0.5 * (category === 'minion' ? 1 : 1.5), quantity: [1, category === 'minion' ? 1 : 3] });
+            drops.push({ item: "大瓶治疗药水", chance: 0.35, quantity: [1, 3] });
+            if (category !== 'minion') {
+                drops.push({ item: "特大瓶法力药水", chance: 0.4, quantity: [1, 2] });
+            }
+        }
+        
+        // 材料掉落
+        if (level >= 5) {
+            drops.push({ item: "铁矿石", chance: 0.15 * multiplier * 0.5, quantity: [1, Math.max(1, Math.floor(level / 10))] });
+            drops.push({ item: "皮革", chance: 0.15 * multiplier * 0.5, quantity: [1, Math.max(1, Math.floor(level / 10))] });
+        }
+        if (level >= 30 && category !== 'minion') {
+            drops.push({ item: "魔法水晶", chance: 0.08 * multiplier * 0.3, quantity: [1, Math.max(1, Math.floor(level / 25))] });
+        }
+        
+        // 增益药水掉落（精英及以上）
+        if (category !== 'minion' && level >= 15) {
+            const buffPotions = ["力量药水", "防御药水", "敏捷药水"];
+            const randomBuff = buffPotions[Math.floor(Math.random() * buffPotions.length)];
+            drops.push({ item: randomBuff, chance: 0.1 * (category === 'boss' ? 2 : 1), quantity: [1, 2] });
+        }
+        
+        // 稀有药水掉落（高级精英及以上）
+        if ((category === 'elite_advanced' || category === 'boss') && level >= 25) {
+            const rarePotions = ["暴击药水", "物理强化药水", "魔法强化药水"];
+            const randomRare = rarePotions[Math.floor(Math.random() * rarePotions.length)];
+            drops.push({ item: randomRare, chance: 0.12 * (category === 'boss' ? 1.5 : 1), quantity: [1, category === 'boss' ? 2 : 1] });
+        }
+        
+        // 根据类型添加装备掉落
         switch (category) {
+            case "minion":
+                // 小怪：低概率掉落装备
+                const minionEquip = this.getRandomEquipmentDrop(level, category);
+                if (minionEquip) {
+                    drops.push({ item: minionEquip, chance: 0.08 });
+                }
+                break;
+                
             case "elite":
-                drops.push({ item: `等级${level}装备`, chance: 0.2 });
+                // 精英：中等概率掉落1件装备
+                const eliteEquip = this.getRandomEquipmentDrop(level, category);
+                if (eliteEquip) {
+                    drops.push({ item: eliteEquip, chance: 0.30 });
+                }
                 break;
+                
             case "elite_advanced":
-                drops.push({ item: `高级等级${level}装备`, chance: 0.3 });
-                drops.push({ item: "技能书", chance: 0.15 });
+                // 高级精英：高概率掉落1-2件装备
+                const advEliteEquip1 = this.getRandomEquipmentDrop(level, category);
+                const advEliteEquip2 = this.getRandomEquipmentDrop(level, category);
+                if (advEliteEquip1) {
+                    drops.push({ item: advEliteEquip1, chance: 0.45 });
+                }
+                if (advEliteEquip2) {
+                    drops.push({ item: advEliteEquip2, chance: 0.25 });
+                }
+                drops.push({ item: "技能书", chance: 0.18 });
                 break;
+                
             case "boss":
-                drops.push({ item: `传说级等级${level}装备`, chance: 0.6 });
-                drops.push({ item: "稀有材料", chance: 0.8 });
-                drops.push({ item: "高级技能书", chance: 0.3 });
+                // BOSS：必定掉落1-3件装备
+                const bossEquip1 = this.getRandomEquipmentDrop(level, category);
+                const bossEquip2 = this.getRandomEquipmentDrop(level, category);
+                const bossEquip3 = this.getRandomEquipmentDrop(level, category);
+                if (bossEquip1) {
+                    drops.push({ item: bossEquip1, chance: 0.85 });
+                }
+                if (bossEquip2) {
+                    drops.push({ item: bossEquip2, chance: 0.50 });
+                }
+                if (bossEquip3) {
+                    drops.push({ item: bossEquip3, chance: 0.25 });
+                }
+                drops.push({ item: "稀有材料", chance: 0.85 });
+                drops.push({ item: "高级技能书", chance: 0.35 });
+                // BOSS额外货币奖励
+                if (level >= 40) {
+                    drops.push({ item: "银币", chance: 0.8, quantity: [Math.floor(level * 0.5), Math.floor(level * 1.0)] });
+                }
                 break;
         }
         

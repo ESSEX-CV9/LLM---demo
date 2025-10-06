@@ -5,8 +5,8 @@ class InventoryService {
     constructor(eventBus) {
         this.eventBus = eventBus;
         this.inventory = new Map();
-        this.baseMaxSlots = 20; // 基础背包容量
-        this.maxSlots = 20; // 当前背包容量
+        this.baseMaxSlots = 30; // 基础背包容量
+        this.maxSlots = 30; // 当前背包容量
         this.setupEventListeners();
         this.initializeDefaultItems();
     }
@@ -22,65 +22,39 @@ class InventoryService {
     }
 
     initializeDefaultItems() {
-        // 给玩家一些初始物品和装备用于测试装备系统
-
-        // 消耗品 - 使用新的药水系统
-        this.addItem('小瓶治疗药水', 8);
-        this.addItem('小瓶法力药水', 5);
-        this.addItem('小瓶耐力药水', 5);
-        this.addItem('力量药水', 2);
-        this.addItem('防御药水', 2);
-        this.addItem('速度药水', 1);
+        // 给玩家测试装备用于验证所有战斗机制
         
-        // 武器 - 剑类（单手武器）
-        this.addItem('廉价铁剑', 1);
+        // ========== 武器测试装备 ==========
+        this.addItem('[测试]中毒匕首', 1);      // DOT-中毒
+        this.addItem('[测试]灼烧剑', 1);        // DOT-灼烧
+        this.addItem('[测试]流血斧', 1);        // DOT-流血
+        this.addItem('[测试]破甲弓', 1);        // 破甲
+        this.addItem('[测试]闪避匕首', 1);      // 闪避加成
+        this.addItem('[测试]斩杀镰刀', 1);      // 斩杀
+        this.addItem('[测试]吸血剑', 1);        // 吸血
+        this.addItem('[测试]暴击匕首', 1);      // 暴击伤害
+        this.addItem('[测试]伤害加成锤', 1);    // 对特定目标伤害加成
+        this.addItem('[测试]法术消耗法杖', 1);  // 法术消耗减少
         
-        // 武器 - 匕首类
-        this.addItem('小刀', 1);
+        // ========== 盾牌测试装备 ==========
+        this.addItem('[测试]格挡盾', 1);        // 格挡
+        this.addItem('[测试]全抗盾', 1);        // 全抗性
         
-        // 武器 - 斧类
-        this.addItem('手斧', 1);
-        // 武器 - 锤类
-        this.addItem('木棒', 1);
+        // ========== 防具测试装备 ==========
+        this.addItem('[测试]HP回复胸甲', 1);    // HP回复
+        this.addItem('[测试]伤害减免头盔', 1);  // 伤害减免
+        this.addItem('[测试]MP回复护腿', 1);    // MP回复
+        this.addItem('[测试]SP回复靴子', 1);    // SP回复
+        this.addItem('[测试]元素抗性胸甲', 1);  // 元素抗性
         
-        // 武器 - 法杖类
-        this.addItem('木杖', 1);
+        // ========== 饰品测试装备 ==========
+        this.addItem('[测试]技能消耗戒指', 1);  // 技能消耗减少
+        this.addItem('[测试]属性加成护符', 1);  // 属性加成
+        this.addItem('[测试]元素伤害戒指', 1);  // 元素附加伤害
         
-        // 武器 - 弓类
-        this.addItem('短弓', 1);
-        
-        // 防具 - 头盔
-        this.addItem('布帽', 1);
-        
-        // 防具 - 胸甲
-        this.addItem('布袍', 1);
-        this.addItem('皮甲', 1);
-        
-        // 防具 - 护腿
-        this.addItem('皮裤', 1);
-        
-        // 防具 - 靴子
-        this.addItem('皮靴', 1);
-                
-        // 饰品 - 背包
-        this.addItem('小型背包', 1);
-        
-        // 饰品 - 戒指
-        this.addItem('新人冒险家之戒', 1);
-        
-        // 饰品 - 护符
-        this.addItem('生命护符', 1);
-        this.addItem('防御护符', 1);
-        this.addItem('奥术护符', 1);
-        this.addItem('白刃护符', 1);
-        
-        // 材料和货币
-        this.addItem('铁矿石', 10);
-        this.addItem('皮革', 8);
-        this.addItem('魔法水晶', 3);
-        this.addItem('铜币', 100);
-        this.addItem('银币', 10);
-        this.addItem('金币', 2);
+        // ========== 组合测试装备 ==========
+        this.addItem('[测试]组合武器', 1);      // 多重效果组合武器
+        this.addItem('[测试]组合铠甲', 1);      // 多重防御效果组合
     }
 
     addItem(itemName, quantity = 1) {
@@ -88,6 +62,17 @@ class InventoryService {
         if (!itemData) {
             console.warn(`未知物品: ${itemName}`);
             return false;
+        }
+
+        // 检查是否是货币类物品
+        if (itemData.type === 'currency') {
+            // 货币类物品直接转换为玩家金币
+            const currencyService = window.gameCore?.getService('currencyService');
+            if (currencyService) {
+                const copperValue = (itemData.value || 1) * quantity;
+                currencyService.addCurrency(copperValue);
+                return true;
+            }
         }
 
         // 保存原始数量用于通知显示

@@ -1,6 +1,7 @@
 import BattleView from './BattleView.js';
 import InventoryView from './InventoryView.js';
 import SaveManagerView from './SaveManagerView.js';
+import MerchantView from './MerchantView.js';
 
 // views/GameView.js
 class GameView {
@@ -10,12 +11,16 @@ class GameView {
         this.loadingMessageElement = null; // 加载消息元素
         this.completedBattles = new Set(); // 跟踪已完成的战斗ID
         this.battleIdCounter = 0; // 战斗ID计数器
+        this.completedMerchantTrades = new Set(); // 跟踪已完成的商人交易ID
+        this.merchantTradeIdCounter = 0; // 商人交易ID计数器
 
         // 解耦视图：实例化战斗与背包视图（最小侵入）
         this.battleView = new BattleView(this.eventBus, this);
         this.inventoryView = new InventoryView(this.eventBus, this);
         // 解耦视图：实例化存档视图（最小侵入）
         this.saveManagerView = new SaveManagerView(this.eventBus, this);
+        // 实例化商人视图
+        this.merchantView = new MerchantView(this.eventBus, this);
         
         this.setupEventListeners();
         this.initializeUI();
@@ -27,6 +32,7 @@ class GameView {
         this.eventBus.on('ui:display:error', this.displayError.bind(this), 'game');
         this.eventBus.on('state:player:updated', this.updatePlayerStats.bind(this), 'game');
         this.eventBus.on('core:initialized', this.hideLoadingScreen.bind(this), 'system');
+        this.eventBus.on('ui:merchant:hide', this.handleMerchantClosed.bind(this), 'game');
         
         // 监听游戏状态变化，更新调试面板
         this.eventBus.on('state:player:updated', this.updateDebugGameState.bind(this), 'game');
@@ -112,19 +118,21 @@ class GameView {
                             <span class="stat-label">技能点:</span>
                             <span class="stat-value" id="playerSkillPoints">0</span>
                         </div>
+                        <div class="stat tooltip" data-tooltip="金币">
+                            <span class="stat-label">💰</span>
+                            <span class="stat-value" id="playerCurrency" style="color: #ffd700;">0金 0银 0铜</span>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="game-main">
                     <div class="narrative-area" id="narrativeArea">
-                        <div class="narrative-message intro">
-                            🌟 欢迎来到地牢探险！
-                            <br><br>
-                            你站在古老地牢的入口前，黑暗的通道向前延伸，空气中弥漫着神秘的气息...
-                            <br><br>
-                            <em>提示：试试输入"向前探索"、"搜索房间"或"查看状态"来开始你的冒险！</em>
+                            <div class="narrative-message intro">🌟 欢迎来到地牢探险！
+    
+    你站在古老地牢的入口前，黑暗的通道向前延伸，空气中弥漫着神秘的气息...
+    
+    <em>提示：试试输入"向前探索"、"搜索房间"或"查看状态"来开始你的冒险！</em></div>
                         </div>
-                    </div>
                     
                     <div class="action-area">
                         <div class="input-group">
@@ -142,13 +150,10 @@ class GameView {
                             <button class="quick-action-button" onclick="window.gameView.quickAction('搜索房间')">
                                 🔍 搜索房间
                             </button>
-                            <button class="quick-action-button" onclick="window.gameView.quickAction('查看状态')">
-                                📊 查看状态
+                            <button class="quick-action-button" onclick="window.gameView.handleRest()" style="background: linear-gradient(135deg, #2e7d32, #388e3c); border-color: #4caf50;">
+                                💤 休息
                             </button>
-                            <button class="quick-action-button" onclick="window.gameView.quickAction('休息回血')">
-                                💤 休息回血
-                            </button>
-                            <button class="quick-action-button" onclick="window.gameView.showSkills()">
+                            <button class="quick-action-button" onclick="window.gameView.showSkills()" style="background: linear-gradient(135deg, #7b1fa2, #9c27b0); border-color: #ba68c8;">
                                 🧠 技能
                             </button>
                             <button class="quick-action-button inventory-button" onclick="window.gameView.showInventory()" title="打开装备与背包界面">
@@ -526,6 +531,11 @@ class GameView {
             spEl.textContent = playerData.skillPoints ?? 0;
         }
         
+        // 更新货币显示
+        if (playerData.currency !== undefined) {
+            this.updateCurrencyDisplay(playerData.currency);
+        }
+        
         // 升级提示
         if (playerData.level > oldLevel) {
             this.showLevelUpNotification(oldLevel, playerData.level);
@@ -640,8 +650,11 @@ class GameView {
         messageDiv.appendChild(contentElement);
         
         // 为GM生成的消息添加重新生成按钮（仅最新的消息，且不是从存档恢复）
+        // 排除 rest_event 类型的消息
         const typeVal = messageData.type || '';
-        if (!messageData.skipHistory && !messageData.isRestoringFromSave && (typeVal === 'gm_narrative' || typeVal === 'gm_continuation' || typeVal === 'gm_fallback')) {
+        if (!messageData.skipHistory && !messageData.isRestoringFromSave &&
+            (typeVal === 'gm_narrative' || typeVal === 'gm_continuation' || typeVal === 'gm_fallback') &&
+            typeVal !== 'rest_event') {
             // 移除之前所有消息的重新生成按钮
             this.removeAllRegenerateButtons();
             
@@ -652,9 +665,9 @@ class GameView {
         narrativeArea.appendChild(messageDiv);
         narrativeArea.scrollTop = narrativeArea.scrollHeight;
         
-        // 将 GM 叙述加入历史，以便存档恢复（避免重复，仅针对 gm_* 类型，且不是从历史恢复的）
+        // 将 GM 叙述加入历史，以便存档恢复（避免重复，仅针对 gm_* 和 rest_event 类型，且不是从历史恢复的）
         try {
-            if (!messageData.skipHistory && (typeVal === 'gm_narrative' || typeVal === 'gm_continuation' || typeVal === 'gm_fallback')) {
+            if (!messageData.skipHistory && (typeVal === 'gm_narrative' || typeVal === 'gm_continuation' || typeVal === 'gm_fallback' || typeVal === 'rest_event')) {
                 const gsService = window.gameCore?.getService('gameStateService');
                 if (gsService && typeof gsService.addConversationEntry === 'function') {
                     gsService.addConversationEntry({
@@ -702,7 +715,7 @@ class GameView {
                 this._notifActive.forEach((entry, index) => {
                     const topOffset = 20 + 60 * index; // 每条通知垂直间距
                     entry.el.style.top = `${topOffset}px`;
-                    entry.el.style.right = '20px';
+                    entry.el.style.left = '20px';
                 });
             };
         }
@@ -729,14 +742,14 @@ class GameView {
                 notification.style.cssText = `
                     position: fixed;
                     top: ${topOffset}px;
-                    right: 20px;
+                    left: 20px;
                     background: ${lvl === 'error' ? '#ff4444' : lvl === 'warning' ? '#ffaa00' : lvl === 'success' ? '#2e7d32' : '#4488ff'};
                     color: white;
                     padding: 12px 16px;
                     border-radius: 6px;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     z-index: 1000002; /* 提升至装备界面之上 */
-                    animation: slideInRight 0.3s ease-out;
+                    animation: slideInLeft 0.3s ease-out;
                     max-width: 300px;
                     word-wrap: break-word;
                 `;
@@ -746,10 +759,10 @@ class GameView {
 
                 // 自动移除并回填队列
                 const backlog = (this._notifQueue?.length || 0) + (this._notifActive?.length || 0);
-                const baseDuration = 3000;
+                const baseDuration = 2000;
                 const duration = backlog > 10 ? Math.floor(baseDuration / 2) : baseDuration;
                 setTimeout(() => {
-                    notification.style.animation = 'slideInRight 0.3s ease-out reverse';
+                    notification.style.animation = 'slideInLeft 0.3s ease-out reverse';
                     setTimeout(() => {
                         if (notification.parentNode) {
                             notification.parentNode.removeChild(notification);
@@ -915,38 +928,70 @@ class GameView {
     generateEquipmentTooltip(item) {
         if (!item.stats) return '';
         
+        // 获取玩家等级以检查装备需求
+        const gameStateService = window.gameCore?.getService('gameStateService');
+        const playerLevel = gameStateService?.getState()?.player?.level || 1;
+        
         let statsHtml = '<div class="tooltip-stats">';
         const stats = item.stats;
         
-        if (stats.attack) statsHtml += `<div>攻击力: +${stats.attack}</div>`;
-        if (stats.physicalResistance) statsHtml += `<div>物理抗性: +${stats.physicalResistance}%</div>`;
-        if (stats.magicResistance) statsHtml += `<div>魔法抗性: +${stats.magicResistance}%</div>`;
-        if (stats.physicalPower) statsHtml += `<div>物理强度: +${stats.physicalPower}</div>`;
-        if (stats.magicPower) statsHtml += `<div>魔法强度: +${stats.magicPower}</div>`;
-        if (stats.agility) statsHtml += `<div>敏捷: ${stats.agility > 0 ? '+' : ''}${stats.agility}</div>`;
-        if (stats.weight) statsHtml += `<div>重量: ${stats.weight > 0 ? '+' : ''}${stats.weight}</div>`;
-        if (stats.maxHp) statsHtml += `<div>生命值: +${stats.maxHp}</div>`;
-        if (stats.maxMana) statsHtml += `<div>法力值: +${stats.maxMana}</div>`;
-        if (stats.maxStamina) statsHtml += `<div>耐力值: +${stats.maxStamina}</div>`;
-        if (stats.criticalChance) statsHtml += `<div>暴击率: +${stats.criticalChance}%</div>`;
-        // 背包扩容格数显示
-        if (stats.inventorySlots) statsHtml += `<div>背包容量: +${stats.inventorySlots}格</div>`;
-        // 武器持握方式提示（便于辨识单双手）
+        // 需求等级（符合条件：浅绿色，不符合：红色）
+        if (item.requirements && item.requirements.level) {
+            const canEquip = playerLevel >= item.requirements.level;
+            const levelColor = canEquip ? '#66bb6a' : '#ff4444';
+            statsHtml += `<div style="color: ${levelColor}">需要等级: ${item.requirements.level}</div>`;
+        }
+        
+        // 武器持握方式（蓝色）
         if (item.weaponType === 'two-handed') {
-            statsHtml += `<div>持握方式: 双手武器</div>`;
+            statsHtml += `<div style="color: #82b1ff">持握方式: 双手武器</div>`;
         } else if (item.weaponType === 'one-handed') {
-            statsHtml += `<div>持握方式: 单手武器</div>`;
+            statsHtml += `<div style="color: #82b1ff">持握方式: 单手武器</div>`;
+        }
+        
+        // 基础数值（白色）
+        if (stats.attack) statsHtml += `<div style="color: #ffffff">攻击力: +${stats.attack}</div>`;
+        if (stats.physicalResistance) statsHtml += `<div style="color: #ffffff">物理抗性: +${stats.physicalResistance}%</div>`;
+        if (stats.magicResistance) statsHtml += `<div style="color: #ffffff">魔法抗性: +${stats.magicResistance}%</div>`;
+        if (stats.physicalPower) statsHtml += `<div style="color: #ffffff">物理强度: +${stats.physicalPower}</div>`;
+        if (stats.magicPower) statsHtml += `<div style="color: #ffffff">魔法强度: +${stats.magicPower}</div>`;
+        if (stats.agility) statsHtml += `<div style="color: #ffffff">敏捷: ${stats.agility > 0 ? '+' : ''}${stats.agility}</div>`;
+        if (stats.weight) statsHtml += `<div style="color: #ffffff">重量: ${stats.weight > 0 ? '+' : ''}${stats.weight}</div>`;
+        if (stats.maxHp) statsHtml += `<div style="color: #ffffff">生命值: +${stats.maxHp}</div>`;
+        if (stats.maxMana) statsHtml += `<div style="color: #ffffff">法力值: +${stats.maxMana}</div>`;
+        if (stats.maxStamina) statsHtml += `<div style="color: #ffffff">耐力值: +${stats.maxStamina}</div>`;
+        if (stats.criticalChance) statsHtml += `<div style="color: #ffffff">暴击率: +${stats.criticalChance}%</div>`;
+        // 背包扩容格数显示
+        if (stats.inventorySlots) statsHtml += `<div style="color: #ffffff">背包容量: +${stats.inventorySlots}格</div>`;
+        
+        // 显示装备特殊效果（绿色）
+        if (item.effects && item.effects.length > 0) {
+            for (const effect of item.effects) {
+                if (effect.description) {
+                    statsHtml += `<div class="tooltip-effect" style="color: #cc2fe0ff">✨ ${effect.description}</div>`;
+                }
+            }
+        }
+        
+        // 显示稀有度（保持原有稀有度颜色）
+        if (item.rarity) {
+            const rarityNames = {
+                'common': '普通',
+                'uncommon': '优秀',
+                'rare': '稀有',
+                'epic': '史诗',
+                'legendary': '传说'
+            };
+            const rarityColor = this.getRarityColor(item.rarity);
+            statsHtml += `<div class="tooltip-rarity" style="color: ${rarityColor}">⭐ 稀有度: ${rarityNames[item.rarity] || item.rarity}</div>`;
+        }
+        
+        // 显示价值（黄色）
+        if (item.value) {
+            statsHtml += `<div class="tooltip-value" style="color: #ffeb3b">💰 价值: ${item.value} 铜币</div>`;
         }
         
         statsHtml += '</div>';
-        
-        if (item.requirements) {
-            statsHtml += '<div class="tooltip-requirements">';
-            if (item.requirements.minLevel) {
-                statsHtml += `<div>需要等级: ${item.requirements.minLevel}</div>`;
-            }
-            statsHtml += '</div>';
-        }
         
         return statsHtml;
     }
@@ -1976,9 +2021,11 @@ class GameView {
 // 从存档恢复叙述区历史
 restoreNarrativeFromHistory(data) {
     try {
-        console.log('[GameView] 开始恢复叙述历史，当前已完成战斗:', {
+        console.log('[GameView] 开始恢复叙述历史，当前已完成战斗和商人交易:', {
             completedBattles: Array.from(this.completedBattles || []),
             battleIdCounter: this.battleIdCounter,
+            completedMerchantTrades: Array.from(this.completedMerchantTrades || []),
+            merchantTradeIdCounter: this.merchantTradeIdCounter,
             dataReceived: data
         });
         
@@ -1986,8 +2033,9 @@ restoreNarrativeFromHistory(data) {
         const history = gs?.getState()?.conversation?.history || [];
         const narrativeArea = document.getElementById('narrativeArea');
         if (!narrativeArea) return;
-        // 按历史顺序为每个战斗准备消息分配稳定ID
+        // 按历史顺序为每个战斗准备消息和商人交易分配稳定ID
         let restoreAssignedId = 0;
+        let restoreAssignedMerchantTradeId = 0;
 
         // 清空当前叙述区（移除欢迎提示），用存档历史重建
         narrativeArea.innerHTML = '';
@@ -1995,13 +2043,11 @@ restoreNarrativeFromHistory(data) {
         // 始终显示欢迎消息（无论是否有历史记录）
         const welcomeDiv = document.createElement('div');
         welcomeDiv.className = 'narrative-message intro';
-        welcomeDiv.innerHTML = `
-            🌟 欢迎回到地牢探险！
-            <br><br>
-            你重新回到了这个充满神秘与危险的地牢世界...
-            <br><br>
-            <em>存档已加载，继续你的冒险吧！</em>
-        `;
+        welcomeDiv.innerHTML = `🌟 欢迎回到地牢探险！
+
+你重新回到了这个充满神秘与危险的地牢世界...
+
+<em>存档已加载，继续你的冒险吧！</em>`;
         narrativeArea.appendChild(welcomeDiv);
 
         // 如果有历史记录，恢复它们
@@ -2057,6 +2103,19 @@ restoreNarrativeFromHistory(data) {
                         }
                     }
                 }
+                
+                // 如果是商人交易准备状态，需要修复内容和类型以匹配原始显示样式
+                if (type === 'merchant_encounter' && entry.merchantTradeId) {
+                    // 修复内容为原始显示的内容
+                    content = '💰 商人正等待着你的回应...';
+                    // 修复类型为function_result以匹配原始的CSS样式
+                    type = 'function_result';
+                    
+                    // 延迟处理，确保消息已添加到DOM后再添加按钮
+                    setTimeout(() => {
+                        this.restoreMerchantTradeButton(entry, ++restoreAssignedMerchantTradeId);
+                    }, 100);
+                }
 
                 this.addMessage({
                     content,
@@ -2068,15 +2127,19 @@ restoreNarrativeFromHistory(data) {
             });
         }
 
-        // 在历史恢复完成后，更新所有已完成战斗的按钮状态
+        // 在历史恢复完成后，更新所有已完成战斗和商人交易的按钮状态
         // 确保计数器不小于已分配的ID数
         this.battleIdCounter = Math.max(this.battleIdCounter, restoreAssignedId);
+        this.merchantTradeIdCounter = Math.max(this.merchantTradeIdCounter, restoreAssignedMerchantTradeId);
         setTimeout(() => {
-            console.log('[GameView] 准备更新所有已完成战斗按钮，当前状态:', {
+            console.log('[GameView] 准备更新所有已完成战斗和商人交易按钮，当前状态:', {
                 completedBattles: Array.from(this.completedBattles || []),
-                battleIdCounter: this.battleIdCounter
+                battleIdCounter: this.battleIdCounter,
+                completedMerchantTrades: Array.from(this.completedMerchantTrades || []),
+                merchantTradeIdCounter: this.merchantTradeIdCounter
             });
             this.updateAllCompletedBattleButtons();
+            this.updateAllCompletedMerchantTradeButtons();
             
             // 历史加载默认禁用所有“进入战斗”按钮，只有在存在准备中的战斗时保留最后一个可用
             try {
@@ -2131,7 +2194,11 @@ restoreNarrativeFromHistory(data) {
                 completedBattlesSize: this.completedBattles?.size || 0,
                 completedBattlesList: Array.from(this.completedBattles || []),
                 battleIdCounter: this.battleIdCounter,
-                allBattleButtons: document.querySelectorAll('.battle-start-button').length
+                allBattleButtons: document.querySelectorAll('.battle-start-button').length,
+                completedMerchantTradesSize: this.completedMerchantTrades?.size || 0,
+                completedMerchantTradesList: Array.from(this.completedMerchantTrades || []),
+                merchantTradeIdCounter: this.merchantTradeIdCounter,
+                allMerchantTradeButtons: document.querySelectorAll('.merchant-trade-button').length
             });
         }, 200);
 
@@ -2308,6 +2375,142 @@ updateAllCompletedBattleButtons() {
         console.log('[UI] 已更新所有已完成战斗的按钮状态');
     } catch (e) {
         console.warn('[UI] updateAllCompletedBattleButtons error:', e);
+    }
+}
+
+// 恢复商人交易按钮（从存档恢复时使用）
+restoreMerchantTradeButton(historyEntry, forcedMerchantTradeId = null) {
+    try {
+        console.log('[GameView] 恢复商人交易按钮:', {
+            historyEntry,
+            currentCompletedMerchantTrades: Array.from(this.completedMerchantTrades || [])
+        });
+        
+        // 优先通过时间戳精确定位消息
+        let targetMessage = null;
+        if (historyEntry && historyEntry.timestamp !== undefined) {
+            targetMessage = document.querySelector(`.narrative-message[data-ts="${historyEntry.timestamp}"]`);
+        }
+        
+        // 回退：找最后一个 merchant_encounter 类型的消息
+        if (!targetMessage) {
+            const narrativeArea = document.getElementById('narrativeArea');
+            const messages = narrativeArea.querySelectorAll('.narrative-message');
+            for (let i = messages.length - 1; i >= 0; i--) {
+                const msg = messages[i];
+                if (msg.textContent.includes('商人正等待着你的回应')) {
+                    targetMessage = msg;
+                    break;
+                }
+            }
+        }
+        
+        if (targetMessage) {
+            // 检查是否已经有按钮
+            if (targetMessage.querySelector('.merchant-trade-button') || targetMessage.getAttribute('data-merchant-trade-btn-bound') === '1') {
+                console.log('[GameView] 商人交易按钮已存在，跳过恢复');
+                return;
+            }
+            
+            // 尝试从历史条目或强制参数中获取商人交易ID
+            let merchantTradeId;
+            if (typeof forcedMerchantTradeId === 'number') {
+                merchantTradeId = forcedMerchantTradeId;
+                console.log('[GameView] 使用强制指定的商人交易ID:', merchantTradeId);
+            } else if (historyEntry && historyEntry.merchantTradeId !== undefined) {
+                merchantTradeId = historyEntry.merchantTradeId;
+                console.log('[GameView] 使用历史记录中的商人交易ID:', merchantTradeId);
+            } else {
+                console.log('[GameView] 缺少 merchantTradeId，跳过按钮恢复');
+                return;
+            }
+            
+            targetMessage.setAttribute('data-merchant-trade-id', merchantTradeId);
+            targetMessage.setAttribute('data-merchant-trade-btn-bound', '1');
+            
+            // 添加与商人交易按钮
+            const buttonWrapper = document.createElement('div');
+            buttonWrapper.style.marginTop = '10px';
+            const tradeBtn = document.createElement('button');
+            tradeBtn.className = 'primary-button merchant-trade-button';
+            tradeBtn.setAttribute('data-merchant-trade-id', merchantTradeId);
+            
+            // 检查交易是否已完成（在存档中已经完成的交易）
+            const isCompleted = this.completedMerchantTrades.has(merchantTradeId);
+            console.log('[GameView] 检查商人交易完成状态:', {
+                merchantTradeId,
+                isCompleted,
+                completedMerchantTrades: Array.from(this.completedMerchantTrades || [])
+            });
+            
+            if (isCompleted) {
+                tradeBtn.textContent = '交易已结束';
+                tradeBtn.disabled = true;
+                tradeBtn.style.opacity = '0.5';
+                tradeBtn.style.cursor = 'not-allowed';
+                tradeBtn.style.background = '#666';
+                targetMessage.classList.add('merchant-trade-completed');
+                console.log('[GameView] 设置按钮为已完成状态');
+            } else {
+                tradeBtn.textContent = '与商人交易';
+                tradeBtn.disabled = false;
+                tradeBtn.style.opacity = '1';
+                tradeBtn.style.cursor = 'pointer';
+                tradeBtn.onclick = () => {
+                    // 再次检查交易是否已完成（防止竞态条件）
+                    if (this.completedMerchantTrades.has(merchantTradeId)) {
+                        this.showNotification('交易已经结束了', 'warning');
+                        return;
+                    }
+                    
+                    // 点击进入商人界面
+                    this.eventBus.emit('merchant:encounter', {}, 'game');
+                    tradeBtn.disabled = true;
+                    tradeBtn.textContent = '交易中...';
+                    tradeBtn.style.opacity = '0.6';
+                    tradeBtn.style.cursor = 'not-allowed';
+                    
+                    // 保存当前交易ID
+                    this.currentMerchantTradeId = merchantTradeId;
+                    
+                    this.enableInput();
+                    this.setStatus('ready', '就绪');
+                };
+                console.log('[GameView] 设置按钮为可交易状态');
+            }
+            
+            buttonWrapper.appendChild(tradeBtn);
+            targetMessage.appendChild(buttonWrapper);
+            
+            console.log('[UI] 恢复了商人交易按钮，ID:', merchantTradeId, '已完成:', isCompleted);
+        }
+    } catch (e) {
+        console.warn('[UI] restoreMerchantTradeButton error:', e);
+    }
+}
+
+// 更新所有已完成商人交易的按钮状态
+updateAllCompletedMerchantTradeButtons() {
+    try {
+        const allMerchantButtons = document.querySelectorAll('.merchant-trade-button');
+        console.log('[GameView] 更新商人交易按钮状态:', {
+            totalButtons: allMerchantButtons.length,
+            completedMerchantTrades: Array.from(this.completedMerchantTrades || []),
+            completedMerchantTradesSize: this.completedMerchantTrades?.size || 0
+        });
+        
+        allMerchantButtons.forEach((button, index) => {
+            const merchantTradeId = parseInt(button.getAttribute('data-merchant-trade-id'));
+            const isCompleted = !isNaN(merchantTradeId) && this.completedMerchantTrades.has(merchantTradeId);
+            console.log(`[GameView] 商人交易按钮 ${index}: ID=${merchantTradeId}, 已完成=${isCompleted}`);
+            
+            if (isCompleted) {
+                this.updateMerchantTradeButtonState(merchantTradeId);
+            }
+        });
+        console.log('[UI] 已更新所有已完成商人交易的按钮状态');
+    } catch (e) {
+        console.warn('[UI] updateAllCompletedMerchantTradeButtons error:', e);
     }
 }
 
@@ -2521,16 +2724,20 @@ hideGlobalTooltip() {
         console.log('[GameView] 新游戏开始，重置UI状态', {
             currentCompletedBattles: Array.from(this.completedBattles || []),
             currentBattleIdCounter: this.battleIdCounter,
+            currentCompletedMerchantTrades: Array.from(this.completedMerchantTrades || []),
+            currentMerchantTradeIdCounter: this.merchantTradeIdCounter,
             data
         });
         
-        // 只有在明确是新游戏时才重置战斗状态跟踪
+        // 只有在明确是新游戏时才重置战斗和商人交易状态跟踪
         if (data && data.resetUI !== false) {
-            console.log('[GameView] 重置战斗状态跟踪');
+            console.log('[GameView] 重置战斗和商人交易状态跟踪');
             this.completedBattles.clear();
             this.battleIdCounter = 0;
+            this.completedMerchantTrades.clear();
+            this.merchantTradeIdCounter = 0;
         } else {
-            console.log('[GameView] 跳过战斗状态重置');
+            console.log('[GameView] 跳过战斗和商人交易状态重置');
         }
         
         // 强制启用输入，清除任何禁用状态
@@ -2546,13 +2753,11 @@ hideGlobalTooltip() {
             
             const welcomeDiv = document.createElement('div');
             welcomeDiv.className = 'narrative-message intro slide-up';
-            welcomeDiv.innerHTML = `
-                🌟 欢迎来到地牢探险！
-                <br><br>
-                你站在古老地牢的入口前，黑暗的通道向前延伸，空气中弥漫着神秘的气息...
-                <br><br>
-                <em>提示：试试输入"向前探索"、"搜索房间"或"查看状态"来开始你的冒险！</em>
-            `;
+            welcomeDiv.innerHTML = `🌟 欢迎来到地牢探险！
+
+你站在古老地牢的入口前，黑暗的通道向前延伸，空气中弥漫着神秘的气息...
+
+<em>提示：试试输入"向前探索"、"搜索房间"或"查看状态"来开始你的冒险！</em>`;
             narrativeArea.appendChild(welcomeDiv);
         }
         
@@ -2966,6 +3171,387 @@ hideGlobalTooltip() {
         } catch (error) {
             console.error('[GameView] 添加最后GM消息的重新生成按钮失败:', error);
         }
+    }
+
+    // ========== 货币系统相关方法 ==========
+    
+    /**
+     * 更新货币显示
+     */
+    updateCurrencyDisplay(copperAmount) {
+        const currencyEl = document.getElementById('playerCurrency');
+        if (!currencyEl) return;
+
+        const currencyService = window.gameCore?.getService('currencyService');
+        const display = currencyService?.formatDisplay(copperAmount) || { gold: 0, silver: 0, copper: 0 };
+
+        currencyEl.innerHTML = `${display.gold}金 ${display.silver}银 ${display.copper}铜`;
+        currencyEl.style.color = '#ffd700';
+    }
+
+    // ========== 休息系统相关方法 ==========
+    
+    /**
+     * 处理休息行动
+     */
+    handleRest() {
+        // 检查输入是否被禁用
+        if (this.isInputDisabled) {
+            this.showNotification('请等待当前操作完成...', 'warning');
+            return;
+        }
+
+        const gameStateService = window.gameCore?.getService('gameStateService');
+        const gameState = gameStateService?.getState();
+        const player = gameState?.player;
+        
+        if (!player) {
+            this.showNotification('无法获取玩家状态', 'error');
+            return;
+        }
+
+        // 检查休息CD：需要至少进行4轮行动才能再次休息
+        const actionsSinceLastRest = gameState.actionsSinceLastRest || 0;
+        if (actionsSinceLastRest < 4) {
+            const remaining = 4 - actionsSinceLastRest;
+            this.showNotification(`💤 你还不够累，再行动 ${remaining} 次后才能休息`, 'warning');
+            return;
+        }
+
+        // 禁用输入
+        this.disableInput();
+        this.setStatus('processing', '休息中...');
+
+        // 恢复属性
+        const hpRestore = Math.floor(player.maxHp * 0.5);
+        const spRestore = Math.floor(player.maxStamina * 0.75);
+        const mpRestore = Math.floor(player.maxMana * 0.4);
+
+        const newHp = Math.min(player.maxHp, player.hp + hpRestore);
+        const newStamina = Math.min(player.maxStamina, player.stamina + spRestore);
+        const newMana = Math.min(player.maxMana, player.mana + mpRestore);
+
+        gameStateService.updatePlayerStats({
+            hp: newHp,
+            stamina: newStamina,
+            mana: newMana
+        });
+        
+        // 增加休息计数（使用已声明的 gameState）
+        const restCount = gameState.restCount || 0;
+        gameState.restCount = restCount + 1;
+
+        // 显示休息开始消息（不显示恢复数值）
+        this.addMessage({
+            content: `你找了个相对安全的地方开始休息...`,
+            type: 'rest_event',
+            skipHistory: false  // 需要保存到历史记录
+        });
+
+        // 随机事件（第一次休息必定遇到商人）
+        const isFirstRest = restCount === 0;
+        const randomValue = Math.random();
+        
+        setTimeout(() => {
+            if (isFirstRest) {
+                // 第一次休息：必定遇到商人
+                this.handleMerchantEncounter();
+            } else if (randomValue < 0.4) {
+                // 40% 概率：平安休息
+                this.handlePeacefulRest();
+            } else if (randomValue < 0.8) {
+                // 40% 概率：遇到商人
+                this.handleMerchantEncounter();
+            } else {
+                // 20% 概率：怪物偷袭
+                this.handleMonsterAmbush();
+            }
+        }, 1000);
+    }
+
+    /**
+     * 平安休息
+     */
+    handlePeacefulRest() {
+        this.addMessage({
+            content: '休息期间没有发生什么意外，你安全地恢复了体力。',
+            type: 'rest_event',
+            skipHistory: false  // 需要保存到历史记录
+        });
+        
+        // 重置行动计数器
+        const gsService = window.gameCore?.getService('gameStateService');
+        const gs = gsService?.getState();
+        if (gs) {
+            gs.actionsSinceLastRest = 0;
+        }
+        
+        this.enableInput();
+        this.setStatus('ready', '就绪');
+    }
+
+    /**
+     * 遇到商人
+     */
+    handleMerchantEncounter() {
+        this.addMessage({
+            content: '休息时，一位巡游商人恰好路过这里。\n\n"哟！旅行者，要不要看看我的货物？都是好东西！"',
+            type: 'rest_event',
+            skipHistory: false  // 需要保存到历史记录
+        });
+
+        // 重置行动计数器
+        const gsService = window.gameCore?.getService('gameStateService');
+        const gs = gsService?.getState();
+        if (gs) {
+            gs.actionsSinceLastRest = 0;
+        }
+
+        // 显示"与商人交易"按钮，类似战斗准备状态
+        setTimeout(() => {
+            this.showMerchantTradeButton();
+        }, 500);
+    }
+
+    /**
+     * 显示商人交易按钮
+     */
+    showMerchantTradeButton() {
+        const narrativeArea = document.getElementById('narrativeArea');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'narrative-message function_result slide-up';
+
+        // 生成唯一的商人交易ID
+        const merchantTradeId = ++this.merchantTradeIdCounter;
+        messageDiv.setAttribute('data-merchant-trade-id', merchantTradeId);
+
+        // 时间戳
+        const timestamp = new Date().toLocaleTimeString();
+        const timeElement = document.createElement('div');
+        timeElement.style.fontSize = '10px';
+        timeElement.style.opacity = '0.6';
+        timeElement.style.marginBottom = '5px';
+        timeElement.textContent = timestamp;
+
+        // 内容
+        const contentElement = document.createElement('div');
+        contentElement.textContent = '💰 商人正等待着你的回应...';
+
+        // 交易按钮
+        const buttonWrapper = document.createElement('div');
+        buttonWrapper.style.marginTop = '10px';
+        const tradeBtn = document.createElement('button');
+        tradeBtn.className = 'primary-button merchant-trade-button';
+        tradeBtn.textContent = '与商人交易';
+        tradeBtn.disabled = false;
+        tradeBtn.style.opacity = '1';
+        tradeBtn.style.cursor = 'pointer';
+        tradeBtn.setAttribute('data-merchant-trade-id', merchantTradeId);
+        tradeBtn.onclick = () => {
+            // 检查交易是否已完成
+            if (this.completedMerchantTrades.has(merchantTradeId)) {
+                this.showNotification('交易已经结束了', 'warning');
+                return;
+            }
+            
+            // 点击后进入商人界面
+            this.eventBus.emit('merchant:encounter', {}, 'game');
+            // 禁用按钮防止重复点击
+            tradeBtn.disabled = true;
+            tradeBtn.textContent = '交易中...';
+            tradeBtn.style.opacity = '0.6';
+            tradeBtn.style.cursor = 'not-allowed';
+            
+            // 保存当前交易ID到全局，供关闭时使用
+            this.currentMerchantTradeId = merchantTradeId;
+            
+            // 启用输入
+            this.enableInput();
+            this.setStatus('ready', '就绪');
+        };
+
+        buttonWrapper.appendChild(tradeBtn);
+        messageDiv.appendChild(timeElement);
+        messageDiv.appendChild(contentElement);
+        messageDiv.appendChild(buttonWrapper);
+
+        narrativeArea.appendChild(messageDiv);
+        narrativeArea.scrollTop = narrativeArea.scrollHeight;
+
+        // 将商人交易ID保存到历史记录中，以便存档恢复时使用
+        try {
+            const gsService = window.gameCore?.getService('gameStateService');
+            if (gsService && typeof gsService.addConversationEntry === 'function') {
+                gsService.addConversationEntry({
+                    role: 'system',
+                    content: '商人交易准备',
+                    type: 'merchant_encounter',
+                    merchantTradeId: merchantTradeId // 保存商人交易ID
+                });
+                console.log('[GameView] 已保存商人交易ID到历史记录:', merchantTradeId);
+            }
+        } catch (e) {
+            console.warn('[UI] 保存商人交易ID到历史记录失败:', e);
+        }
+
+        // 在等待期间禁止其他输入，但允许打开装备界面
+        this.disableInputExceptInventory();
+        this.setStatus('processing', '等待与商人交易...');
+    }
+
+    /**
+     * 处理商人界面关闭
+     */
+    handleMerchantClosed() {
+        console.log('[GameView] 商人界面关闭，更新按钮状态');
+        
+        // 获取当前交易ID
+        const merchantTradeId = this.currentMerchantTradeId;
+        
+        if (merchantTradeId) {
+            // 标记交易为已完成
+            this.completedMerchantTrades.add(merchantTradeId);
+            console.log('[GameView] 已将商人交易ID添加到完成列表:', {
+                merchantTradeId,
+                newCompletedTrades: Array.from(this.completedMerchantTrades)
+            });
+            
+            // 更新对应的交易按钮状态
+            this.updateMerchantTradeButtonState(merchantTradeId);
+            
+            // 清除当前交易ID
+            this.currentMerchantTradeId = null;
+        }
+    }
+
+    /**
+     * 更新商人交易按钮状态
+     */
+    updateMerchantTradeButtonState(merchantTradeId) {
+        const button = document.querySelector(`.merchant-trade-button[data-merchant-trade-id="${merchantTradeId}"]`);
+        console.log(`[GameView] 尝试更新商人交易按钮状态 ID: ${merchantTradeId}`, {
+            buttonFound: !!button,
+            buttonText: button?.textContent,
+            buttonDisabled: button?.disabled
+        });
+        
+        if (button) {
+            button.disabled = true;
+            button.textContent = '交易已结束';
+            button.style.opacity = '0.5';
+            button.style.cursor = 'not-allowed';
+            button.style.background = '#666';
+            
+            // 添加已完成的样式类
+            const messageDiv = button.closest('.narrative-message');
+            if (messageDiv) {
+                messageDiv.classList.add('merchant-trade-completed');
+            }
+            
+            console.log(`[GameView] 已禁用商人交易按钮 ID: ${merchantTradeId}`);
+        } else {
+            console.warn(`[GameView] 未找到商人交易按钮 ID: ${merchantTradeId}`);
+        }
+    }
+
+    /**
+     * 禁用输入但允许打开装备界面
+     */
+    disableInputExceptInventory() {
+        console.log('[DEBUG] 禁用用户输入（装备界面除外）');
+        this.isInputDisabled = true;
+        
+        const actionArea = document.querySelector('.action-area');
+        const input = document.getElementById('actionInput');
+        const mainActionButton = actionArea ? actionArea.querySelector('.primary-button') : null;
+        const quickButtons = actionArea ? actionArea.querySelectorAll('.quick-action-button') : [];
+        
+        if (input) {
+            input.disabled = true;
+            input.placeholder = '请先与商人交易或等待...';
+            input.style.opacity = '0.6';
+        }
+        
+        if (mainActionButton) {
+            mainActionButton.disabled = true;
+            mainActionButton.style.opacity = '0.6';
+            mainActionButton.style.cursor = 'not-allowed';
+        }
+        
+        quickButtons.forEach(btn => {
+            // 检查是否是装备按钮（inventory-button）
+            const isInventoryBtn = btn.classList.contains('inventory-button');
+            if (!isInventoryBtn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+                btn.style.cursor = 'not-allowed';
+            }
+            // 装备按钮保持可用
+        });
+
+        // 保持商人交易按钮可用
+        document.querySelectorAll('.merchant-trade-button').forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        });
+    }
+
+    /**
+     * 怪物偷袭
+     */
+    async handleMonsterAmbush() {
+        this.addMessage({
+            content: '你正要放松警惕时，突然听到了脚步声！\n\n一只怪物从阴影中扑了出来！',
+            type: 'rest_event',
+            skipHistory: false  // 需要保存到历史记录
+        });
+
+        // 重置行动计数器
+        const gsService = window.gameCore?.getService('gameStateService');
+        const gs = gsService?.getState();
+        if (gs) {
+            gs.actionsSinceLastRest = 0;
+        }
+
+        // 生成与玩家等级接近的怪物
+        const player = gs?.player;
+        const playerLevel = player?.level || 1;
+
+        // 怪物等级在玩家等级 ±2 范围内
+        const monsterLevel = Math.max(1, playerLevel + Math.floor(Math.random() * 5) - 2);
+
+        // 随机选择怪物种类
+        const monsterSpecies = ['哥布林', '骷髅战士', '野狼', '强盗', '蜘蛛'][Math.floor(Math.random() * 5)];
+
+        setTimeout(async () => {
+            // 触发战斗 - 使用模板模式
+            const functionCallService = window.gameCore?.getService('functionCallService');
+            if (functionCallService) {
+                const battleResult = await functionCallService.executeFunction({
+                    name: 'start_battle',
+                    arguments: {
+                        encounter_type: 'template',  // 使用模板模式
+                        enemies: [{
+                            level: monsterLevel,
+                            category: 'minion',  // 普通小怪
+                            species: monsterSpecies,  // 怪物种类
+                            count: 1  // 数量
+                        }],
+                        environment: '休息地点',
+                        special_conditions: ['偷袭', '无法逃跑']
+                    }
+                });
+
+                // 显示函数执行结果（包括进入战斗按钮）
+                if (battleResult) {
+                    this.eventBus.emit('ui:display:function:result', {
+                        functionName: 'start_battle',
+                        result: battleResult
+                    }, 'game');
+                }
+            }
+        }, 1000);
     }
 }
  

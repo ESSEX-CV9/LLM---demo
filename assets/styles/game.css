@@ -260,6 +260,7 @@ body {
     line-height: 1.6;
     animation: fadeInUp 0.3s ease-out;
     position: relative;
+    white-space: pre-line; /* 保留换行符，合并多余空格 */
 }
 
 @keyframes fadeInUp {
@@ -319,6 +320,13 @@ body {
     border-radius: 0 10px 10px 0;
     font-style: italic;
     opacity: 0.9;
+}
+
+.narrative-message.rest_event {
+    background: linear-gradient(135deg, rgba(121, 134, 203, 0.2), rgba(103, 116, 183, 0.2));
+    border-left: 4px solid #7986CB;
+    border-radius: 0 10px 10px 0;
+    font-style: italic;
 }
 
 /* 加载消息样式 */

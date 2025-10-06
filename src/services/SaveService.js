@@ -148,10 +148,12 @@ class SaveService {
       }
     }
 
-    // 保存UI战斗状态：已完成的战斗ID和战斗计数器
+    // 保存UI战斗状态和商人交易状态：已完成的战斗ID和战斗计数器
     let uiState = {
       completedBattles: [],
-      battleIdCounter: 0
+      battleIdCounter: 0,
+      completedMerchantTrades: [],
+      merchantTradeIdCounter: 0
     };
 
     // 从GameView获取UI状态
@@ -159,13 +161,16 @@ class SaveService {
       try {
         uiState.completedBattles = Array.from(window.gameView.completedBattles || []);
         uiState.battleIdCounter = window.gameView.battleIdCounter || 0;
-        console.log('[SaveService] 保存UI战斗状态:', {
+        uiState.completedMerchantTrades = Array.from(window.gameView.completedMerchantTrades || []);
+        uiState.merchantTradeIdCounter = window.gameView.merchantTradeIdCounter || 0;
+        console.log('[SaveService] 保存UI战斗和商人状态:', {
           completedBattles: uiState.completedBattles,
           battleIdCounter: uiState.battleIdCounter,
-          completedBattlesSize: window.gameView.completedBattles?.size || 0
+          completedMerchantTrades: uiState.completedMerchantTrades,
+          merchantTradeIdCounter: uiState.merchantTradeIdCounter
         });
       } catch (e) {
-        console.warn('[SaveService] 获取UI战斗状态失败:', e);
+        console.warn('[SaveService] 获取UI状态失败:', e);
       }
     }
 
@@ -179,7 +184,9 @@ class SaveService {
           world: JSON.parse(JSON.stringify(state.world)),
           conversation: JSON.parse(JSON.stringify(state.conversation)),
           battle: battleData,
-          flags: flagsArr
+          flags: flagsArr,
+          restCount: state.restCount || 0,
+          actionsSinceLastRest: state.actionsSinceLastRest || 0
         },
         inventory,
         uiState
@@ -214,6 +221,10 @@ class SaveService {
       currentBattle: s.battle?.currentBattle || null,
       battleHistory: Array.isArray(s.battle?.battleHistory) ? JSON.parse(JSON.stringify(s.battle.battleHistory)) : []
     };
+    
+    // 恢复休息系统数据
+    gs.restCount = s.restCount || 0;
+    gs.actionsSinceLastRest = s.actionsSinceLastRest || 0;
 
     // 恢复战斗服务状态
     if (battleService && s.battle?.battleState) {
@@ -271,24 +282,30 @@ class SaveService {
       }
     }
 
-    // 恢复UI状态：已完成的战斗和战斗计数器
+    // 恢复UI状态：已完成的战斗和商人交易、计数器
     if (snapshot.data.uiState && window.gameView) {
       try {
         const uiState = snapshot.data.uiState;
-        console.log('[SaveService] 准备恢复UI战斗状态:', {
+        console.log('[SaveService] 准备恢复UI状态:', {
           savedCompletedBattles: uiState.completedBattles,
           savedBattleIdCounter: uiState.battleIdCounter,
-          currentCompletedBattles: Array.from(window.gameView.completedBattles || []),
-          currentBattleIdCounter: window.gameView.battleIdCounter
+          savedCompletedMerchantTrades: uiState.completedMerchantTrades,
+          savedMerchantTradeIdCounter: uiState.merchantTradeIdCounter
         });
         
+        // 恢复战斗状态
         window.gameView.completedBattles = new Set(uiState.completedBattles || []);
         window.gameView.battleIdCounter = uiState.battleIdCounter || 0;
         
-        console.log('[SaveService] 恢复UI战斗状态完成:', {
+        // 恢复商人交易状态
+        window.gameView.completedMerchantTrades = new Set(uiState.completedMerchantTrades || []);
+        window.gameView.merchantTradeIdCounter = uiState.merchantTradeIdCounter || 0;
+        
+        console.log('[SaveService] 恢复UI状态完成:', {
           restoredCompletedBattles: Array.from(window.gameView.completedBattles),
           restoredBattleIdCounter: window.gameView.battleIdCounter,
-          completedBattlesSize: window.gameView.completedBattles.size
+          restoredCompletedMerchantTrades: Array.from(window.gameView.completedMerchantTrades),
+          restoredMerchantTradeIdCounter: window.gameView.merchantTradeIdCounter
         });
       } catch (e) {
         console.warn('[SaveService] Failed to restore UI state:', e);

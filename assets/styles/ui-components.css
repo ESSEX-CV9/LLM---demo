@@ -353,3 +353,70 @@
     color: rgba(255, 255, 255, 0.8);
     border-radius: 4px;
 }
+
+/* 商人系统样式 */
+.merchant-item-card {
+    transition: all 0.3s ease;
+}
+
+.merchant-item-card:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* 购买对话框动画 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.purchase-dialog-overlay {
+    animation: fadeIn 0.2s ease-out;
+}
+
+.purchase-dialog-overlay > div {
+    animation: slideUp 0.3s ease-out;
+}
+
+/* 响应式布局 - 商人界面 */
+@media (max-width: 768px) {
+    .merchant-content {
+        flex-direction: column !important;
+    }
+    
+    .merchant-left-panel,
+    .merchant-right-panel {
+        width: 100% !important;
+    }
+    
+    .goods-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)) !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .goods-grid {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)) !important;
+    }
+    
+    .merchant-item-card .item-icon img,
+    .merchant-item-card .item-icon span {
+        width: 48px !important;
+        height: 48px !important;
+        font-size: 48px !important;
+    }
+}

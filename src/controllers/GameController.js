@@ -33,6 +33,12 @@ class GameController {
 
             // 1. 更新游戏状态
             this.eventBus.emit('game:action', actionData, 'game');
+            
+            // 增加行动计数（用于休息CD）
+            const gameState = gameStateService.getState();
+            if (gameState.actionsSinceLastRest !== undefined) {
+                gameState.actionsSinceLastRest++;
+            }
 
             // 2. 生成基础提示词
             const systemPrompt = gameStateService.generateGamePrompt();

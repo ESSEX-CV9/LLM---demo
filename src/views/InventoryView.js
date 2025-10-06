@@ -49,6 +49,24 @@ class InventoryView {
                         <div class="inventory-grid" id="inventoryGrid">
                             ${this.generateInventoryGrid(items, maxSlots)}
                         </div>
+                        <div class="discard-zone" id="discardZone" style="
+                            margin-top: 16px;
+                            padding: 20px;
+                            background: rgba(255, 68, 68, 0.1);
+                            border: 2px dashed rgba(255, 68, 68, 0.5);
+                            border-radius: 8px;
+                            text-align: center;
+                            transition: all 0.3s ease;
+                            min-height: 80px;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                        ">
+                            <div style="font-size: 32px; margin-bottom: 8px;">🗑️</div>
+                            <div style="font-size: 14px; opacity: 0.8; font-weight: bold; color: #ff4444;">抛弃槽</div>
+                            <div style="font-size: 11px; opacity: 0.6; margin-top: 4px;">拖拽物品到此处将永久丢弃</div>
+                        </div>
                     </div>
                 </div>
                 <div class="inventory-footer">
@@ -63,6 +81,7 @@ class InventoryView {
         this.setupInventoryEvents(inventoryModal);
         this.setupEquipmentEvents(inventoryModal);
         this.setupInventoryTabs(inventoryModal);
+        this.setupDiscardZoneEvents(inventoryModal);
     }
 
     // 刷新界面（不移除模态框）
@@ -179,36 +198,69 @@ class InventoryView {
     generateEquipmentTooltip(item) {
         if (!item.stats) return '';
 
+        // 获取玩家等级以检查装备需求
+        const gameStateService = window.gameCore?.getService('gameStateService');
+        const playerLevel = gameStateService?.getState()?.player?.level || 1;
+
         let statsHtml = '<div class="tooltip-stats">';
         const stats = item.stats;
 
-        if (stats.attack) statsHtml += `<div>攻击力: +${stats.attack}</div>`;
-        if (stats.physicalResistance) statsHtml += `<div>物理抗性: +${stats.physicalResistance}%</div>`;
-        if (stats.magicResistance) statsHtml += `<div>魔法抗性: +${stats.magicResistance}%</div>`;
-        if (stats.physicalPower) statsHtml += `<div>物理强度: +${stats.physicalPower}</div>`;
-        if (stats.magicPower) statsHtml += `<div>魔法强度: +${stats.magicPower}</div>`;
-        if (stats.agility) statsHtml += `<div>敏捷: ${stats.agility > 0 ? '+' : ''}${stats.agility}</div>`;
-        if (stats.weight) statsHtml += `<div>重量: ${stats.weight > 0 ? '+' : ''}${stats.weight}</div>`;
-        if (stats.maxHp) statsHtml += `<div>生命值: +${stats.maxHp}</div>`;
-        if (stats.maxMana) statsHtml += `<div>法力值: +${stats.maxMana}</div>`;
-        if (stats.maxStamina) statsHtml += `<div>耐力值: +${stats.maxStamina}</div>`;
-        if (stats.criticalChance) statsHtml += `<div>暴击率: +${stats.criticalChance}%</div>`;
-        if (stats.inventorySlots) statsHtml += `<div>背包容量: +${stats.inventorySlots}格</div>`;
+        // 需求等级（符合条件：浅绿色，不符合：红色）
+        if (item.requirements && item.requirements.level) {
+            const canEquip = playerLevel >= item.requirements.level;
+            const levelColor = canEquip ? '#66bb6a' : '#ff4444';
+            statsHtml += `<div style="color: ${levelColor}">需要等级: ${item.requirements.level}</div>`;
+        }
+
+        // 武器持握方式（蓝色）
         if (item.weaponType === 'two-handed') {
-            statsHtml += `<div>持握方式: 双手武器</div>`;
+            statsHtml += `<div style="color: #82b1ff">持握方式: 双手武器</div>`;
         } else if (item.weaponType === 'one-handed') {
-            statsHtml += `<div>持握方式: 单手武器</div>`;
+            statsHtml += `<div style="color: #82b1ff">持握方式: 单手武器</div>`;
+        }
+
+        // 基础数值（白色）
+        if (stats.attack) statsHtml += `<div style="color: #ffffff">攻击力: +${stats.attack}</div>`;
+        if (stats.physicalResistance) statsHtml += `<div style="color: #ffffff">物理抗性: +${stats.physicalResistance}%</div>`;
+        if (stats.magicResistance) statsHtml += `<div style="color: #ffffff">魔法抗性: +${stats.magicResistance}%</div>`;
+        if (stats.physicalPower) statsHtml += `<div style="color: #ffffff">物理强度: +${stats.physicalPower}</div>`;
+        if (stats.magicPower) statsHtml += `<div style="color: #ffffff">魔法强度: +${stats.magicPower}</div>`;
+        if (stats.agility) statsHtml += `<div style="color: #ffffff">敏捷: ${stats.agility > 0 ? '+' : ''}${stats.agility}</div>`;
+        if (stats.weight) statsHtml += `<div style="color: #ffffff">重量: ${stats.weight > 0 ? '+' : ''}${stats.weight}</div>`;
+        if (stats.maxHp) statsHtml += `<div style="color: #ffffff">生命值: +${stats.maxHp}</div>`;
+        if (stats.maxMana) statsHtml += `<div style="color: #ffffff">法力值: +${stats.maxMana}</div>`;
+        if (stats.maxStamina) statsHtml += `<div style="color: #ffffff">耐力值: +${stats.maxStamina}</div>`;
+        if (stats.criticalChance) statsHtml += `<div style="color: #ffffff">暴击率: +${stats.criticalChance}%</div>`;
+        if (stats.inventorySlots) statsHtml += `<div style="color: #ffffff">背包容量: +${stats.inventorySlots}格</div>`;
+
+        // 显示装备特殊效果（绿色）
+        if (item.effects && item.effects.length > 0) {
+            for (const effect of item.effects) {
+                if (effect.description) {
+                    statsHtml += `<div class="tooltip-effect" style="color: #cc2fe0ff">✨ ${effect.description}</div>`;
+                }
+            }
+        }
+
+        // 显示稀有度（保持原有稀有度颜色）
+        if (item.rarity) {
+            const rarityNames = {
+                'common': '普通',
+                'uncommon': '优秀',
+                'rare': '稀有',
+                'epic': '史诗',
+                'legendary': '传说'
+            };
+            const rarityColor = this.getRarityColor(item.rarity);
+            statsHtml += `<div class="tooltip-rarity" style="color: ${rarityColor}">⭐ 稀有度: ${rarityNames[item.rarity] || item.rarity}</div>`;
+        }
+
+        // 显示价值（黄色）
+        if (item.value) {
+            statsHtml += `<div class="tooltip-value" style="color: #ffeb3b">💰 价值: ${item.value} 铜币</div>`;
         }
 
         statsHtml += '</div>';
-
-        if (item.requirements) {
-            statsHtml += '<div class="tooltip-requirements">';
-            if (item.requirements.minLevel) {
-                statsHtml += `<div>需要等级: ${item.requirements.minLevel}</div>`;
-            }
-            statsHtml += '</div>';
-        }
 
         return statsHtml;
     }
@@ -594,6 +646,235 @@ class InventoryView {
 
             slot.style.display = shouldShow ? 'block' : 'none';
         });
+    }
+
+    // 设置抛弃槽事件
+    setupDiscardZoneEvents(modal) {
+        const discardZone = modal.querySelector('#discardZone');
+        if (!discardZone) return;
+
+        // 拖拽悬浮
+        discardZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            discardZone.style.background = 'rgba(255, 68, 68, 0.3)';
+            discardZone.style.borderColor = 'rgba(255, 68, 68, 0.8)';
+            discardZone.style.transform = 'scale(1.05)';
+        });
+
+        // 拖拽离开
+        discardZone.addEventListener('dragleave', (e) => {
+            if (!discardZone.contains(e.relatedTarget)) {
+                discardZone.style.background = 'rgba(255, 68, 68, 0.1)';
+                discardZone.style.borderColor = 'rgba(255, 68, 68, 0.5)';
+                discardZone.style.transform = 'scale(1)';
+            }
+        });
+
+        // 拖拽放置
+        discardZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            discardZone.style.background = 'rgba(255, 68, 68, 0.1)';
+            discardZone.style.borderColor = 'rgba(255, 68, 68, 0.5)';
+            discardZone.style.transform = 'scale(1)';
+
+            try {
+                const jsonData = e.dataTransfer.getData('application/json');
+                const textData = e.dataTransfer.getData('text/plain');
+
+                let itemName;
+                if (jsonData) {
+                    const data = JSON.parse(jsonData);
+                    itemName = data.itemName;
+                } else if (textData) {
+                    itemName = textData;
+                } else {
+                    throw new Error('无法获取拖拽数据');
+                }
+
+                // 确认抛弃
+                const confirmed = await this.confirmDiscard(itemName);
+                if (confirmed) {
+                    this.discardItem(itemName);
+                }
+            } catch (error) {
+                console.error('[抛弃] 失败:', error);
+                this._notify('抛弃物品失败: ' + error.message, 'error');
+            }
+        });
+    }
+
+    // 确认抛弃对话框
+    async confirmDiscard(itemName) {
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        const item = inventoryService?.getItem(itemName);
+        
+        if (!item) {
+            this._notify('物品不存在', 'error');
+            return false;
+        }
+
+        return new Promise((resolve) => {
+            const dialog = document.createElement('div');
+            dialog.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000002;
+                animation: fadeIn 0.2s ease-out;
+            `;
+
+            const rarityColor = this.getRarityColor(item.rarity);
+            
+            dialog.innerHTML = `
+                <div style="
+                    background: linear-gradient(135deg, #2a3142 0%, #1e2533 100%);
+                    border-radius: 12px;
+                    padding: 24px;
+                    width: 90%;
+                    max-width: 400px;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+                    border: 2px solid rgba(255, 68, 68, 0.8);
+                    color: white;
+                    text-align: center;
+                    animation: slideUp 0.3s ease-out;
+                ">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                    <h3 style="color: #ff4444; margin: 0 0 12px 0;">确认抛弃物品？</h3>
+                    <div style="margin: 16px 0;">
+                        <div style="color: ${rarityColor}; font-weight: bold; font-size: 16px; margin-bottom: 8px;">
+                            ${item.name}
+                        </div>
+                        <div style="opacity: 0.8; font-size: 13px; margin-bottom: 8px;">
+                            ${item.description || ''}
+                        </div>
+                        <div style="opacity: 0.7; font-size: 12px;">
+                            数量: x${item.quantity}
+                        </div>
+                    </div>
+                    <div style="
+                        background: rgba(255, 68, 68, 0.2);
+                        padding: 12px;
+                        border-radius: 6px;
+                        border: 1px solid rgba(255, 68, 68, 0.4);
+                        margin-bottom: 20px;
+                        font-size: 13px;
+                        opacity: 0.9;
+                    ">
+                        ⚠️ 此操作不可撤销！物品将永久消失！
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button id="cancelDiscardBtn" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #666;
+                            border: none;
+                            color: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-weight: bold;
+                            transition: all 0.2s;
+                        ">取消</button>
+                        <button id="confirmDiscardBtn" style="
+                            flex: 1;
+                            padding: 12px;
+                            background: #ff4444;
+                            border: none;
+                            color: white;
+                            border-radius: 6px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-weight: bold;
+                            transition: all 0.2s;
+                        ">确认抛弃</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(dialog);
+
+            const cancelBtn = dialog.querySelector('#cancelDiscardBtn');
+            const confirmBtn = dialog.querySelector('#confirmDiscardBtn');
+
+            const cleanup = () => {
+                dialog.remove();
+            };
+
+            cancelBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(false);
+            });
+
+            confirmBtn.addEventListener('click', () => {
+                cleanup();
+                resolve(true);
+            });
+
+            // 悬浮效果
+            cancelBtn.addEventListener('mouseenter', () => {
+                cancelBtn.style.background = '#555';
+            });
+            cancelBtn.addEventListener('mouseleave', () => {
+                cancelBtn.style.background = '#666';
+            });
+
+            confirmBtn.addEventListener('mouseenter', () => {
+                confirmBtn.style.background = '#cc0000';
+            });
+            confirmBtn.addEventListener('mouseleave', () => {
+                confirmBtn.style.background = '#ff4444';
+            });
+
+            // 点击背景关闭（取消）
+            dialog.addEventListener('click', (e) => {
+                if (e.target === dialog) {
+                    cleanup();
+                    resolve(false);
+                }
+            });
+
+            // ESC键取消
+            const escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    cleanup();
+                    resolve(false);
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+        });
+    }
+
+    // 抛弃物品
+    discardItem(itemName) {
+        const inventoryService = window.gameCore?.getService('inventoryService');
+        if (!inventoryService) {
+            this._notify('背包系统不可用', 'error');
+            return;
+        }
+
+        const item = inventoryService.getItem(itemName);
+        if (!item) {
+            this._notify('物品不存在', 'error');
+            return;
+        }
+
+        // 移除所有该物品
+        const removed = inventoryService.removeItem(itemName, item.quantity);
+        
+        if (removed) {
+            this._notify(`已抛弃 ${itemName} x${item.quantity}`, 'info');
+            this.refresh();
+        } else {
+            this._notify('抛弃物品失败', 'error');
+        }
     }
 
     // 检查是否能装备到槽位

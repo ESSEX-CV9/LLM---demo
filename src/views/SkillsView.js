@@ -888,7 +888,8 @@ class SkillsView {
     if (!skillService) return;
     
     const res = skillService.equipSkill(skillId, slotIndex);
-    this.notify(res.message, res.success ? 'success' : 'warning');
+    // 已取消技能装备通知
+    // this.notify(res.message, res.success ? 'success' : 'warning');
   }
 
   // 从槽位卸下技能
@@ -897,7 +898,8 @@ class SkillsView {
     if (!skillService) return;
     
     const res = skillService.unequipSkill(skillId);
-    this.notify(res.message, res.success ? 'success' : 'warning');
+    // 已取消技能卸下通知
+    // this.notify(res.message, res.success ? 'success' : 'warning');
   }
 
   // ==================== 新增：Tooltip 功能 ====================
@@ -1744,10 +1746,12 @@ class SkillsView {
     
     if (skill.equipped) {
       const res = skillService.unequipSkill(skillId);
-      this.notify(res.message, res.success ? 'success' : 'warning');
+      // 已取消技能卸下通知
+      // this.notify(res.message, res.success ? 'success' : 'warning');
     } else {
       const res = skillService.equipSkill(skillId);
-      this.notify(res.message, res.success ? 'success' : 'warning');
+      // 已取消技能装备通知
+      // this.notify(res.message, res.success ? 'success' : 'warning');
     }
   }
 

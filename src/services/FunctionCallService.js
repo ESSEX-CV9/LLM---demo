@@ -1,5 +1,6 @@
 // services/FunctionCallService.js
 import EnemyTemplates from '../data/EnemyTemplates.js';
+import ItemsDB from '../data/Items.js';
 
 class FunctionCallService {
     constructor(eventBus) {
@@ -478,64 +479,134 @@ class FunctionCallService {
         };
     }
 
-    // 解谜系统示例
+    // 解谜系统
     async handlePuzzle(args) {
-        const { puzzle_type, difficulty } = args;
+        const { puzzle_type, difficulty = 'medium' } = args;
         
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        const success = Math.random() > 0.4;
-        const reward = success ? ['古代卷轴', '经验值'] : null;
+        // 根据难度调整成功率
+        const successChances = {
+            'easy': 0.8,
+            'medium': 0.6,
+            'hard': 0.4,
+            'very_hard': 0.2
+        };
+        const successChance = successChances[difficulty] || 0.6;
+        const success = Math.random() < successChance;
+        
+        let rewards = [];
+        let experience = 0;
+        
+        if (success) {
+            // 根据难度给予经验奖励
+            const expRewards = {
+                'easy': 30,
+                'medium': 60,
+                'hard': 120,
+                'very_hard': 200
+            };
+            experience = expRewards[difficulty] || 60;
+            
+            // 根据难度决定物品奖励
+            const inventoryService = window.gameCore?.getService('inventoryService');
+            const gameStateService = window.gameCore?.getService('gameStateService');
+            const playerLevel = gameStateService?.getState()?.player?.level || 1;
+            
+            // 根据难度随机获得物品
+            const itemChance = {
+                'easy': 0.5,
+                'medium': 0.7,
+                'hard': 0.85,
+                'very_hard': 0.95
+            }[difficulty] || 0.7;
+            
+            if (Math.random() < itemChance) {
+                // 获取适合玩家等级的物品
+                const possibleItems = this.getRandomLootItems(playerLevel, difficulty);
+                
+                possibleItems.forEach(itemData => {
+                    rewards.push(itemData.name);
+                    if (inventoryService) {
+                        inventoryService.addItem(itemData.name, itemData.quantity || 1);
+                    }
+                });
+            }
+        }
+        
+        let description = `你${success ? '成功解开了' : '未能解开'}${puzzle_type}谜题！`;
+        
+        if (success) {
+            if (experience > 0) {
+                description += ` 获得了${experience}点经验值`;
+            }
+            if (rewards.length > 0) {
+                description += `，并发现了：${rewards.join('、')}`;
+            }
+        }
         
         return {
             success,
-            reward,
-            description: `你${success ? '成功解开了' : '未能解开'}${puzzle_type}谜题！`
+            experience,
+            rewards,
+            description
         };
     }
 
-    // 搜索系统 - 支持物品发现
+    // 搜索系统 - 从物品数据库中随机获取物品
     async handleSearch(args) {
-        const { target, difficulty } = args;
+        const { target, difficulty = 'easy' } = args;
         
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         const inventoryService = window.gameCore?.getService('inventoryService');
-        const searchSuccess = Math.random() > (difficulty === 'hard' ? 0.7 : difficulty === 'medium' ? 0.4 : 0.2);
+        const gameStateService = window.gameCore?.getService('gameStateService');
+        const playerLevel = gameStateService?.getState()?.player?.level || 1;
+        
+        // 根据难度调整成功率
+        const successChances = {
+            'easy': 0.8,
+            'medium': 0.6,
+            'hard': 0.3
+        };
+        const searchSuccess = Math.random() < (successChances[difficulty] || 0.8);
         
         let findings = [];
         let foundItems = [];
+        let experience = 0;
         
         if (searchSuccess) {
-            // 可能发现的物品
-            const possibleItems = [
-                { name: '治疗药水', chance: 0.4 },
-                { name: '铜币', chance: 0.6 },
-                { name: '面包', chance: 0.3 },
-                { name: '魔法卷轴', chance: 0.1 },
-                { name: '宝石', chance: 0.05 }
-            ];
+            // 搜索成功，给予少量经验
+            experience = difficulty === 'hard' ? 20 : difficulty === 'medium' ? 10 : 5;
             
-            // 可能发现的其他东西
-            const possibleFindings = ['隐藏的宝箱', '秘密通道', '古老的铭文', '神秘的符号'];
+            // 从物品数据库中获取可能的物品
+            const lootItems = this.getRandomLootItems(playerLevel, difficulty);
             
-            // 随机选择发现的物品
-            possibleItems.forEach(item => {
-                if (Math.random() < item.chance) {
-                    foundItems.push(item.name);
-                    if (inventoryService) {
-                        inventoryService.addItem(item.name, 1);
-                    }
+            // 添加找到的物品
+            lootItems.forEach(itemData => {
+                const quantity = itemData.quantity || 1;
+                foundItems.push(itemData.name);
+                if (inventoryService) {
+                    inventoryService.addItem(itemData.name, quantity);
                 }
             });
             
-            // 随机选择其他发现
-            if (Math.random() > 0.6) {
+            // 可能发现的其他线索（非物品）
+            const possibleFindings = [
+                '隐藏的暗门',
+                '古老的铭文',
+                '神秘的符号',
+                '奇怪的脚印',
+                '新鲜的痕迹'
+            ];
+            
+            // 30%概率发现额外线索
+            if (Math.random() < 0.3) {
                 const randomFinding = possibleFindings[Math.floor(Math.random() * possibleFindings.length)];
                 findings.push(randomFinding);
             }
             
-            // 如果什么都没找到，至少给一个基础发现
+            // 如果什么物品都没找到，至少给一个基础发现
             if (foundItems.length === 0 && findings.length === 0) {
                 findings.push('一些有趣的痕迹');
             }
@@ -551,17 +622,185 @@ class FunctionCallService {
         
         if (findings.length > 0) {
             if (foundItems.length > 0) {
-                description += `，还有：${findings.join('、')}`;
+                description += `。还注意到：${findings.join('、')}`;
             } else {
                 description += `，${findings.join('、')}`;
             }
         }
         
+        if (experience > 0) {
+            description += `。（获得${experience}点经验值）`;
+        }
+        
         return {
             findings: [...foundItems, ...findings],
             foundItems,
+            experience,
             description
         };
+    }
+
+    // 辅助方法：根据玩家等级和难度获取随机战利品
+    getRandomLootItems(playerLevel, difficulty = 'easy') {
+        const lootItems = [];
+        
+        // 货币类物品 - 基础战利品
+        const currencies = ['铜币', '银币', '金币'];
+        const currencyChances = difficulty === 'hard' ? [0.5, 0.3, 0.1] :
+                               difficulty === 'medium' ? [0.7, 0.2, 0.05] :
+                               [0.8, 0.1, 0.01];
+        
+        currencies.forEach((currency, index) => {
+            if (Math.random() < currencyChances[index]) {
+                const quantity = currency === '铜币' ? Math.floor(Math.random() * 50) + 10 :
+                                currency === '银币' ? Math.floor(Math.random() * 10) + 1 :
+                                Math.floor(Math.random() * 3) + 1;
+                lootItems.push({ name: currency, quantity });
+            }
+        });
+        
+        // 消耗品类物品 - 使用稀有度权重系统
+        const consumables = ItemsDB.getConsumables();
+        if (consumables && consumables.length > 0) {
+            // 根据难度决定获得消耗品的概率
+            const consumableChance = difficulty === 'hard' ? 0.6 :
+                                    difficulty === 'medium' ? 0.5 :
+                                    0.4;
+            
+            if (Math.random() < consumableChance) {
+                // 过滤出适合玩家等级的消耗品，并排除测试物品
+                const suitableConsumables = consumables.filter(item => {
+                    // 排除测试物品
+                    if (item.name && item.name.startsWith('[测试]')) return false;
+                    
+                    // 根据稀有度和玩家等级筛选
+                    if (item.rarity === 'common') return true;
+                    if (item.rarity === 'uncommon' && playerLevel >= 3) return true;
+                    if (item.rarity === 'rare' && playerLevel >= 6) return true;
+                    if (item.rarity === 'epic' && playerLevel >= 10) return true;
+                    if (item.rarity === 'legendary' && playerLevel >= 15) return true;
+                    return false;
+                });
+                
+                if (suitableConsumables.length > 0) {
+                    // 使用稀有度权重选择消耗品
+                    const selectedItem = this.selectItemByRarity(suitableConsumables);
+                    if (selectedItem) {
+                        const quantity = selectedItem.subType === 'healing' || selectedItem.subType === 'mana' ?
+                                       Math.floor(Math.random() * 3) + 1 : 1;
+                        lootItems.push({ name: selectedItem.name, quantity });
+                    }
+                }
+            }
+        }
+        
+        // 材料类物品
+        const materials = ['铁矿石', '皮革', '魔法水晶'];
+        const materialChances = difficulty === 'hard' ? [0.4, 0.3, 0.2] :
+                               difficulty === 'medium' ? [0.3, 0.2, 0.1] :
+                               [0.2, 0.15, 0.05];
+        
+        materials.forEach((material, index) => {
+            if (Math.random() < materialChances[index]) {
+                const quantity = Math.floor(Math.random() * 5) + 1;
+                lootItems.push({ name: material, quantity });
+            }
+        });
+        
+        // 高难度可能获得装备 - 使用稀有度权重系统
+        if (difficulty === 'hard' && Math.random() < 0.15) {
+            // 获取适合玩家等级的装备
+            const equipment = ItemsDB.getItemsByLevelRange(
+                Math.max(1, playerLevel - 2),
+                playerLevel + 2
+            );
+            
+            if (equipment && equipment.length > 0) {
+                // 过滤出武器、防具、饰品，并排除测试装备
+                const validEquipment = equipment.filter(item => {
+                    // 排除测试装备
+                    if (item.name && item.name.startsWith('[测试]')) return false;
+                    
+                    // 只保留武器、防具、饰品
+                    return item.type === 'weapon' || item.type === 'armor' || item.type === 'accessory';
+                });
+                
+                if (validEquipment.length > 0) {
+                    // 使用稀有度权重选择装备
+                    const selectedEquip = this.selectItemByRarity(validEquipment);
+                    if (selectedEquip) {
+                        lootItems.push({ name: selectedEquip.name, quantity: 1 });
+                    }
+                }
+            }
+        }
+        
+        return lootItems;
+    }
+
+    // 辅助方法：根据稀有度权重选择物品
+    selectItemByRarity(items) {
+        if (!items || items.length === 0) return null;
+        
+        // 稀有度权重配置
+        // common: 75%, uncommon: 17%, rare: 5%, epic/legendary: 3%
+        const rarityWeights = {
+            'common': 75,
+            'uncommon': 17,
+            'rare': 5,
+            'epic': 3,
+            'legendary': 3
+        };
+        
+        // 按稀有度分组
+        const itemsByRarity = {
+            'common': [],
+            'uncommon': [],
+            'rare': [],
+            'epic': [],
+            'legendary': []
+        };
+        
+        items.forEach(item => {
+            const rarity = item.rarity || 'common';
+            if (itemsByRarity[rarity]) {
+                itemsByRarity[rarity].push(item);
+            }
+        });
+        
+        // 计算总权重（只计算有物品的稀有度）
+        let totalWeight = 0;
+        const availableRarities = [];
+        
+        for (const rarity in itemsByRarity) {
+            if (itemsByRarity[rarity].length > 0) {
+                availableRarities.push(rarity);
+                totalWeight += rarityWeights[rarity];
+            }
+        }
+        
+        if (availableRarities.length === 0) return null;
+        
+        // 随机选择稀有度
+        let randomValue = Math.random() * totalWeight;
+        let selectedRarity = 'common';
+        
+        for (const rarity of availableRarities) {
+            randomValue -= rarityWeights[rarity];
+            if (randomValue <= 0) {
+                selectedRarity = rarity;
+                break;
+            }
+        }
+        
+        // 从选中的稀有度中随机选择一个物品
+        const selectedRarityItems = itemsByRarity[selectedRarity];
+        if (selectedRarityItems.length > 0) {
+            return selectedRarityItems[Math.floor(Math.random() * selectedRarityItems.length)];
+        }
+        
+        // 如果出现异常，返回第一个物品
+        return items[0];
     }
 }
 

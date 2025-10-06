@@ -25,7 +25,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 5,
             damageMultiplier: 0.6,
-            staminaCost: 0,
+            staminaCost: 1,
             manaCost: 0,
             description: '快速的拳脚攻击'
         },
@@ -36,7 +36,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 12,
             damageMultiplier: 1.0,
-            staminaCost: 0,
+            staminaCost: 3,
             manaCost: 0,
             description: '蓄力的重拳攻击'
         }
@@ -52,7 +52,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 20,
             damageMultiplier: 1.5,
-            staminaCost: 15,
+            staminaCost: 5,
             manaCost: 0,
             description: '剑类共享：快速连续斩击'
         },
@@ -64,7 +64,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 25,
             damageMultiplier: 1.8,
-            staminaCost: 20,
+            staminaCost: 8,
             manaCost: 0,
             critBonus: 15,
             description: '匕首独有：从阴影中发起突袭，暴击率+15%'
@@ -77,7 +77,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 18,
             damageMultiplier: 1.4,
-            staminaCost: 12,
+            staminaCost: 4,
             manaCost: 0,
             description: '单手剑独有：快速突刺攻击'
         },
@@ -89,7 +89,7 @@ const BasicAttacks = {
             target: 'aoe',
             baseDamage: 30,
             damageMultiplier: 1.2,
-            staminaCost: 25,
+            staminaCost: 10,
             manaCost: 0,
             description: '双手剑独有：旋转攻击周围所有敌人'
         }
@@ -105,7 +105,7 @@ const BasicAttacks = {
             target: 'aoe',
             baseDamage: 35,
             damageMultiplier: 1.6,
-            staminaCost: 20,
+            staminaCost: 8,
             manaCost: 0,
             description: '锤类共享：震击地面的群体攻击'
         },
@@ -117,7 +117,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 22,
             damageMultiplier: 1.3,
-            staminaCost: 15,
+            staminaCost: 5,
             manaCost: 0,
             description: '单手锤独有：配合盾牌的连续攻击'
         },
@@ -129,7 +129,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 45,
             damageMultiplier: 2.0,
-            staminaCost: 30,
+            staminaCost: 10,
             manaCost: 0,
             description: '双手锤独有：超强单体伤害'
         }
@@ -146,7 +146,7 @@ const BasicAttacks = {
             baseDamage: 18,
             damageMultiplier: 1.2,
             staminaCost: 0,
-            manaCost: 10,
+            manaCost: 4,
             description: '法杖共享：基础魔法攻击'
         },
         // 单手法杖独有
@@ -158,7 +158,7 @@ const BasicAttacks = {
             baseDamage: 0,
             damageMultiplier: 0,
             staminaCost: 0,
-            manaCost: 12,
+            manaCost: 4,
             defenseBonus: 15,
             duration: 2,
             description: '单手法杖独有：2回合内物理抗性+15%'
@@ -172,7 +172,7 @@ const BasicAttacks = {
             baseDamage: 30,
             damageMultiplier: 1.5,
             staminaCost: 0,
-            manaCost: 25,
+            manaCost: 10,
             description: '双手法杖独有：群体魔法攻击'
         }
     },
@@ -187,7 +187,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 20,
             damageMultiplier: 1.6,
-            staminaCost: 12,
+            staminaCost: 5,
             manaCost: 0,
             critBonus: 15,
             description: '弓类共享：精准的单体射击，暴击率+15%'
@@ -200,7 +200,7 @@ const BasicAttacks = {
             target: 'aoe',
             baseDamage: 15,
             damageMultiplier: 1.0,
-            staminaCost: 18,
+            staminaCost: 4,
             manaCost: 0,
             description: '短弓独有：快速射出多支箭攻击所有敌人'
         },
@@ -212,7 +212,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 28,
             damageMultiplier: 1.8,
-            staminaCost: 20,
+            staminaCost: 5,
             manaCost: 0,
             armorPierce: 30,
             description: '长弓独有：无视30%物理抗性'
@@ -225,7 +225,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 25,
             damageMultiplier: 1.5,
-            staminaCost: 22,
+            staminaCost: 5,
             manaCost: 0,
             hits: 3,
             description: '弩独有：连续发射三次攻击同一目标'
@@ -242,7 +242,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 15,
             damageMultiplier: 1.0,
-            staminaCost: 10,
+            staminaCost: 4,
             manaCost: 0,
             description: '盾牌共享：用盾牌撞击敌人'
         },
@@ -254,7 +254,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 20,
             damageMultiplier: 1.2,
-            staminaCost: 15,
+            staminaCost: 5,
             manaCost: 0,
             description: '单手盾独有：冲锋撞击敌人'
         },
@@ -266,7 +266,7 @@ const BasicAttacks = {
             target: 'self',
             baseDamage: 0,
             damageMultiplier: 0,
-            staminaCost: 20,
+            staminaCost: 5,
             manaCost: 0,
             defenseBonus: 30,
             duration: 3,
@@ -284,7 +284,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 25,
             damageMultiplier: 1.5,
-            staminaCost: 15,
+            staminaCost: 5,
             manaCost: 0,
             description: '斧类共享：强力劈砍攻击'
         },
@@ -296,7 +296,7 @@ const BasicAttacks = {
             target: 'single',
             baseDamage: 20,
             damageMultiplier: 1.3,
-            staminaCost: 18,
+            staminaCost: 4,
             manaCost: 0,
             hits: 2,
             description: '单手斧独有：连续挥砍两次'
@@ -309,7 +309,7 @@ const BasicAttacks = {
             target: 'aoe',
             baseDamage: 32,
             damageMultiplier: 1.4,
-            staminaCost: 25,
+            staminaCost: 10,
             manaCost: 0,
             description: '双手斧独有：旋转攻击所有敌人'
         }
@@ -340,9 +340,7 @@ function getBasicAttacksForWeapon(weaponCategory, weaponSubCategory) {
         return attacks;
     }
     
-    // 添加轻击和重击（所有武器都有）
-    attacks.push(BasicAttacks.unarmed.lightAttack);
-    attacks.push(BasicAttacks.unarmed.heavyAttack);
+    // 装备武器时，只返回武器相关的特殊攻击，不包含徒手轻击重击
     
     // 添加大类共享攻击
     if (categoryAttacks.shared) {

@@ -30,29 +30,33 @@ class WeaponService {
         const gameState = gameStateService.getState();
         const player = gameState.player;
         
-        // 检查主手武器
+        // 检查主手和副手武器
         const weapon1 = player.equipment?.weapon1;
         const weapon2 = player.equipment?.weapon2;
 
-        // 如果没有武器，返回徒手攻击
-        if (!weapon1) {
+        // 如果两个槽位都没有武器，返回徒手攻击
+        if (!weapon1 && !weapon2) {
             return BasicAttacksDB.getBasicAttacksForWeapon('unarmed', null);
         }
 
-        // 获取武器的攻击列表
-        const weaponCategory = weapon1.weaponCategory || this.inferWeaponCategory(weapon1.subType);
-        const weaponSubCategory = weapon1.weaponSubCategory || this.inferWeaponSubCategory(weapon1);
+        // 确定主要武器（优先weapon1，如果weapon1为空则使用weapon2）
+        const primaryWeapon = weapon1 || weapon2;
+        const secondaryWeapon = weapon1 ? weapon2 : null;
+
+        // 获取主要武器的攻击列表
+        const weaponCategory = primaryWeapon.weaponCategory || this.inferWeaponCategory(primaryWeapon.subType);
+        const weaponSubCategory = primaryWeapon.weaponSubCategory || this.inferWeaponSubCategory(primaryWeapon);
 
         let attacks = BasicAttacksDB.getBasicAttacksForWeapon(weaponCategory, weaponSubCategory);
 
         // 如果装备了第二把武器或盾牌，添加其特殊攻击
-        if (weapon2 && !weapon2.isSecondarySlot) {
-            const weapon2Category = weapon2.weaponCategory || this.inferWeaponCategory(weapon2.subType);
-            const weapon2SubCategory = weapon2.weaponSubCategory || this.inferWeaponSubCategory(weapon2);
+        if (secondaryWeapon && !secondaryWeapon.isSecondarySlot) {
+            const weapon2Category = secondaryWeapon.weaponCategory || this.inferWeaponCategory(secondaryWeapon.subType);
+            const weapon2SubCategory = secondaryWeapon.weaponSubCategory || this.inferWeaponSubCategory(secondaryWeapon);
             
             // 只添加第二把武器的特殊攻击（不重复添加轻击重击）
             const weapon2Attacks = BasicAttacksDB.getBasicAttacksForWeapon(weapon2Category, weapon2SubCategory);
-            const specialAttacks = weapon2Attacks.filter(atk => 
+            const specialAttacks = weapon2Attacks.filter(atk =>
                 atk.id !== 'unarmed_light' && atk.id !== 'unarmed_heavy'
             );
             attacks = attacks.concat(specialAttacks);

@@ -11,6 +11,8 @@ class GameState {
             maxMana: 80,
             stamina: 80,
             maxStamina: 80,
+            // 货币系统（以铜币为单位存储）
+            currency: 1000, // 初始给予1000铜币（10银币）
             // 成长与技能
             experience: 0,
             skillPoints: 4,
@@ -60,7 +62,8 @@ class GameState {
         
         this.conversation = {
             history: [],
-            context: ''
+            context: '',
+            summaries: []  // 存储历史总结
         };
         
         this.battle = {
@@ -70,6 +73,10 @@ class GameState {
         };
         
         this.gameFlags = new Map();
+        
+        // 休息系统标志
+        this.restCount = 0; // 记录休息次数
+        this.actionsSinceLastRest = 4; // 记录自上次休息后的行动次数（用于休息CD），初始设为4允许开局休息
     }
 
     updatePlayer(updates) {

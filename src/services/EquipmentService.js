@@ -104,10 +104,11 @@ class EquipmentService {
             equipment: equipmentData
         }, 'game');
 
-        this.eventBus.emit('ui:notification', {
-            message: `装备了 ${equipmentData.name}`,
-            type: 'success'
-        }, 'game');
+        // 已取消装备通知
+        // this.eventBus.emit('ui:notification', {
+        //     message: `装备了 ${equipmentData.name}`,
+        //     type: 'success'
+        // }, 'game');
 
         return {
             success: true,
@@ -173,10 +174,11 @@ class EquipmentService {
             isTwoHanded: true
         }, 'game');
         
-        this.eventBus.emit('ui:notification', {
-            message: `装备了双手武器 ${equipmentData.name}`,
-            type: 'success'
-        }, 'game');
+        // 已取消装备通知
+        // this.eventBus.emit('ui:notification', {
+        //     message: `装备了双手武器 ${equipmentData.name}`,
+        //     type: 'success'
+        // }, 'game');
         
         return {
             success: true,
@@ -248,12 +250,13 @@ class EquipmentService {
             isTwoHanded: isTwoHandedWeapon
         }, 'game');
 
-        if (returnToInventory) {
-            this.eventBus.emit('ui:notification', {
-                message: `卸下了 ${isTwoHandedWeapon ? '双手武器 ' : ''}${currentEquipment.name}`,
-                type: 'info'
-            }, 'game');
-        }
+        // 已取消卸下装备通知
+        // if (returnToInventory) {
+        //     this.eventBus.emit('ui:notification', {
+        //         message: `卸下了 ${isTwoHandedWeapon ? '双手武器 ' : ''}${currentEquipment.name}`,
+        //         type: 'info'
+        //     }, 'game');
+        // }
 
         return {
             success: true,
@@ -332,7 +335,37 @@ class EquipmentService {
             stats: { ...player.stats }
         };
 
-        // 计算当前资源的百分比
+        // 首先计算旧装备提供的资源加成（需要从当前值中减去）
+        let oldMaxHpBonus = 0;
+        let oldMaxManaBonus = 0;
+        let oldMaxStaminaBonus = 0;
+
+        // 遍历玩家当前装备，计算旧的资源加成
+        for (const [slot, item] of Object.entries(player.equipment)) {
+            if (item && item.stats) {
+                if (item.isSecondarySlot) continue;
+                oldMaxHpBonus += item.stats.maxHp || 0;
+                oldMaxManaBonus += item.stats.maxMana || 0;
+                oldMaxStaminaBonus += item.stats.maxStamina || 0;
+            }
+            if (item && item.effects) {
+                if (item.isSecondarySlot) continue;
+                for (const effect of item.effects) {
+                    if (effect.type === 'stat_bonus') {
+                        if (effect.stat === 'maxHp') oldMaxHpBonus += effect.value || 0;
+                        if (effect.stat === 'maxMana') oldMaxManaBonus += effect.value || 0;
+                        if (effect.stat === 'maxStamina') oldMaxStaminaBonus += effect.value || 0;
+                    }
+                }
+            }
+        }
+
+        // 计算基础资源值（不包含装备加成）
+        const baseMaxHp = Math.max(1, baseStats.maxHp - oldMaxHpBonus);
+        const baseMaxMana = Math.max(0, baseStats.maxMana - oldMaxManaBonus);
+        const baseMaxStamina = Math.max(0, baseStats.maxStamina - oldMaxStaminaBonus);
+
+        // 计算当前资源的百分比（基于旧的最大值）
         const hpPercent = baseStats.maxHp > 0 ? baseStats.hp / baseStats.maxHp : 1;
         const manaPercent = baseStats.maxMana > 0 ? baseStats.mana / baseStats.maxMana : 1;
         const staminaPercent = baseStats.maxStamina > 0 ? baseStats.stamina / baseStats.maxStamina : 1;
@@ -390,6 +423,67 @@ class EquipmentService {
                     // 暂时先记录，后续可以实现动态背包容量
                 }
             }
+            
+            // 处理装备特殊效果
+            if (item && item.effects) {
+                // 跳过双手武器的副槽位，避免重复计算
+                if (item.isSecondarySlot) {
+                    continue;
+                }
+                
+                for (const effect of item.effects) {
+                    switch (effect.type) {
+                        case 'all_resistance':
+                            // 全抗性：同时增加物理和魔法抗性
+                            const allResistBonus = effect.value || 0; // effect.value已经是百分比数值(如25代表25%)
+                            totalPhysicalResistanceBonus += allResistBonus;
+                            totalMagicResistanceBonus += allResistBonus;
+                            break;
+                            
+                        case 'stat_bonus':
+                            // 属性加成
+                            if (effect.stat && effect.value) {
+                                const statName = effect.stat;
+                                switch (statName) {
+                                    case 'attack':
+                                        totalAttackBonus += effect.value;
+                                        break;
+                                    case 'physicalPower':
+                                        totalPhysicalPowerBonus += effect.value;
+                                        break;
+                                    case 'magicPower':
+                                        totalMagicPowerBonus += effect.value;
+                                        break;
+                                    case 'agility':
+                                        totalAgilityBonus += effect.value;
+                                        break;
+                                    case 'weight':
+                                        totalWeightBonus += effect.value;
+                                        break;
+                                    case 'physicalResistance':
+                                        totalPhysicalResistanceBonus += effect.value;
+                                        break;
+                                    case 'magicResistance':
+                                        totalMagicResistanceBonus += effect.value;
+                                        break;
+                                    case 'criticalChance':
+                                        totalCriticalChanceBonus += effect.value;
+                                        break;
+                                    case 'maxHp':
+                                        totalMaxHpBonus += effect.value;
+                                        break;
+                                    case 'maxMana':
+                                        totalMaxManaBonus += effect.value;
+                                        break;
+                                    case 'maxStamina':
+                                        totalMaxStaminaBonus += effect.value;
+                                        break;
+                                }
+                            }
+                            break;
+                    }
+                }
+            }
         }
 
         // 应用装备加成
@@ -402,13 +496,15 @@ class EquipmentService {
         newStats.equipmentPhysicalPowerBonus = totalPhysicalPowerBonus;
         newStats.equipmentCriticalChanceBonus = totalCriticalChanceBonus;
 
-        // 计算新的最大值
-        const newMaxHp = baseStats.maxHp + totalMaxHpBonus;
-        const newMaxMana = baseStats.maxMana + totalMaxManaBonus;
-        const newMaxStamina = baseStats.maxStamina + totalMaxStaminaBonus;
+        // 计算新的最大值（使用基础值+新装备加成）
+        const newMaxHp = baseMaxHp + totalMaxHpBonus;
+        const newMaxMana = baseMaxMana + totalMaxManaBonus;
+        const newMaxStamina = baseMaxStamina + totalMaxStaminaBonus;
 
         // ✅ 修复：按比例调整当前值，保持百分比不变
-        // 如果装备前 HP = 80/100 (80%)，装备后应该是 96/120 (80%)，而不是 80/120
+        // 例如：装备前 HP = 80/100 (80%)
+        // - 装备+50 maxHp: 应该变成 120/150 (80%)
+        // - 卸下装备: 应该变成 80/100 (80%)
         let currentHp = Math.floor(newMaxHp * hpPercent);
         let currentMana = Math.floor(newMaxMana * manaPercent);
         let currentStamina = Math.floor(newMaxStamina * staminaPercent);

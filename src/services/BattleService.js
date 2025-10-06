@@ -252,6 +252,20 @@ class BattleService {
                         break;
                     }
                     
+                    // 检查斩杀效果（优先级最高）
+                    const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+                    if (equipmentEffectService) {
+                        const executeThreshold = equipmentEffectService.getExecuteThreshold();
+                        if (executeThreshold > 0) {
+                            const hpPercent = targetEnemy.hp / targetEnemy.maxHp;
+                            if (hpPercent <= executeThreshold) {
+                                targetEnemy.hp = 0;
+                                logMessage = `⚡你触发了斩杀效果！${targetEnemy.type}被瞬间击杀！`;
+                                break;
+                            }
+                        }
+                    }
+                    
                     damage = this.calculatePlayerDamage(player, 'attack', targetEnemy);
                     
                     // 添加暴击检查
@@ -264,12 +278,43 @@ class BattleService {
                     const variance = Math.random() * 0.2 + 0.9;
                     const variedDamage = Math.floor(damage * variance);
                     
-                    // 应用抗性减伤
-                    const actualDamage = this.applyResistance(variedDamage, 'physical', targetEnemy);
+                    // 应用抗性减伤（包含破甲）
+                    const actualDamage = this.applyResistance(variedDamage, 'physical', targetEnemy, 'player');
                     targetEnemy.hp = Math.max(0, targetEnemy.hp - actualDamage);
                     
                     let criticalText = isCritical ? '暴击！' : '';
                     logMessage = `你${criticalText}对${targetEnemy.type}造成了${actualDamage}点伤害！`;
+                    
+                    // 吸血效果
+                    if (equipmentEffectService && actualDamage > 0) {
+                        const lifestealPercent = equipmentEffectService.getLifestealPercent();
+                        if (lifestealPercent > 0) {
+                            const healAmount = Math.floor(actualDamage * lifestealPercent);
+                            if (healAmount > 0) {
+                                player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                                logMessage += ` 吸血回复${healAmount}点HP！`;
+                            }
+                        }
+                    }
+                    
+                    // DOT效果触发
+                    if (equipmentEffectService && targetEnemy.hp > 0) {
+                        const dotEffects = equipmentEffectService.getWeaponDOTEffects();
+                        for (const dotEffect of dotEffects) {
+                            const triggerChance = dotEffect.chance || 1.0;
+                            if (Math.random() < triggerChance) {
+                                const effectManager = window.gameCore?.getService('effectManager');
+                                if (effectManager) {
+                                    effectManager.applyDOT(targetEnemy, {
+                                        type: dotEffect.dotType,
+                                        damage: dotEffect.damage,
+                                        duration: dotEffect.duration
+                                    }, 'player_weapon');
+                                    logMessage += ` ${targetEnemy.type}中了${this.getDOTName(dotEffect.dotType)}！`;
+                                }
+                            }
+                        }
+                    }
                     
                     if (targetEnemy.hp <= 0) {
                         logMessage += ` ${targetEnemy.type}被击败了！`;
@@ -386,7 +431,23 @@ class BattleService {
                     continue;
                 }
     
-                const action = Math.random() > 0.7 ? '技能攻击' : '攻击';
+                // 决定使用普通攻击还是技能
+                let useSkill = false;
+                let selectedSkill = null;
+                
+                // 如果敌人有aiSkills且概率触发，选择一个技能
+                if (enemy.aiSkills && enemy.aiSkills.length > 0 && Math.random() > 0.7) {
+                    // 随机选择一个可用技能
+                    const availableSkills = enemy.aiSkills.filter(s => {
+                        // 可以添加冷却检查等
+                        return true;
+                    });
+                    if (availableSkills.length > 0) {
+                        selectedSkill = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+                        useSkill = true;
+                    }
+                }
+                
             let damage = 0;
             let logMessage = '';
 
@@ -394,11 +455,15 @@ class BattleService {
             const dodged = this.checkDodge(enemy, player);
             if (dodged) {
                 logMessage = `你敏捷地闪避了${enemy.type}的攻击！`;
+            } else if (this.checkBlock(player)) {
+                // 检查格挡
+                logMessage = `你用盾牌格挡了${enemy.type}的攻击！`;
             } else {
                 // 检查敌人是否暴击
                 const isCritical = this.checkCriticalHit(enemy);
                 
-                if (action === '攻击') {
+                if (!useSkill) {
+                    // 普通攻击
                     damage = this.calculateEnemyDamage(enemy, 'attack');
                     
                     // 应用暴击
@@ -439,8 +504,10 @@ class BattleService {
                     }
                     player.hp = Math.max(0, player.hp - actualDamage);
                 } else {
-                    damage = this.calculateEnemyDamage(enemy, 'skill');
-                    const skillName = this.getRandomSkill(enemy);
+                    // 技能攻击
+                    damage = this.calculateEnemyDamage(enemy, 'skill', selectedSkill);
+                    const skillName = selectedSkill ? selectedSkill.name : this.getRandomSkill(enemy);
+                    const skillType = selectedSkill ? selectedSkill.type : 'magic';
                     
                     // 应用暴击
                     if (isCritical) {
@@ -451,8 +518,8 @@ class BattleService {
                     const variance = Math.random() * 0.2 + 0.9;
                     const variedDamage = Math.floor(damage * variance);
                     
-                    // 应用抗性减伤
-                    let actualDamage = this.applyResistance(variedDamage, 'magic', player);
+                    // 应用抗性减伤（使用技能的实际类型）
+                    let actualDamage = this.applyResistance(variedDamage, skillType, player);
 
                     // 应用装备效果（伤害减免）
                     const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
@@ -461,7 +528,7 @@ class BattleService {
                             attacker: 'enemy',
                             target: 'player',
                             damage: actualDamage,
-                            damageType: 'magic'
+                            damageType: skillType
                         };
                         const modifiedData = equipmentEffectService.modifyDamage(damageData);
                         actualDamage = modifiedData.modifiedDamage || actualDamage;
@@ -471,12 +538,18 @@ class BattleService {
                         actualDamage = Math.floor(actualDamage * 0.5);
                         player.defending = false;
                         const critText = isCritical ? '暴击！' : '';
-                        const resistInfo = `魔抗${Math.floor(player.magicResistance)}%`;
-                        logMessage = `${enemy.type}使用${skillName}${critText}，对你造成了${actualDamage}点伤害！（${resistInfo}+防御姿态减伤）`;
+                        const resistType = skillType === 'physical' ? '物抗' : '魔抗';
+                        const resistValue = skillType === 'physical'
+                            ? Math.floor(player.physicalResistance)
+                            : Math.floor(player.magicResistance);
+                        logMessage = `${enemy.type}使用【${skillName}】${critText}，对你造成了${actualDamage}点伤害！（${resistType}${resistValue}%+防御姿态减伤）`;
                     } else {
                         const critText = isCritical ? '暴击！' : '';
-                        const resistInfo = `魔抗${Math.floor(player.magicResistance)}%`;
-                        logMessage = `${enemy.type}使用${skillName}${critText}，对你造成了${actualDamage}点伤害！（${resistInfo}减伤）`;
+                        const resistType = skillType === 'physical' ? '物抗' : '魔抗';
+                        const resistValue = skillType === 'physical'
+                            ? Math.floor(player.physicalResistance)
+                            : Math.floor(player.magicResistance);
+                        logMessage = `${enemy.type}使用【${skillName}】${critText}，对你造成了${actualDamage}点伤害！（${resistType}${resistValue}%减伤）`;
                     }
                     player.hp = Math.max(0, player.hp - actualDamage);
                 }
@@ -507,25 +580,33 @@ class BattleService {
         }
         
         // 处理特殊效果（DOT、控制等）
-              const effectManager = window.gameCore?.getService('effectManager');
-              if (effectManager) {
-                  const effectMessages = effectManager.processTurnEffects(this.battleState);
-                  effectMessages.forEach(msg => {
-                      this.battleState.battleLog.push(msg);
-                  });
-              }
-              
-              // 装备效果：回合开始的持续效果处理（通过事件与直接调用双保障）
-              this.eventBus.emit('battle:turn:start', this.battleState, 'game');
-              const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
-              if (equipmentEffectService && typeof equipmentEffectService.processTurnEffects === 'function') {
-                  equipmentEffectService.processTurnEffects(this.battleState);
-              }
-              
-              // 回合结束，切换到玩家
-              this.battleState.round++;
-              this.battleState.turn = 'player';
-              this.eventBus.emit('ui:battle:update', this.battleState, 'game');
+        const effectManager = window.gameCore?.getService('effectManager');
+        if (effectManager) {
+            const effectMessages = effectManager.processTurnEffects(this.battleState);
+            effectMessages.forEach(msg => {
+                this.battleState.battleLog.push(msg);
+            });
+        }
+        
+        // ✅ 检查DOT是否杀死了所有敌人
+        if (this.battleState.enemies.every(enemy => enemy.hp <= 0)) {
+            setTimeout(() => {
+                this.endBattle('victory');
+            }, 1000);
+            return;
+        }
+        
+        // 装备效果：回合开始的持续效果处理（通过事件与直接调用双保障）
+        this.eventBus.emit('battle:turn:start', this.battleState, 'game');
+        const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+        if (equipmentEffectService && typeof equipmentEffectService.processTurnEffects === 'function') {
+            equipmentEffectService.processTurnEffects(this.battleState);
+        }
+        
+        // 回合结束，切换到玩家
+        this.battleState.round++;
+        this.battleState.turn = 'player';
+        this.eventBus.emit('ui:battle:update', this.battleState, 'game');
     }
 
     async useItem(itemName) {
@@ -626,10 +707,10 @@ class BattleService {
         if (skillData) {
             return skillData.damage || 0;
         }
-        // 普通攻击公式：总攻击力 × (物理强度 ÷ 100)
+        // 普通攻击公式：总攻击力 × (0.6 + 物理强度 ÷ 100)
         const attackPower = player.attack || 0;
         const physicalPower = player.physicalPower || 0;
-        const baseDamage = attackPower * (physicalPower / 100);
+        const baseDamage = attackPower * (0.6 + physicalPower / 100);
 
         let finalDamage = Math.floor(baseDamage);
 
@@ -650,9 +731,10 @@ class BattleService {
         return finalDamage;
     }
 
-    // 应用抗性减伤
-    applyResistance(damage, damageType, defender) {
+    // 应用抗性减伤（包含破甲计算）
+    applyResistance(damage, damageType, defender, attacker = null) {
         let resistance = 0;
+        let penetration = 0;
         
         if (damageType === 'physical') {
             resistance = Math.min(75, Math.max(0, defender.physicalResistance || 0));
@@ -660,8 +742,19 @@ class BattleService {
             resistance = Math.min(75, Math.max(0, defender.magicResistance || 0));
         }
         
-        // 收到的伤害 * (1 - 抗性%)
-        const finalDamage = damage * (1 - resistance / 100);
+        // 检查攻击者的破甲效果
+        if (attacker === 'player') {
+            const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+            if (equipmentEffectService) {
+                penetration = equipmentEffectService.getPenetration(damageType);
+            }
+        }
+        
+        // 应用破甲：实际抗性 = 原抗性 × (1 - 破甲% / 100)
+        const effectiveResistance = resistance * (1 - penetration / 100);
+        
+        // 收到的伤害 * (1 - 实际抗性%)
+        const finalDamage = damage * (1 - effectiveResistance / 100);
         
         return Math.max(1, Math.floor(finalDamage)); // 至少1点伤害
     }
@@ -698,6 +791,15 @@ class BattleService {
         const mobilityDiff = defenderMobility - attackerMobility;
         let dodgeChance = 30 + mobilityDiff * 2 - hitBonus;
         
+        // 检查防守方的闪避加成装备效果
+        if (defender === this.battleState.player) {
+            const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+            if (equipmentEffectService) {
+                const evasionBonus = equipmentEffectService.getEvasionBonus();
+                dodgeChance += evasionBonus * 100; // 转换为百分比
+            }
+        }
+        
         // 限制在0-90%范围内
         const finalDodgeChance = Math.min(90, Math.max(0, dodgeChance));
         
@@ -705,19 +807,46 @@ class BattleService {
         return roll < finalDodgeChance;
     }
 
+    // 检查格挡 - 基于盾牌装备
+    checkBlock(defender) {
+        if (defender !== this.battleState.player) return false;
+        
+        const equipmentEffectService = window.gameCore?.getService('equipmentEffectService');
+        if (!equipmentEffectService) return false;
+        
+        const blockChance = equipmentEffectService.getBlockChance();
+        if (blockChance <= 0) return false;
+        
+        const roll = Math.random();
+        return roll < blockChance;
+    }
+
+    // 获取DOT效果的中文名称
+    getDOTName(dotType) {
+        const names = {
+            'burn': '灼烧',
+            'poison': '中毒',
+            'bleed': '流血'
+        };
+        return names[dotType] || dotType;
+    }
+
     // 敌人伤害计算（统一公式，不在此处应用随机）
-    calculateEnemyDamage(enemy, type) {
+    calculateEnemyDamage(enemy, type, skillData = null) {
         const attackPower = enemy.attack || 0;
 
-        if (type === 'skill') {
-            // 敌人技能伤害与玩家技能统一： (baseDamage(0) + attackPower * 0.5) * (magicPower/100 + 0.8)
-            const magicPower = enemy.magicPower || 0;
-            const preDamage = (attackPower * 0.5) * (magicPower / 100 + 0.8);
+        if (type === 'skill' && skillData) {
+            // 敌人技能伤害：(技能基础伤害 + 攻击力 × 0.5) × (强度/100 + 0.8)
+            const baseDamage = skillData.baseDamage || 0;
+            const power = skillData.type === 'physical'
+                ? (enemy.physicalPower || 0)
+                : (enemy.magicPower || 0);
+            const preDamage = (baseDamage + attackPower * 0.5) * (power / 100 + 0.8);
             return Math.floor(preDamage);
         } else {
-            // 敌人普通攻击与玩家普通攻击统一： 攻击力 × (物理强度 ÷ 100)
+            // 敌人普通攻击： 攻击力 × (0.6 + 物理强度 ÷ 100)
             const physicalPower = enemy.physicalPower || 0;
-            const preDamage = attackPower * (physicalPower / 100);
+            const preDamage = attackPower * (0.6 + physicalPower / 100);
             return Math.floor(preDamage);
         }
     }
@@ -798,20 +927,50 @@ class BattleService {
             if (enemy.dropTable && enemy.dropTable.length > 0) {
                 enemy.dropTable.forEach(drop => {
                     if (Math.random() < drop.chance) {
-                        loot.push(drop.item);
+                        // 处理数量
+                        let quantity = 1;
+                        if (drop.quantity) {
+                            if (Array.isArray(drop.quantity)) {
+                                // 数量是范围 [min, max]
+                                const min = drop.quantity[0];
+                                const max = drop.quantity[1];
+                                quantity = Math.floor(Math.random() * (max - min + 1)) + min;
+                            } else {
+                                // 数量是固定值
+                                quantity = drop.quantity;
+                            }
+                        }
+                        
+                        // 将物品添加quantity次到掉落列表
+                        for (let i = 0; i < quantity; i++) {
+                            loot.push(drop.item);
+                        }
                     }
                 });
             } else {
                 // 使用默认掉落表
                 const defaultLootTable = [
-                    { name: '治疗药水', rarity: 0.4 },
-                    { name: '铜币', rarity: 0.7 },
+                    { name: '小瓶治疗药水', rarity: 0.4 },
+                    { name: '铜币', rarity: 0.7, quantity: [1, 3] },
                     { name: '面包', rarity: 0.3 }
                 ];
                 
                 defaultLootTable.forEach(item => {
                     if (Math.random() < item.rarity) {
-                        loot.push(item.name);
+                        let quantity = 1;
+                        if (item.quantity) {
+                            if (Array.isArray(item.quantity)) {
+                                const min = item.quantity[0];
+                                const max = item.quantity[1];
+                                quantity = Math.floor(Math.random() * (max - min + 1)) + min;
+                            } else {
+                                quantity = item.quantity;
+                            }
+                        }
+                        
+                        for (let i = 0; i < quantity; i++) {
+                            loot.push(item.name);
+                        }
                     }
                 });
             }
