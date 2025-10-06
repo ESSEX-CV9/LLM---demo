@@ -179,7 +179,9 @@ class SaveService {
           world: JSON.parse(JSON.stringify(state.world)),
           conversation: JSON.parse(JSON.stringify(state.conversation)),
           battle: battleData,
-          flags: flagsArr
+          flags: flagsArr,
+          restCount: state.restCount || 0,
+          actionsSinceLastRest: state.actionsSinceLastRest || 0
         },
         inventory,
         uiState
@@ -214,6 +216,10 @@ class SaveService {
       currentBattle: s.battle?.currentBattle || null,
       battleHistory: Array.isArray(s.battle?.battleHistory) ? JSON.parse(JSON.stringify(s.battle.battleHistory)) : []
     };
+    
+    // 恢复休息系统数据
+    gs.restCount = s.restCount || 0;
+    gs.actionsSinceLastRest = s.actionsSinceLastRest || 0;
 
     // 恢复战斗服务状态
     if (battleService && s.battle?.battleState) {

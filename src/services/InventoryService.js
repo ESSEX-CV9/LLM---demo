@@ -64,6 +64,17 @@ class InventoryService {
             return false;
         }
 
+        // 检查是否是货币类物品
+        if (itemData.type === 'currency') {
+            // 货币类物品直接转换为玩家金币
+            const currencyService = window.gameCore?.getService('currencyService');
+            if (currencyService) {
+                const copperValue = (itemData.value || 1) * quantity;
+                currencyService.addCurrency(copperValue);
+                return true;
+            }
+        }
+
         // 保存原始数量用于通知显示
         const originalQuantity = quantity;
 

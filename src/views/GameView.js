@@ -1,6 +1,7 @@
 import BattleView from './BattleView.js';
 import InventoryView from './InventoryView.js';
 import SaveManagerView from './SaveManagerView.js';
+import MerchantView from './MerchantView.js';
 
 // views/GameView.js
 class GameView {
@@ -16,6 +17,8 @@ class GameView {
         this.inventoryView = new InventoryView(this.eventBus, this);
         // 解耦视图：实例化存档视图（最小侵入）
         this.saveManagerView = new SaveManagerView(this.eventBus, this);
+        // 实例化商人视图
+        this.merchantView = new MerchantView(this.eventBus, this);
         
         this.setupEventListeners();
         this.initializeUI();
@@ -112,6 +115,10 @@ class GameView {
                             <span class="stat-label">技能点:</span>
                             <span class="stat-value" id="playerSkillPoints">0</span>
                         </div>
+                        <div class="stat tooltip" data-tooltip="金币">
+                            <span class="stat-label">💰</span>
+                            <span class="stat-value" id="playerCurrency" style="color: #ffd700;">0金 0银 0铜</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -143,8 +150,8 @@ class GameView {
                             <button class="quick-action-button" onclick="window.gameView.quickAction('查看状态')">
                                 📊 查看状态
                             </button>
-                            <button class="quick-action-button" onclick="window.gameView.quickAction('休息回血')">
-                                💤 休息回血
+                            <button class="quick-action-button" onclick="window.gameView.handleRest()">
+                                💤 休息
                             </button>
                             <button class="quick-action-button" onclick="window.gameView.showSkills()">
                                 🧠 技能
@@ -524,6 +531,11 @@ class GameView {
             spEl.textContent = playerData.skillPoints ?? 0;
         }
         
+        // 更新货币显示
+        if (playerData.currency !== undefined) {
+            this.updateCurrencyDisplay(playerData.currency);
+        }
+        
         // 升级提示
         if (playerData.level > oldLevel) {
             this.showLevelUpNotification(oldLevel, playerData.level);
@@ -638,8 +650,11 @@ class GameView {
         messageDiv.appendChild(contentElement);
         
         // 为GM生成的消息添加重新生成按钮（仅最新的消息，且不是从存档恢复）
+        // 排除 rest_event 类型的消息
         const typeVal = messageData.type || '';
-        if (!messageData.skipHistory && !messageData.isRestoringFromSave && (typeVal === 'gm_narrative' || typeVal === 'gm_continuation' || typeVal === 'gm_fallback')) {
+        if (!messageData.skipHistory && !messageData.isRestoringFromSave &&
+            (typeVal === 'gm_narrative' || typeVal === 'gm_continuation' || typeVal === 'gm_fallback') &&
+            typeVal !== 'rest_event') {
             // 移除之前所有消息的重新生成按钮
             this.removeAllRegenerateButtons();
             
@@ -650,9 +665,9 @@ class GameView {
         narrativeArea.appendChild(messageDiv);
         narrativeArea.scrollTop = narrativeArea.scrollHeight;
         
-        // 将 GM 叙述加入历史，以便存档恢复（避免重复，仅针对 gm_* 类型，且不是从历史恢复的）
+        // 将 GM 叙述加入历史，以便存档恢复（避免重复，仅针对 gm_* 和 rest_event 类型，且不是从历史恢复的）
         try {
-            if (!messageData.skipHistory && (typeVal === 'gm_narrative' || typeVal === 'gm_continuation' || typeVal === 'gm_fallback')) {
+            if (!messageData.skipHistory && (typeVal === 'gm_narrative' || typeVal === 'gm_continuation' || typeVal === 'gm_fallback' || typeVal === 'rest_event')) {
                 const gsService = window.gameCore?.getService('gameStateService');
                 if (gsService && typeof gsService.addConversationEntry === 'function') {
                     gsService.addConversationEntry({
@@ -2992,6 +3007,205 @@ hideGlobalTooltip() {
         } catch (error) {
             console.error('[GameView] 添加最后GM消息的重新生成按钮失败:', error);
         }
+    }
+
+    // ========== 货币系统相关方法 ==========
+    
+    /**
+     * 更新货币显示
+     */
+    updateCurrencyDisplay(copperAmount) {
+        const currencyEl = document.getElementById('playerCurrency');
+        if (!currencyEl) return;
+
+        const currencyService = window.gameCore?.getService('currencyService');
+        const display = currencyService?.formatDisplay(copperAmount) || { gold: 0, silver: 0, copper: 0 };
+
+        currencyEl.innerHTML = `${display.gold}金 ${display.silver}银 ${display.copper}铜`;
+        currencyEl.style.color = '#ffd700';
+    }
+
+    // ========== 休息系统相关方法 ==========
+    
+    /**
+     * 处理休息行动
+     */
+    handleRest() {
+        // 检查输入是否被禁用
+        if (this.isInputDisabled) {
+            this.showNotification('请等待当前操作完成...', 'warning');
+            return;
+        }
+
+        const gameStateService = window.gameCore?.getService('gameStateService');
+        const gameState = gameStateService?.getState();
+        const player = gameState?.player;
+        
+        if (!player) {
+            this.showNotification('无法获取玩家状态', 'error');
+            return;
+        }
+
+        // 检查休息CD：需要至少进行4轮行动才能再次休息
+        const actionsSinceLastRest = gameState.actionsSinceLastRest || 0;
+        if (actionsSinceLastRest < 4) {
+            const remaining = 4 - actionsSinceLastRest;
+            this.showNotification(`💤 你还不够累，再行动 ${remaining} 次后才能休息`, 'warning');
+            return;
+        }
+
+        // 禁用输入
+        this.disableInput();
+        this.setStatus('processing', '休息中...');
+
+        // 恢复属性
+        const hpRestore = Math.floor(player.maxHp * 0.5);
+        const spRestore = Math.floor(player.maxStamina * 0.75);
+        const mpRestore = Math.floor(player.maxMana * 0.4);
+
+        const newHp = Math.min(player.maxHp, player.hp + hpRestore);
+        const newStamina = Math.min(player.maxStamina, player.stamina + spRestore);
+        const newMana = Math.min(player.maxMana, player.mana + mpRestore);
+
+        gameStateService.updatePlayerStats({
+            hp: newHp,
+            stamina: newStamina,
+            mana: newMana
+        });
+        
+        // 增加休息计数（使用已声明的 gameState）
+        const restCount = gameState.restCount || 0;
+        gameState.restCount = restCount + 1;
+
+        // 显示休息开始消息（不显示恢复数值）
+        this.addMessage({
+            content: `你找了个相对安全的地方开始休息...`,
+            type: 'rest_event',
+            skipHistory: false  // 需要保存到历史记录
+        });
+
+        // 随机事件（第一次休息必定遇到商人）
+        const isFirstRest = restCount === 0;
+        const randomValue = Math.random();
+        
+        setTimeout(() => {
+            if (isFirstRest) {
+                // 第一次休息：必定遇到商人
+                this.handleMerchantEncounter();
+            } else if (randomValue < 0.4) {
+                // 40% 概率：平安休息
+                this.handlePeacefulRest();
+            } else if (randomValue < 0.8) {
+                // 40% 概率：遇到商人
+                this.handleMerchantEncounter();
+            } else {
+                // 20% 概率：怪物偷袭
+                this.handleMonsterAmbush();
+            }
+        }, 1000);
+    }
+
+    /**
+     * 平安休息
+     */
+    handlePeacefulRest() {
+        this.addMessage({
+            content: '休息期间没有发生什么意外，你安全地恢复了体力。',
+            type: 'rest_event',
+            skipHistory: false  // 需要保存到历史记录
+        });
+        
+        // 重置行动计数器
+        const gsService = window.gameCore?.getService('gameStateService');
+        const gs = gsService?.getState();
+        if (gs) {
+            gs.actionsSinceLastRest = 0;
+        }
+        
+        this.enableInput();
+        this.setStatus('ready', '就绪');
+    }
+
+    /**
+     * 遇到商人
+     */
+    handleMerchantEncounter() {
+        this.addMessage({
+            content: '休息时，一位巡游商人恰好路过这里。\n\n"哟！旅行者，要不要看看我的货物？都是好东西！"',
+            type: 'rest_event',
+            skipHistory: false  // 需要保存到历史记录
+        });
+
+        // 重置行动计数器
+        const gsService = window.gameCore?.getService('gameStateService');
+        const gs = gsService?.getState();
+        if (gs) {
+            gs.actionsSinceLastRest = 0;
+        }
+
+        // 触发商人遇到事件
+        setTimeout(() => {
+            this.eventBus.emit('merchant:encounter', {}, 'game');
+            this.enableInput();
+            this.setStatus('ready', '就绪');
+        }, 500);
+    }
+
+    /**
+     * 怪物偷袭
+     */
+    async handleMonsterAmbush() {
+        this.addMessage({
+            content: '你正要放松警惕时，突然听到了脚步声！\n\n一只怪物从阴影中扑了出来！',
+            type: 'rest_event',
+            skipHistory: false  // 需要保存到历史记录
+        });
+
+        // 重置行动计数器
+        const gsService = window.gameCore?.getService('gameStateService');
+        const gs = gsService?.getState();
+        if (gs) {
+            gs.actionsSinceLastRest = 0;
+        }
+
+        // 生成与玩家等级接近的怪物
+        const player = gs?.player;
+        const playerLevel = player?.level || 1;
+
+        // 怪物等级在玩家等级 ±2 范围内
+        const monsterLevel = Math.max(1, playerLevel + Math.floor(Math.random() * 5) - 2);
+
+        // 随机选择怪物种类
+        const monsterSpecies = ['哥布林', '骷髅战士', '野狼', '强盗', '蜘蛛'][Math.floor(Math.random() * 5)];
+
+        setTimeout(async () => {
+            // 触发战斗 - 使用模板模式
+            const functionCallService = window.gameCore?.getService('functionCallService');
+            if (functionCallService) {
+                const battleResult = await functionCallService.executeFunction({
+                    name: 'start_battle',
+                    arguments: {
+                        encounter_type: 'template',  // 使用模板模式
+                        enemies: [{
+                            level: monsterLevel,
+                            category: 'minion',  // 普通小怪
+                            species: monsterSpecies,  // 怪物种类
+                            count: 1  // 数量
+                        }],
+                        environment: '休息地点',
+                        special_conditions: ['偷袭', '无法逃跑']
+                    }
+                });
+
+                // 显示函数执行结果（包括进入战斗按钮）
+                if (battleResult) {
+                    this.eventBus.emit('ui:display:function:result', {
+                        functionName: 'start_battle',
+                        result: battleResult
+                    }, 'game');
+                }
+            }
+        }, 1000);
     }
 }
  
