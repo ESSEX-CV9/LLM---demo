@@ -6,13 +6,26 @@
     <title>LLM驱动RPG Demo - CDN版本</title>
     
     <!-- 从服务器加载CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/assets/styles/game.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/assets/styles/ui-components.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/assets/styles/skills.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/assets/styles/equipment.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@release-Branch/assets/styles/game.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@release-Branch/assets/styles/ui-components.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@release-Branch/assets/styles/skills.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@release-Branch/assets/styles/equipment.css">
     
     <!-- 添加一些基础样式以防CSS加载失败 -->
     <style>
+        /* 加载zpix像素字体 */
+        @font-face {
+            font-family: 'zpix';
+            src: url('https://cdn.jsdelivr.net/gh/SolidZORO/zpix-pixel-font@master/dist/zpix.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        /* 全局应用zpix字体 */
+        * {
+            font-family: 'zpix', sans-serif !important;
+        }
+
         .css-loading-fallback {
             display: none;
             position: fixed;
@@ -48,8 +61,8 @@
     <!-- CSS加载失败时的后备界面 -->
     <div id="cssLoadingFallback" class="css-loading-fallback">
         <h2>🎨 样式文件加载中...</h2>
-        <p>正在从本地服务器加载CSS文件</p>
-        <p>如果长时间停留在此页面，请检查本地服务器是否正常运行</p>
+        <p>正在从jsdelivr服务器加载CSS文件</p>
+        <p>如果长时间停留在此页面，请检查你和jsdelivr的联系是否正常</p>
         <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #4CAF50; border: none; color: white; border-radius: 5px; cursor: pointer;">
             重新加载
         </button>
@@ -63,7 +76,7 @@
         <div class="loading-content">
             <div class="loading-spinner"></div>
             <h2>地牢探险 Demo</h2>
-            <p>正在从本地CDN加载游戏模块...</p>
+            <p>正在从jsdelivr服务器加载游戏模块...</p>
             <div class="loading-progress">
                 <div class="loading-bar" id="loadingBar"></div>
             </div>
@@ -90,7 +103,7 @@
                 </ul>
                 <p><strong>解决方案：</strong></p>
                 <ul>
-                    <li>替代使用VS Code Live Server或类似工具启动本地服务器</li>
+                    <li>替代使用VS Code Live Server或类似工具启动本地服务器然后使用本地版</li>
                     <li>检查所有文件是否在正确位置</li>
                     <li>确保在小白X插件的iframe环境中运行</li>
                 </ul>
@@ -149,7 +162,7 @@
         // 检查服务器状态
         async function checkServerStatus() {
             const statusElement = document.getElementById('debug-server-status');
-            const serverUrl = 'https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/'; // 服务器地址修改这里
+            const serverUrl = 'https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@release-Branch/'; // 服务器地址修改这里
             
             try {
                 statusElement.innerHTML = '🔄 正在检查服务器...';
@@ -200,7 +213,7 @@
     <!-- 模块化JavaScript加载器 -->
     <script type="module">
                 // 配置本地CDN基础URL
-                const CDN_BASE_URL = 'https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/';
+                const CDN_BASE_URL = 'https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@release-Branch/';
                 // 暴露到全局，供运行时代码（如GameView.js）解析图片资源前缀
                 window.CDN_BASE_URL = CDN_BASE_URL;
                 
@@ -436,7 +449,7 @@
         // 定期检查服务器连接状态
         setInterval(async () => {
             try {
-                const response = await fetch('https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/', { 
+                const response = await fetch('https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@release-Branch/', { 
                     method: 'HEAD',
                     cache: 'no-cache'
                 });
