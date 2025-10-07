@@ -184,25 +184,23 @@ class InventoryService {
             return false;
         }
 
+        // 优先处理消耗品 - 避免被错误识别为装备
+        if (item.type === 'consumable') {
+            result = this.useConsumableItem(item, itemName, gameStateService, playerState);
+            return result;
+        }
+
         // 检查是否是装备
         const equipmentData = itemsDB.getEquipment(item.originalName || itemName);
         if (equipmentData) {
             return this.equipItem(itemName);
         }
 
-        // 处理消耗品
-        switch (item.type) {
-            case 'consumable':
-                result = this.useConsumableItem(item, itemName, gameStateService, playerState);
-                break;
-
-            default:
-                this.eventBus.emit('ui:notification', {
-                    message: '该物品无法使用',
-                    type: 'warning'
-                }, 'game');
-                break;
-        }
+        // 其他类型物品
+        this.eventBus.emit('ui:notification', {
+            message: '该物品无法使用',
+            type: 'warning'
+        }, 'game');
 
         return result;
     }

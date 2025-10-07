@@ -6,26 +6,13 @@
     <title>LLM驱动RPG Demo - CDN版本</title>
     
     <!-- 从服务器加载CSS -->
-    <link rel="stylesheet" href="http://127.0.0.1:5500/assets/styles/game.css">
-    <link rel="stylesheet" href="http://127.0.0.1:5500/assets/styles/ui-components.css">
-    <link rel="stylesheet" href="http://127.0.0.1:5500/assets/styles/skills.css">
-    <link rel="stylesheet" href="http://127.0.0.1:5500/assets/styles/equipment.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/assets/styles/game.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/assets/styles/ui-components.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/assets/styles/skills.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/assets/styles/equipment.css">
     
     <!-- 添加一些基础样式以防CSS加载失败 -->
     <style>
-        /* 加载zpix像素字体 */
-        @font-face {
-            font-family: 'zpix';
-            src: url('https://cdn.jsdelivr.net/gh/SolidZORO/zpix-pixel-font@master/dist/zpix.ttf') format('truetype');
-            font-weight: normal;
-            font-style: normal;
-        }
-        
-        /* 全局应用zpix字体 */
-        * {
-            font-family: 'zpix', sans-serif !important;
-        }
-        
         .css-loading-fallback {
             display: none;
             position: fixed;
@@ -162,7 +149,7 @@
         // 检查服务器状态
         async function checkServerStatus() {
             const statusElement = document.getElementById('debug-server-status');
-            const serverUrl = 'http://127.0.0.1:5500/'; // 服务器地址修改这里
+            const serverUrl = 'https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/'; // 服务器地址修改这里
             
             try {
                 statusElement.innerHTML = '🔄 正在检查服务器...';
@@ -213,7 +200,7 @@
     <!-- 模块化JavaScript加载器 -->
     <script type="module">
                 // 配置本地CDN基础URL
-                const CDN_BASE_URL = 'http://127.0.0.1:5500/';
+                const CDN_BASE_URL = 'https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/';
                 // 暴露到全局，供运行时代码（如GameView.js）解析图片资源前缀
                 window.CDN_BASE_URL = CDN_BASE_URL;
                 
@@ -449,7 +436,7 @@
         // 定期检查服务器连接状态
         setInterval(async () => {
             try {
-                const response = await fetch('http://127.0.0.1:5500/', { 
+                const response = await fetch('https://cdn.jsdelivr.net/gh/ESSEX-CV9/LLM---demo@f02b046/', { 
                     method: 'HEAD',
                     cache: 'no-cache'
                 });

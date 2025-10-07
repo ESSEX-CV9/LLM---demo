@@ -1,3 +1,11 @@
+/* 加载zpix像素字体 */
+@font-face {
+    font-family: 'zpix';
+    src: url('https://cdn.jsdelivr.net/gh/SolidZORO/zpix-pixel-font@master/dist/zpix.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 /* Skills modal and cards */
 
 /* ==================== 统一滚动条样式 ==================== */
@@ -59,8 +67,8 @@
   background: linear-gradient(135deg, #1f2a44 0%, #243552 100%);
   border-radius: 15px;
   padding: 20px;
-  max-width: 800px;
-  width: 90%;
+  max-width: 1400px;
+  width: 95%;
   max-height: 90%;
   overflow-y: auto;
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);

@@ -1,12 +1,21 @@
+/* 加载zpix像素字体 */
+@font-face {
+    font-family: 'zpix';
+    src: url('https://cdn.jsdelivr.net/gh/SolidZORO/zpix-pixel-font@master/dist/zpix.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 /* 基础样式和布局 */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    font-family: 'zpix', sans-serif;
 }
 
 body {
-    font-family: 'Segoe UI', 'Microsoft YaHei', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'zpix', sans-serif;
     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
     color: #ffffff;
     min-height: 100vh;
@@ -2411,4 +2420,59 @@ body {
 
 .battle-btn.skill-btn {
     position: relative;
+}
+
+/* 战斗物品使用按钮样式 */
+.battle-inventory-footer {
+    padding: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+}
+
+.battle-inventory-footer p {
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.finish-items-btn {
+    width: 100%;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #4CAF50, #66BB6A);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.finish-items-btn:hover {
+    background: linear-gradient(135deg, #66BB6A, #81C784);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.finish-items-btn:active {
+    transform: translateY(0);
+}
+
+.battle-inventory-slot.disabled {
+    opacity: 0.5;
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
+
+.battle-inventory-header h3 {
+    font-size: 18px;
+    color: white;
+    margin: 0;
+}
+
+#remainingUses {
+    color: #4CAF50;
+    font-weight: bold;
+    font-size: 16px;
 }

@@ -1,5 +1,14 @@
+/* 加载zpix像素字体 */
+@font-face {
+    font-family: 'zpix';
+    src: url('https://cdn.jsdelivr.net/gh/SolidZORO/zpix-pixel-font@master/dist/zpix.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 /* 调试面板样式 */
 .debug-panel {
+    font-family: 'zpix', sans-serif;
     position: fixed;
     top: 20px;
     right: 20px;
@@ -10,7 +19,7 @@
     border-radius: 8px;
     backdrop-filter: blur(10px);
     z-index: 10000;
-    font-family: 'Courier New', monospace;
+    font-family: 'zpix', monospace;
     font-size: 12px;
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);

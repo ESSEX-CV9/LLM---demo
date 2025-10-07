@@ -1,3 +1,11 @@
+/* 加载zpix像素字体 */
+@font-face {
+    font-family: 'zpix';
+    src: url('https://cdn.jsdelivr.net/gh/SolidZORO/zpix-pixel-font@master/dist/zpix.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 /* 装备系统样式 */
 
 /* 背包模态框扩展 */
